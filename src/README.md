@@ -1,6 +1,6 @@
-# Codex Pet Panel (local)
+# Agent Pet
 
-A small movable VS Code webview alongside the Codex chat. This is a personal extension, not an official OpenAI extension.
+A floating desktop companion for AI coding agents. Currently supports Codex in VS Code; other integrations are not available yet. This is an independent community extension, not an official OpenAI or Microsoft product.
 
 ## Desktop pet on macOS
 
@@ -14,14 +14,14 @@ Version 0.5 shows one transparent floating pet with a compact conversation list 
 - Right-click a chat and choose **Sohbeti sabitle** to keep it at the top; a star marks pinned rows.
 - **Görünüm** adjusts text size, pet size, and list opacity independently. The corner grip still scales the whole panel.
 - **Kenarlara hizala** toggles snapping within 18 points of a screen edge after dragging (on by default).
-- **Ctrl+Option+Command+P** toggles presentation mode globally: hide the panel and suppress notifications while tracking continues. The paw icon in the macOS menu bar also restores it. A conflicting shortcut is reported in the paw icon's tooltip. **Codex Pet: Toggle Presentation Mode** is also available in the VS Code Command Palette.
+- **Ctrl+Option+Command+P** toggles presentation mode globally: hide the panel and suppress notifications while tracking continues. The paw icon in the macOS menu bar also restores it. A conflicting shortcut is reported in the paw icon's tooltip. **Agent Pet: Toggle Presentation Mode** is also available in the VS Code Command Palette.
 - Appearance, pinning, collapse, notification, snapping, and presentation preferences are remembered.
 - Completed rows stay until manually removed, including across helper restarts. Hover a row and click ×, or right-click it and choose **Listeden kaldır**. A new task in a dismissed conversation brings its row back and clears the old dismissal; the row then remains visible after completion until manually removed again.
 - Long lists scroll, showing up to eight rows at a time. Hover a title to read the full name and status. Row links use the installed Codex extension’s local conversation URI handler.
 - Drag the upper-right diagonal double-arrow grip to scale the pet and list together (65–200%, limited to the available screen area). Size is remembered across restarts.
 - Drag the pet or list background to move the panel; its position is remembered. The panel can sit at the physical bottom corners, including the Dock area, and stays anchored there when the conversation list changes. Click a conversation row to open that exact chat in VS Code. Click the pet to react.
 - Right-click to choose a character, sleep/wake, clear completed rows, restore removed rows, or close the panel. Sleep freezes the pet while chat status continues updating.
-- **Codex Pet: Show Desktop Pet** reopens the panel. `codexPet.desktopEnabled` controls automatic opening at extension startup.
+- **Agent Pet: Show Desktop Pet** reopens the panel. `codexPet.desktopEnabled` controls automatic opening at extension startup.
 - The same conversation observed by multiple VS Code windows appears once. The latest lifecycle event determines its status; another conversation finishing has no effect on it.
 - Conversations come from local VS Code activity in the workspace, not the list of open editor tabs. A read-only lookup of Codex's local thread index discovers recently updated conversations even when they began on an older date. Subagents are excluded. Titles use the local conversation name, falling back to workspace name and a short ID.
 - Character selection from the sidebar is sent to the desktop. Desktop selection is remembered until the next sidebar selection.
@@ -30,7 +30,7 @@ Version 0.5 shows one transparent floating pet with a compact conversation list 
 
 The macOS helper source is in `native/DesktopPet.swift`. It uses an AppKit nonactivating NSPanel with `hidesOnDeactivate = false`, a floating window level, and a single-instance file lock. Extension instances exchange only pet/status metadata through their private global-storage directory.
 
-- Open: **Codex Pet: Open Pet** from the Command Palette.
+- Open: **Agent Pet: Open Pet** from the Command Palette.
 - The **Pet** view appears in the Codex sidebar. Drag the divider above it to make it smaller, or drag its header to another sidebar/panel.
 - Choose one of the nine available pets. Click to pet, move the mouse to have it look at the pointer, or drag it sideways.
 - The moon button tucks it in; the sun wakes it. Pet choice and sleeping state persist.
@@ -39,4 +39,4 @@ The macOS helper source is in `native/DesktopPet.swift`. It uses an AppKit nonac
 
 The extension references sprite assets from the installed `openai.chatgpt` extension; no OpenAI asset is bundled or redistributed. This local integration relies on Codex's current asset layout and session event format. A future Codex update could change those. It makes no changes to Codex, its settings, or its session files. No network calls or telemetry.
 
-Uninstall **Codex Pet Panel (Local)** from Extensions to remove it.
+Uninstall **Agent Pet** from Extensions to remove it.

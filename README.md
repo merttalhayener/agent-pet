@@ -1,6 +1,8 @@
-# Codex Pet Panel
+# Agent Pet
 
-A floating desktop companion for your Codex conversations in VS Code. One pet, a live chat list, and a quick way to jump back into the conversation that needs you.
+A floating desktop companion for AI coding agents. One pet, a live task list, and a quick way to jump back into the conversation that needs you.
+
+**Currently supports Codex in VS Code.** The project has a general agent-focused identity; integrations with other agents are not available yet.
 
 [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
@@ -10,17 +12,24 @@ A floating desktop companion for your Codex conversations in VS Code. One pet, a
 
 This is an independent community extension, not an official OpenAI or Microsoft product. The current interface is in Turkish.
 
+## Supported integrations
+
+| Integration | Status |
+| --- | --- |
+| Codex in VS Code | Available |
+| Other coding agents | Not available yet |
+
 ## Install
 
 1. Install the official **Codex** extension (`openai.chatgpt`) in VS Code and sign in to Codex.
-2. Download `codex-pet-panel-0.5.0.vsix` from the **[Releases](https://github.com/merttalhayener/codex-pet-panel/releases)** page.
+2. Download `agent-pet-0.5.1.vsix` from the **[Releases](https://github.com/merttalhayener/agent-pet/releases)** page.
 3. In VS Code, open **Extensions → ⋯ → Install from VSIX…** and select the file.
-4. Reload VS Code if prompted, open your project, and run **Codex Pet: Show Desktop Pet** from the Command Palette.
+4. Reload VS Code if prompted, open your project, and run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 Alternatively, with the VS Code `code` command on your PATH:
 
 ```sh
-code --install-extension codex-pet-panel-0.5.0.vsix
+code --install-extension agent-pet-0.5.1.vsix
 ```
 
 The floating helper stays visible when VS Code is in the background. VS Code must remain running to supply live chat updates.
@@ -50,7 +59,7 @@ The floating helper stays visible when VS Code is in the background. VS Code mus
 | Character, appearance, sound, pinning | Right-click the pet or a conversation |
 | Hide / show and mute / unmute feedback | **Control + Option + Command + P** |
 | Restore a hidden panel | Same shortcut, or the paw icon in the macOS menu bar |
-| Reopen after closing the helper | **Codex Pet: Show Desktop Pet** in VS Code |
+| Reopen after closing the helper | **Agent Pet: Show Desktop Pet** in VS Code |
 
 If another app owns the global shortcut, use the paw menu; its tooltip reports the conflict. Closing the helper fully also unregisters the shortcut.
 
@@ -80,7 +89,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/codex-pet-panel-0.5.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.5.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -96,6 +105,10 @@ node test/native-dashboard.cjs --overflow
 ```
 
 Set `CODEX_PET_ASSET_DIR` if Codex's `webview/assets` directory is in a nonstandard location. Native tests use temporary sample chats under `artifacts/` and do not modify pet preferences. The optional `--hotkey` test briefly registers the global shortcut; close the regular helper first to avoid a conflict.
+
+## Upgrade compatibility
+
+Agent Pet was previously called Codex Pet Panel. The internal VS Code extension ID (`local.codex-pet-panel`), command IDs, and preference keys are retained so existing installations update in place and keep their settings. New download packages use the `agent-pet` name.
 
 ## Project layout
 

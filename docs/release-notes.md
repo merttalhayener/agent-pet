@@ -1,6 +1,8 @@
-First public beta of Codex Pet Panel: a floating desktop companion for Codex in VS Code.
+Agent Pet 0.5.1: a floating desktop companion for AI coding agents, currently supporting Codex in VS Code.
 
-Download the attached `.vsix`, then install it using **VS Code → Extensions → ⋯ → Install from VSIX…**. Run **Codex Pet: Show Desktop Pet** from the Command Palette.
+Renames Codex Pet Panel to Agent Pet. Existing installations update in place and retain preferences; other agent integrations are not yet available.
+
+Download the attached `.vsix`, then install it using **VS Code → Extensions → ⋯ → Install from VSIX…**. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 **Requires Apple Silicon, macOS 26+, and the official Codex VS Code extension.** This is an independent community project. The interface is currently Turkish.
 

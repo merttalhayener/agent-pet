@@ -273,7 +273,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             if let data = defaults.data(forKey: "retainedThreads"), let saved = try? JSONDecoder().decode([ThreadActivity].self, from: data) { for thread in saved { retained[thread.id] = thread; order.append(thread.id) } }
         }
         panel = PetPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 174), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "Codex Pet — Sohbetler"; panel.level = .floating; panel.hidesOnDeactivate = false
+        panel.title = "Agent Pet — Sohbetler"; panel.level = .floating; panel.hidesOnDeactivate = false
         panel.isFloatingPanel = true; panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false; panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.acceptsMouseMovedEvents = true
         view = DashboardView(frame: NSRect(x: 0, y: 0, width: 340, height: 174)); view.owner = self
@@ -339,7 +339,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         }
         view.clampScroll(); resizeToList(); view.needsDisplay = true
         panel.invalidateCursorRects(for: view)
-        view.setAccessibilityLabel("Codex pet. " + displayThreads.map { "\($0.title): \(Self.statusText($0.status))" }.joined(separator: ". "))
+        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.title): \(Self.statusText($0.status))" }.joined(separator: ". "))
         savePreferences()
     }
     func resizeToList() {
@@ -434,8 +434,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     }
     func setupMenuBarAndHotKey() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem?.button?.image = NSImage(systemSymbolName: "pawprint", accessibilityDescription: "Codex Pet")
-        statusItem?.button?.toolTip = "Codex Pet · ⌃⌥⌘P ile gizle/göster"
+        statusItem?.button?.image = NSImage(systemSymbolName: "pawprint", accessibilityDescription: "Agent Pet")
+        statusItem?.button?.toolTip = "Agent Pet · ⌃⌥⌘P ile gizle/göster"
         updateStatusMenu()
         var event = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { _, _, context in
@@ -444,7 +444,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             return noErr
         }, 1, &event, Unmanaged.passUnretained(self).toOpaque(), &hotKeyHandler)
         let result = RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey | cmdKey), EventHotKeyID(signature: 0x43505450, id: 1), GetApplicationEventTarget(), 0, &hotKey)
-        if result != noErr { statusItem?.button?.toolTip = "Codex Pet · Kısayol başka uygulamada kullanımda; bu menüden gizle/göster." }
+        if result != noErr { statusItem?.button?.toolTip = "Agent Pet · Kısayol başka uygulamada kullanımda; bu menüden gizle/göster." }
     }
     func updateStatusMenu() { statusItem?.menu = petMenu(thread: nil) }
     @objc func toggleSleep() { sleeping.toggle(); sleepAt = Date().timeIntervalSince1970 * 1000; savePreferences(); step() }

@@ -5,7 +5,7 @@ import json
 root = Path(__file__).resolve().parent
 src = root / 'src'
 p = json.loads((src / 'package.json').read_text())
-target = root / 'artifacts' / f"codex-pet-panel-{p['version']}.vsix"
+target = root / 'artifacts' / f"agent-pet-{p['version']}.vsix"
 target.parent.mkdir(parents=True, exist_ok=True)
 if not (src / 'bin' / 'codex-desktop-pet').is_file():
     raise SystemExit('Build the native helper first: python3 scripts/build-native.py')
@@ -15,7 +15,7 @@ manifest = f'''<?xml version="1.0" encoding="utf-8"?>
     <Identity Language="en-US" Id="{p['name']}" Version="{p['version']}" Publisher="{p['publisher']}"/>
     <DisplayName>{p['displayName']}</DisplayName>
     <Description xml:space="preserve">{p['description']}</Description>
-    <Tags>pet,codex,local</Tags><Categories>Other</Categories><GalleryFlags/>
+    <Tags>pet,agent,codex,desktop</Tags><Categories>Other</Categories><GalleryFlags/>
     <Properties>
       <Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.96.2"/>
       <Property Id="Microsoft.VisualStudio.Code.ExtensionDependencies" Value="openai.chatgpt"/>

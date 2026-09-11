@@ -1,6 +1,8 @@
-# Codex Pet Panel
+# Agent Pet
 
-VS Code'daki Codex sohbetleri için masaüstünde yüzen bir pet. Tek petin altında sohbetlerini takip et; bir satıra tıklayarak o sohbete dön.
+Yapay zekâ kodlama ajanları için masaüstünde yüzen bir pet. Tek petin altında sohbetlerini takip et; bir satıra tıklayarak o sohbete dön.
+
+**Şu an yalnızca VS Code içindeki Codex destekleniyor.** Agent Pet genel bir ajan yardımcısı olarak adlandırılmıştır; diğer ajan entegrasyonları henüz mevcut değildir.
 
 [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
@@ -13,9 +15,9 @@ Bağımsız bir topluluk eklentisidir; resmî OpenAI veya Microsoft ürünü de�
 ## Kurulum
 
 1. VS Code'a resmî **Codex** (`openai.chatgpt`) eklentisini kur ve giriş yap.
-2. **[Releases](https://github.com/merttalhayener/codex-pet-panel/releases)** sayfasından `codex-pet-panel-0.5.0.vsix` dosyasını indir.
+2. **[Releases](https://github.com/merttalhayener/agent-pet/releases)** sayfasından `agent-pet-0.5.1.vsix` dosyasını indir.
 3. VS Code'da **Extensions → ⋯ → Install from VSIX…** yolundan dosyayı seç.
-4. Gerekirse VS Code'u yeniden yükle, projeni aç ve komut paletinden **Codex Pet: Show Desktop Pet** çalıştır.
+4. Gerekirse VS Code'u yeniden yükle, projeni aç ve komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
 Pet, VS Code arka plandayken de görünür. Canlı durum güncellemeleri için VS Code açık kalmalıdır.
 
@@ -38,6 +40,10 @@ Masaüstü uygulaması şu an **Apple Silicon ve macOS 26+** içindir. Windows, 
 Takip, açık VS Code çalışma alanındaki yakın tarihli yerel Codex etkinliğine dayanır. Tüm açık sekmelerin veya bulut sohbetlerinin listesi değildir. Sarı gösterge, kayıtlara yazılan kullanıcı sorularını takip eder; bütün izin pencerelerini algılayamaz.
 
 Pet görselleri kullanıcının kurulu Codex eklentisinden okunur; sprite dosyaları repoya veya VSIX'e eklenmez. Bu proje sohbet kayıtlarını bir sunucuya göndermez ve telemetri eklemez.
+
+## Mevcut kullanıcılar
+
+Projenin önceki adı Codex Pet Panel idi. Yeni sürüm mevcut eklentinin üzerine kurulur; ayarlarını korumak için teknik eklenti kimliği aynı tutulmuştur.
 
 ## Kaynaktan derleme
 

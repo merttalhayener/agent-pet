@@ -1,8 +1,8 @@
 {
   "name": "codex-pet-panel",
-  "displayName": "Codex Pet Panel (Local)",
-  "description": "One floating desktop pet with live status for each local Codex conversation.",
-  "version": "0.5.0",
+  "displayName": "Agent Pet",
+  "description": "A floating desktop companion for AI coding agents. Currently supports Codex in VS Code.",
+  "version": "0.5.1",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {
@@ -26,30 +26,30 @@
       {
         "command": "codexPet.open",
         "title": "Open Pet",
-        "category": "Codex Pet",
+        "category": "Agent Pet",
         "icon": "$(smiley)"
       },
       {
         "command": "codexPet.choose",
         "title": "Choose Pet",
-        "category": "Codex Pet",
+        "category": "Agent Pet",
         "icon": "$(symbol-color)"
       },
       {
         "command": "codexPet.showDesktop",
         "title": "Show Desktop Pet",
-        "category": "Codex Pet",
+        "category": "Agent Pet",
         "icon": "$(link-external)"
       },
       {
         "command": "codexPet.hideDesktop",
         "title": "Hide Desktop Pet",
-        "category": "Codex Pet"
+        "category": "Agent Pet"
       },
       {
         "command": "codexPet.togglePresentation",
         "title": "Toggle Presentation Mode",
-        "category": "Codex Pet"
+        "category": "Agent Pet"
       }
     ],
     "views": {
@@ -87,7 +87,7 @@
       ]
     },
     "configuration": {
-      "title": "Codex Pet",
+      "title": "Agent Pet",
       "properties": {
         "codexPet.followActivity": {
           "type": "boolean",
@@ -104,10 +104,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/merttalhayener/codex-pet-panel.git"
+    "url": "https://github.com/merttalhayener/agent-pet.git"
   },
-  "homepage": "https://github.com/merttalhayener/codex-pet-panel#readme",
+  "homepage": "https://github.com/merttalhayener/agent-pet#readme",
   "bugs": {
-    "url": "https://github.com/merttalhayener/codex-pet-panel/issues"
+    "url": "https://github.com/merttalhayener/agent-pet/issues"
   }
 }
