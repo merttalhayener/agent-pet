@@ -11,6 +11,7 @@ enum PetLanguage: String, CaseIterable {
         "Workspaces": "Çalışma alanları",
         "No workspace": "Çalışma alanı yok",
         "Other chats": "Diğer sohbetler",
+        "Open this workspace in VS Code, then try again.": "Bu çalışma alanını VS Code’da açıp tekrar dene.",
         "Compact list": "Kompakt liste",
         "Extended · Workspaces": "Genişletilmiş · Çalışma alanları",
         "Group by workspace": "Çalışma alanına göre grupla",
@@ -89,7 +90,9 @@ struct Activity: Codable {
     let threads: [ThreadActivity]?
     let trackingDisabled: Bool?
 }
+struct WindowNavigation: Codable { let codex: String; let claude: String }
 struct Snapshot: Codable {
+    var navigation: WindowNavigation? = nil
     var protocolVersion: Int? = nil
     var workspace: WorkspaceInfo? = nil
     let updatedAt: Double
@@ -220,7 +223,8 @@ final class DashboardView: NSView {
         let running = rows.filter { $0.status == "running" }.count, waiting = rows.filter { $0.status == "waiting" }.count
         let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
         let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        label(collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text(owner?.grouped == true ? "Workspaces" : "Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 73, height: 17), size: 10, color: celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+        let navigationNotice = (owner?.navigationNoticeUntil ?? 0) > Date.timeIntervalSinceReferenceDate
+        label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text(owner?.grouped == true ? "Workspaces" : "Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 73, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
         label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
         label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
         clampScroll()
@@ -355,6 +359,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var tick = 0, lockFD: Int32 = -1
     var imagePath = ""
     var testOpenedURL: String?
+    var navigationNoticeUntil: Double = 0
     var dashboardScale: CGFloat = 1
     var grouped = false
     var foldedWorkspaces: Set<String> = []
@@ -628,11 +633,38 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let config = NSWorkspace.OpenConfiguration(); config.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"), configuration: config)
     }
-    func openThread(_ id: String) {
+    func threadURL(_ id: String, live: [Snapshot]) -> URL? {
         let claude = id.hasPrefix("claude:"), session = claude ? String(id.dropFirst(7)) : id
-        guard UUID(uuidString: session) != nil else { return }
-        let target = claude ? "vscode://local.codex-pet-panel/claude?session=\(session)" : "vscode://openai.chatgpt/local/\(session)"
-        guard let url = URL(string: target) else { return }
+        guard UUID(uuidString: session) != nil else { return nil }
+        let thread = displayThreads.first { $0.id == id } ?? retained[id]
+        let candidates = live.filter { snapshot in
+            guard snapshot.navigation != nil else { return false }
+            if let workspace = thread?.workspace { return snapshot.workspace?.id == workspace.id }
+            return snapshot.activity.threads?.contains { $0.id == id } == true
+        }
+        // Untagged historical rows are safe only if exactly one window owns them.
+        guard thread?.workspace != nil || candidates.count == 1 else { return nil }
+        for snapshot in candidates.sorted(by: { $0.updatedAt > $1.updatedAt }) {
+            guard let routes = snapshot.navigation,
+                  var parts = URLComponents(string: claude ? routes.claude : routes.codex),
+                  ["vscode", "vscode-insiders"].contains(parts.scheme ?? ""),
+                  parts.host == (claude ? "local.codex-pet-panel" : "openai.chatgpt"),
+                  parts.path == (claude ? "/claude" : "/local/"),
+                  parts.user == nil, parts.password == nil, parts.port == nil, parts.fragment == nil else { continue }
+            let query = parts.queryItems ?? []
+            guard query.count == 1, query[0].name == "windowId", let windowID = query[0].value,
+                  !windowID.isEmpty, windowID.allSatisfy({ $0.isASCII && $0.isNumber }) else { continue }
+            if claude { parts.queryItems = query + [URLQueryItem(name: "session", value: session)] }
+            else { parts.path += session }
+            return parts.url
+        }
+        return nil
+    }
+    func openThread(_ id: String) {
+        guard let url = threadURL(id, live: snapshots()) else {
+            if !testing { navigationNoticeUntil = Date.timeIntervalSinceReferenceDate + 6; view.needsDisplay = true }
+            return
+        }
         if testing { testOpenedURL = url.absoluteString; return }
         NSWorkspace.shared.open(url)
     }
@@ -745,11 +777,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func testWorkspaceView() -> Bool {
         let saved = displayThreads, savedGrouped = grouped, savedFolded = foldedWorkspaces
         defer { displayThreads = saved; grouped = savedGrouped; foldedWorkspaces = savedFolded; view.scrollOffset = 0; resizeToList() }
-        let a = WorkspaceInfo(id: "project-a", name: "Website"), b = WorkspaceInfo(id: "project-b", name: "Mobile App")
+        let a = WorkspaceInfo(id: "test-workspace", name: "Website"), b = WorkspaceInfo(id: "project-b", name: "Mobile App")
         let now = Date().timeIntervalSince1970 * 1000
         let first = ThreadActivity(id: "11111111-1111-4111-8111-111111111111", title: "Build the landing page", status: "running", changedAt: now, lastEventAt: now, workspace: a)
         let second = ThreadActivity(id: "claude:22222222-2222-4222-8222-222222222222", title: "Review accessibility", status: "ready", changedAt: now, lastEventAt: now, workspace: a)
         let third = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Add sign in", status: "waiting", changedAt: now, lastEventAt: now, workspace: b)
+        let fixtureURL = directory.appendingPathComponent("client-routing-test.json")
+        let fixture = Snapshot(navigation: WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=42", claude: "vscode://local.codex-pet-panel/claude?windowId=42"), protocolVersion: 7, workspace: b, updatedAt: now, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "waiting", active: 0, threads: [third], trackingDisabled: false), pets: [])
+        try? JSONEncoder().encode(fixture).write(to: fixtureURL)
+        defer { try? FileManager.default.removeItem(at: fixtureURL) }
         displayThreads = [first, second, third]; grouped = true; foldedWorkspaces = []; resizeToList()
         capture("dashboard-workspaces-test.png")
         let headers = view.entries.compactMap { $0.workspace }
@@ -765,9 +801,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         testOpenedURL = nil; click(0)
         valid = valid && foldedWorkspaces.contains(b.id) && view.entries.count == 4 && testOpenedURL == nil
         click(0); click(1)
-        valid = valid && testOpenedURL == "vscode://openai.chatgpt/local/33333333-3333-4333-8333-333333333333"
+        valid = valid && testOpenedURL == "vscode://openai.chatgpt/local/33333333-3333-4333-8333-333333333333?windowId=42"
         click(4)
-        valid = valid && testOpenedURL == "vscode://local.codex-pet-panel/claude?session=22222222-2222-4222-8222-222222222222"
+        valid = valid && testOpenedURL == "vscode://local.codex-pet-panel/claude?windowId=42&session=22222222-2222-4222-8222-222222222222"
         // Distinct workspaces with the same name must never merge. Old records
         // lacking workspace metadata remain visible under Other chats.
         var other = first; other.workspace = WorkspaceInfo(id: "project-c", name: a.name)
@@ -793,8 +829,21 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let original = displayThreads
         let workspaceViewWorks = testWorkspaceView()
         testOpenedURL = nil
-        openThread("claude:44444444-4444-4444-8444-444444444444")
-        let claudeLinkWorks = testOpenedURL == "vscode://local.codex-pet-panel/claude?session=44444444-4444-4444-8444-444444444444"
+        let claudeID = "claude:22222222-2222-4222-8222-222222222222"
+        let routes = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=42", claude: "vscode://local.codex-pet-panel/claude?windowId=42")
+        let routeSample = ThreadActivity(id: claudeID, title: "Sample", status: "ready", changedAt: 1, lastEventAt: 1)
+        let fixture = Snapshot(navigation: routes, workspace: WorkspaceInfo(id: "test-workspace", name: "Website"), updatedAt: 1, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "ready", active: 0, threads: [routeSample], trackingDisabled: false), pets: [])
+        let claudeLinkWorks = threadURL(claudeID, live: [fixture])?.absoluteString == "vscode://local.codex-pet-panel/claude?windowId=42&session=22222222-2222-4222-8222-222222222222"
+        var otherWindow = fixture
+        otherWindow.workspace = WorkspaceInfo(id: "different-workspace", name: "Website")
+        otherWindow.navigation = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=99", claude: "vscode://local.codex-pet-panel/claude?windowId=99")
+        let ownedID = original.first?.id ?? ""
+        let correctWindow = threadURL(ownedID, live: [otherWindow, fixture])?.query?.contains("windowId=42") == true
+        let closedWindow = threadURL(ownedID, live: [otherWindow]) == nil
+        var malformed = fixture
+        malformed.navigation = WindowNavigation(codex: "https://example.com/local/?windowId=42", claude: "vscode://local.codex-pet-panel/claude?windowId=42&prompt=unwanted")
+        let rejectedRoute = threadURL(ownedID, live: [malformed]) == nil
+        let windowRoutingWorks = correctWindow && closedWindow && rejectedRoute
         testOpenedURL = nil; openThread("claude:invalid?prompt=unwanted")
         let invalidLinkRejected = testOpenedURL == nil
         let originalLanguage = language
@@ -853,7 +902,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")
@@ -888,7 +937,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             let thread = displayThreads[i], y = view.rowRect(i).midY
             testOpenedURL = nil
             view.mouseDown(with: mouse(.leftMouseDown, 60, y)); view.mouseUp(with: mouse(.leftMouseUp, 60, y))
-            let expected = thread.isClaude ? "vscode://local.codex-pet-panel/claude?session=\(thread.sessionID)" : "vscode://openai.chatgpt/local/\(thread.id)"
+            let expected = thread.isClaude ? "vscode://local.codex-pet-panel/claude?windowId=42&session=\(thread.sessionID)" : "vscode://openai.chatgpt/local/\(thread.id)?windowId=42"
             rowClickOpensChat = rowClickOpensChat && testOpenedURL == expected
         }
         if displayThreads.count > 1 {

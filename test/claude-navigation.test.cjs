@@ -38,3 +38,11 @@ test('malformed, extra-argument and unknown-session links cannot execute command
  for (const query of ['session=invalid', `session=${ID}&prompt=unexpected`, `session=${ID}&session=${ID}`, 'session=55555555-5555-4555-8555-555555555555']) await f.nav.handleUri(uri(query));
  assert.deepEqual(f.calls, []);
 });
+
+test('VS Code window routing parameter is accepted, malformed routing is rejected', async () => {
+ const f = fixture(); await f.nav.handleUri(uri(`windowId=42&session=${ID}`));
+ assert.equal(f.calls.at(-1), 'sidebar');
+ const bad = fixture();
+ for (const query of [`session=${ID}&windowId=abc`, `session=${ID}&windowId=42&windowId=99`]) await bad.nav.handleUri(uri(query));
+ assert.deepEqual(bad.calls, []);
+});

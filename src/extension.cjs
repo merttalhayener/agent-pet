@@ -8,6 +8,8 @@ const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
 const { describeWorkspace } = require('./workspace.cjs');
 
+const { resolveWindowNavigation } = require('./window-navigation.cjs');
+
 const PETS = [
   ['codex', 'Codex'], ['dewey', 'Dewey'], ['fireball', 'Fireball'],
   ['hoots', 'Hoots'], ['bsod', 'BSOD'], ['null-signal', 'Null Signal'],
@@ -20,6 +22,7 @@ async function activate(context) {
   let selectedAt = context.globalState.get('petSelectedAt', 0);
   const sleepAt = context.globalState.get('petSleepAt', 0);
   let desktop;
+  const navigationLinks = await resolveWindowNavigation(vscode).catch(() => undefined);
   let activity = { status: 'idle', active: 0 };
   const codex = vscode.extensions.getExtension('openai.chatgpt');
   const assetDir = codex && path.join(codex.extensionPath, 'webview', 'assets');
@@ -44,7 +47,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 6, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 7, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -83,6 +86,6 @@ async function activate(context) {
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('codexPet.followActivity')) { monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true); void monitor.tick(); }
   }));
-  return { availablePets: pets.map(p => p.id), open, getDiagnostics: () => ({ workspace: describeWorkspace(vscode.workspace), desktopSupported: Boolean(desktop), activity }) };
+  return { availablePets: pets.map(p => p.id), open, getDiagnostics: () => ({ navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), desktopSupported: Boolean(desktop), activity }) };
 }
 module.exports = { activate };

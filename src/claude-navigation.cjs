@@ -35,7 +35,8 @@ function createClaudeNavigation(vscode, getThread) {
       if (uri.authority !== 'local.codex-pet-panel' || uri.path !== '/claude') return Promise.resolve();
       const params = new URLSearchParams(uri.query);
       const session = params.get('session');
-      if (!UUID.test(session || '') || params.getAll('session').length !== 1 || [...params.keys()].some(key => key !== 'session')) return Promise.resolve();
+      if (params.getAll('windowId').length > 1 || (params.has('windowId') && !/^\d+$/.test(params.get('windowId')))) return Promise.resolve();
+      if (!UUID.test(session || '') || params.getAll('session').length !== 1 || [...params.keys()].some(key => key !== 'session' && key !== 'windowId')) return Promise.resolve();
       pending = pending.catch(() => {}).then(() => open(session)).catch(error => { void vscode.window.showErrorMessage(`Could not open the Claude sidebar: ${error.message}`); });
       return pending;
     }

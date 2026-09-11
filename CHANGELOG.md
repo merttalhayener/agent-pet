@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1
+
+- Target the owning VS Code window when clicking a Codex or Claude chat across multiple workspaces.
+- Resolve window-specific links through VS Code’s API and use only live workspace snapshots.
+- Show a workspace hint when no live route is available instead of opening an unrelated window.
+- Verify routing across two real VS Code windows, including switching back to the first.
+
 ## 0.8.0
 
 - Added an extended view that groups Codex and Claude chats by VS Code workspace, including multi-root workspaces.

@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.8.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.8.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -95,3 +95,9 @@ Protocol 4 adds the built-in pet and combined agent snapshots. The helper writes
 Each window includes a workspace descriptor in protocol 6 snapshots: a SHA-256 identity derived from the workspace-file URI (or sorted folder URIs) and the VS Code workspace display name. Multi-root workspaces stay together; equally named folders at different locations stay distinct. The native helper retains workspace metadata with each chat and preserves stable ownership when multiple windows report the same session. Status precedence remains independent of group ownership. Older snapshots remain readable and untagged chats appear under Other chats.
 
 The extended list inserts collapsible group headers, scrolls up to 12 visible entries, and keeps chat opening/removal hit targets separate from headers. Compact mode keeps its existing ordering and eight-row limit. Grouping and folded workspace IDs persist in local preferences.
+
+## Window navigation (0.8.1)
+
+Protocol 7 snapshots carry Codex and Claude base URLs resolved by `vscode.env.asExternalUri` in the owning extension host. `Uri.toString(true)` preserves the query delimiters for the native URL parser. The helper chooses a fresh snapshot for the row’s workspace and preserves VS Code’s `windowId` when adding the validated session UUID. Window links are never stored with retained chats. An untagged row needs exactly one reporting window; missing routes show a prompt to open the workspace rather than falling back to a generic URL. Snapshot freshness uses the existing 15-second heartbeat timeout.
+
+Claude’s URI handler accepts VS Code’s numeric windowId parameter while still rejecting duplicate or unrelated query arguments. Tested with two isolated VS Code windows in A → B → A order, plus native mismatched-workspace and missing-route tests. Reload all open workspace windows after installing this update.
