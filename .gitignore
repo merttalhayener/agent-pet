@@ -1,0 +1,11 @@
+# Generated binaries, packages, test captures and local editor state
+src/bin/
+artifacts/
+host/
+.swift-cache/
+.DS_Store
+__pycache__/
+*.pyc
+.vscode/
+.env
+.env.*

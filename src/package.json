@@ -1,0 +1,113 @@
+{
+  "name": "codex-pet-panel",
+  "displayName": "Codex Pet Panel (Local)",
+  "description": "One floating desktop pet with live status for each local Codex conversation.",
+  "version": "0.5.0",
+  "publisher": "local",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.96.2"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "extensionDependencies": [
+    "openai.chatgpt"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codexPet.open",
+        "title": "Open Pet",
+        "category": "Codex Pet",
+        "icon": "$(smiley)"
+      },
+      {
+        "command": "codexPet.choose",
+        "title": "Choose Pet",
+        "category": "Codex Pet",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "codexPet.showDesktop",
+        "title": "Show Desktop Pet",
+        "category": "Codex Pet",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "codexPet.hideDesktop",
+        "title": "Hide Desktop Pet",
+        "category": "Codex Pet"
+      },
+      {
+        "command": "codexPet.togglePresentation",
+        "title": "Toggle Presentation Mode",
+        "category": "Codex Pet"
+      }
+    ],
+    "views": {
+      "codexSecondaryViewContainer": [
+        {
+          "id": "codexPet.secondary",
+          "name": "Pet",
+          "type": "webview",
+          "when": "!chatgpt.doesNotSupportSecondarySidebar",
+          "visibility": "visible"
+        }
+      ],
+      "codexViewContainer": [
+        {
+          "id": "codexPet.primary",
+          "name": "Pet",
+          "type": "webview",
+          "when": "chatgpt.doesNotSupportSecondarySidebar",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "codexPet.choose",
+          "when": "view == codexPet.secondary || view == codexPet.primary",
+          "group": "navigation"
+        },
+        {
+          "command": "codexPet.showDesktop",
+          "when": "view == codexPet.secondary || view == codexPet.primary",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Codex Pet",
+      "properties": {
+        "codexPet.followActivity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Follow local Codex session status for the open workspace. No transcript content is displayed or sent anywhere."
+        },
+        "codexPet.desktopEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the floating desktop pet when this extension starts on macOS. Right-click the desktop pet to tuck it away."
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/merttalhayener/codex-pet-panel.git"
+  },
+  "homepage": "https://github.com/merttalhayener/codex-pet-panel#readme",
+  "bugs": {
+    "url": "https://github.com/merttalhayener/codex-pet-panel/issues"
+  }
+}

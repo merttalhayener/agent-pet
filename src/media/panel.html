@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src {{CSP}}; style-src {{CSP}} 'unsafe-inline'; script-src 'nonce-{{NONCE}}';">
+  <link rel="stylesheet" href="{{STYLE}}">
+  <title>Codex Pet</title>
+</head>
+<body data-config="{{DATA}}">
+  <main class="companion">
+    <div class="toolbar">
+      <label class="picker"><span class="sr-only">Pet seç</span><select id="pet-select" aria-label="Pet seç"></select></label>
+      <button id="sleep" class="icon-button" title="Uyut" aria-label="Uyut" aria-pressed="false">☾</button>
+    </div>
+    <div id="stage" class="stage">
+      <div class="glow" aria-hidden="true"></div>
+      <span id="bubble" class="bubble" aria-hidden="true">♡</span>
+      <button id="pet" class="pet" aria-label="Pet'i sev" title="Sevmek için tıkla, taşımak için sürükle"><span id="sprite" class="sprite" aria-hidden="true"></span></button>
+      <div class="ground" aria-hidden="true"></div>
+    </div>
+    <footer>
+      <span id="status" class="status" role="status"><i aria-hidden="true"></i><span id="status-text">Yanındayım</span></span>
+      <button id="open-codex" class="text-button" title="Codex sohbetine dön">Codex ↗</button>
+    </footer>
+    <p id="error" hidden>Pet görselleri bulunamadı. Codex eklentisini güncelleyip pencereyi yeniden yükle.</p>
+  </main>
+  <script nonce="{{NONCE}}" src="{{SCRIPT}}"></script>
+</body>
+</html>
