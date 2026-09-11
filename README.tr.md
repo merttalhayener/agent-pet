@@ -11,7 +11,7 @@ Hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor? Masaüstündek
 ![Codex desteği](https://img.shields.io/badge/Destek-Codex_%2B_VS_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Durum-beta-d97706?style=flat-square)
 
-**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.3)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.4)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Çalışan ve tamamlanan sohbetleri gösteren Agent Pet" width="420">
 
@@ -48,7 +48,7 @@ Arayüz Türkçedir. Canlı güncellemeler için VS Code açık kalmalıdır. Ag
 ## Kurulum
 
 1. VS Code'a resmî **Codex** eklentisini kur ve giriş yap.
-2. [**agent-pet-0.5.3.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.3/agent-pet-0.5.3.vsix).
+2. [**agent-pet-0.5.4.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.4/agent-pet-0.5.4.vsix).
 3. VS Code'da **Extensions → ⋯ → Install from VSIX…** yolundan dosyayı seç.
 4. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 

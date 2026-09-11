@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4
+
+- Shortened the menu: show/hide and return to VS Code come first; pets, appearance, notifications, and chats have dedicated submenus.
+- Grouped all characters under Petler, moved sleep controls beside them, and removed the duplicate hide command.
+- Displayed the visibility shortcut in the native shortcut column and refreshed pet/sleep selection states after changes.
+
 ## 0.5.3
 
 - Reattached chats require fresh activity before showing a running spinner; 60 seconds without progress shows an unknown state, never completion.

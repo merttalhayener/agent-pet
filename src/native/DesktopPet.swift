@@ -450,8 +450,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         if result != noErr { statusItem?.button?.toolTip = "Agent Pet · Kısayol başka uygulamada kullanımda; bu menüden gizle/göster." }
     }
     func updateStatusMenu() { statusItem?.menu = petMenu(thread: nil) }
-    @objc func toggleSleep() { sleeping.toggle(); sleepAt = Date().timeIntervalSince1970 * 1000; savePreferences(); step() }
-    @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react() } }
+    @objc func toggleSleep() { sleeping.toggle(); sleepAt = Date().timeIntervalSince1970 * 1000; savePreferences(); step(); updateStatusMenu() }
+    @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react(); updateStatusMenu() } }
     @objc func openCode() {
         let config = NSWorkspace.OpenConfiguration(); config.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"), configuration: config)
@@ -475,32 +475,63 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     @objc func restoreDismissed() { clearDismissed(); refresh() }
     func petMenu(thread: ThreadActivity?) -> NSMenu {
         let menu = NSMenu()
+        @discardableResult
+        func action(_ title: String, _ selector: Selector, in parent: NSMenu, value: Any? = nil) -> NSMenuItem {
+            let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
+            item.target = self; item.representedObject = value; parent.addItem(item)
+            return item
+        }
+        func group(_ title: String) -> NSMenu {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            let submenu = NSMenu(title: title); item.submenu = submenu; menu.addItem(item)
+            return submenu
+        }
         if let thread {
-            menu.addItem(NSMenuItem(title: thread.title, action: nil, keyEquivalent: ""))
-            let pin = NSMenuItem(title: pinned.contains(thread.id) ? "Sabitlemeyi kaldır" : "Sohbeti sabitle", action: #selector(togglePinned(_:)), keyEquivalent: ""); pin.target = self; pin.representedObject = thread.id; menu.addItem(pin)
-            let remove = NSMenuItem(title: "Listeden kaldır", action: #selector(dismissMenuRow(_:)), keyEquivalent: ""); remove.target = self; remove.representedObject = thread.id; menu.addItem(remove); menu.addItem(.separator())
+            let heading = NSMenuItem(title: thread.title, action: nil, keyEquivalent: "")
+            heading.isEnabled = false; menu.addItem(heading)
+            action(pinned.contains(thread.id) ? "Sabitlemeyi kaldır" : "Sohbeti sabitle", #selector(togglePinned(_:)), in: menu, value: thread.id)
+            action("Listeden kaldır", #selector(dismissMenuRow(_:)), in: menu, value: thread.id)
+            menu.addItem(.separator())
         }
+        let visibility = action(presentationHidden ? "Peti göster" : "Peti gizle", #selector(togglePresentation), in: menu)
+        visibility.keyEquivalent = "p"; visibility.keyEquivalentModifierMask = [.control, .option, .command]
+        visibility.toolTip = "Gizliyken bitiş sesi ve animasyonu da duraklatılır."
+        action("VS Code'a dön", #selector(openCode), in: menu)
+        menu.addItem(.separator())
+
+        let petsMenu = group("Petler")
+        let names = ["bsod": "BSOD", "null-signal": "Null Signal"]
         for asset in assets {
-            let item = NSMenuItem(title: asset.name, action: #selector(choosePet(_:)), keyEquivalent: ""); item.target = self; item.representedObject = asset.id; item.state = asset.id == selected ? .on : .off; menu.addItem(item)
+            let item = action(names[asset.id] ?? asset.name, #selector(choosePet(_:)), in: petsMenu, value: asset.id)
+            item.state = asset.id == selected ? .on : .off
         }
-        let appearance = NSMenuItem(title: "Görünüm", action: nil, keyEquivalent: ""), appearanceMenu = NSMenu()
+        petsMenu.addItem(.separator())
+        action(sleeping ? "Uyandır" : "Uyut", #selector(toggleSleep), in: petsMenu)
+
+        let appearanceMenu = group("Görünüm")
         for (title, key, values, current) in [("Yazı boyutu", "textSize", [10.0, 11.5, 13, 15], Double(textSize)), ("Pet boyutu", "petScale", [0.75, 1, 1.25, 1.5], Double(petScale)), ("Liste opaklığı", "listOpacity", [0.35, 0.6, 0.8, 0.91, 1], Double(listOpacity))] {
-            let group = NSMenuItem(title: title, action: nil, keyEquivalent: ""), submenu = NSMenu()
+            let group = NSMenuItem(title: title, action: nil, keyEquivalent: ""), submenu = NSMenu(title: title)
             for value in values {
                 let label = key == "textSize" ? "\(value) pt" : "\(Int(value * 100))%"
-                let choice = NSMenuItem(title: label, action: #selector(setAppearance(_:)), keyEquivalent: ""); choice.target = self
-                choice.representedObject = ["key": key, "value": value]; choice.state = abs(current - value) < 0.001 ? .on : .off; submenu.addItem(choice)
+                let choice = action(label, #selector(setAppearance(_:)), in: submenu, value: ["key": key, "value": value])
+                choice.state = abs(current - value) < 0.001 ? .on : .off
             }
             group.submenu = submenu; appearanceMenu.addItem(group)
         }
-        appearance.submenu = appearanceMenu; menu.addItem(appearance)
-        for (title, key, enabled) in [("Kenarlara hizala", "snap", snapEnabled), ("Bitiş animasyonu", "animation", completionAnimation), ("Bitişte ses çal", "sound", soundEnabled)] {
-            let item = NSMenuItem(title: title, action: #selector(toggleSetting(_:)), keyEquivalent: ""); item.target = self; item.representedObject = key; item.state = enabled ? .on : .off; menu.addItem(item)
+        appearanceMenu.addItem(.separator())
+        let snap = action("Kenarlara hizala", #selector(toggleSetting(_:)), in: appearanceMenu, value: "snap")
+        snap.state = snapEnabled ? .on : .off
+
+        let notifications = group("Bildirimler")
+        for (title, key, enabled) in [("Bitiş animasyonu", "animation", completionAnimation), ("Bitişte ses çal", "sound", soundEnabled)] {
+            let item = action(title, #selector(toggleSetting(_:)), in: notifications, value: key)
+            item.state = enabled ? .on : .off
         }
-        menu.addItem(.separator())
-        for (title, action) in [(collapsed ? "Listeyi aç" : "Listeyi daralt", #selector(toggleCollapsed)), (presentationHidden ? "Peti göster · ⌃⌥⌘P" : "Sunum modu: gizle ve sessize al · ⌃⌥⌘P", #selector(togglePresentation)), (sleeping ? "Uyandır" : "Uyut", #selector(toggleSleep)), ("Tamamlananları temizle", #selector(clearCompleted)), ("Kaldırılan sohbetleri göster", #selector(restoreDismissed)), ("VS Code'a dön", #selector(openCode)), ("Peti gizle (pati menüsünden geri aç)", #selector(closeAll))] {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item)
-        }
+        let chats = group("Sohbetler")
+        action(collapsed ? "Listeyi aç" : "Listeyi daralt", #selector(toggleCollapsed), in: chats)
+        chats.addItem(.separator())
+        action("Tamamlananları temizle", #selector(clearCompleted), in: chats)
+        action("Kaldırılan sohbetleri göster", #selector(restoreDismissed), in: chats)
         return menu
     }
     func restorePosition() {

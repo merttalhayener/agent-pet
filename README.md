@@ -11,7 +11,7 @@ A desktop pet that shows what's running, what's finished, and which chat needs y
 ![Codex support](https://img.shields.io/badge/Supports-Codex_in_VS_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.3)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.4)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
@@ -48,7 +48,7 @@ The current interface is Turkish. VS Code must remain running for live updates. 
 ## Get started
 
 1. Install the official **Codex** extension in VS Code and sign in.
-2. [Download **agent-pet-0.5.3.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.3/agent-pet-0.5.3.vsix).
+2. [Download **agent-pet-0.5.4.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.4/agent-pet-0.5.4.vsix).
 3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
 4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
