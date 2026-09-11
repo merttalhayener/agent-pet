@@ -1,11 +1,7 @@
-Agent Pet 0.8.1 fixes **chat clicks opening the wrong VS Code window**.
+Agent Pet 0.9.0 adds **Panel only** mode.
 
-- Codex and Claude links now include the window identity supplied by VS Code.
-- Each workspace group targets its own live window.
-- Missing window routes show a workspace hint instead of falling back to another window.
+Choose **Appearance → Panel only** from the paw menu or the panel’s right-click menu. The pet character and its empty space disappear; chats, status indicators, and workspace groups remain visible.
 
-Verified with two real VS Code windows in A → B → A order, 23 automated tests, and native dashboard routing checks.
+Drag the panel header to move it and use the top-right resize handle. The mode works in compact and workspace views, remembers your preference, and can be switched off from the same menu.
 
-After installing, wait for active turns to finish and run **Developer: Reload Window** in **each open VS Code window** so every workspace publishes its new links.
-
-Requires Apple Silicon and macOS 26+.
+English and Turkish. Requires Apple Silicon and macOS 26+. After installing, reload VS Code once after active turns finish to load the updated desktop helper.

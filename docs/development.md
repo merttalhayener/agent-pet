@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.8.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.9.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -101,3 +101,7 @@ The extended list inserts collapsible group headers, scrolls up to 12 visible en
 Protocol 7 snapshots carry Codex and Claude base URLs resolved by `vscode.env.asExternalUri` in the owning extension host. `Uri.toString(true)` preserves the query delimiters for the native URL parser. The helper chooses a fresh snapshot for the row’s workspace and preserves VS Code’s `windowId` when adding the validated session UUID. Window links are never stored with retained chats. An untagged row needs exactly one reporting window; missing routes show a prompt to open the workspace rather than falling back to a generic URL. Snapshot freshness uses the existing 15-second heartbeat timeout.
 
 Claude’s URI handler accepts VS Code’s numeric windowId parameter while still rejecting duplicate or unrelated query arguments. Tested with two isolated VS Code windows in A → B → A order, plus native mismatched-workspace and missing-route tests. Reload all open workspace windows after installing this update.
+
+## Panel-only mode (0.9.0)
+
+`panelOnly` is a native preference (default false). It removes the character area from the window geometry and disables character hover actions while preserving row navigation, grouping, and notifications. Header controls shift left to leave a separate top-right resize target. Both compact and grouped layouts support it. The native self-test covers reduced geometry, header hit targets, chat clicks, header dragging, grouped/collapsed views, and restoring the character.

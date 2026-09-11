@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+- Added **Appearance → Panel only** to hide the character while keeping the chat panel visible.
+- Remove the unused character space and keep header dragging, resizing, and chat navigation available.
+- Support both compact and workspace views; remember the preference after restart.
+
 ## 0.8.1
 
 - Target the owning VS Code window when clicking a Codex or Claude chat across multiple workspaces.

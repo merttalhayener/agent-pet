@@ -41,6 +41,8 @@ enum PetLanguage: String, CaseIterable {
         "Wake up": "Uyandır",
         "Sleep": "Uyut",
         "Appearance": "Görünüm",
+        "Panel only": "Yalnızca panel",
+        "Drag header to move · Right-click for options": "Taşımak için başlığı sürükle · Seçenekler için sağ tıkla",
         "Text size": "Yazı boyutu",
         "Pet size": "Pet boyutu",
         "List opacity": "Liste opaklığı",
@@ -138,15 +140,17 @@ final class DashboardView: NSView {
             return [header] + ((owner?.foldedWorkspaces.contains(id) ?? false) ? [] : threads.map { DashboardEntry(thread: $0) })
         }
     }
+    var petVisible: Bool { owner?.panelOnly != true }
+    var headerControlsWidth: CGFloat { petVisible ? 73 : 99 }
     var collapsed: Bool { owner?.collapsed ?? false }
-    var logicalWidth: CGFloat { collapsed ? max(180, 112 * (owner?.petScale ?? 1) + 58) : (owner?.grouped == true ? 400 : 340) }
+    var logicalWidth: CGFloat { collapsed ? (petVisible ? max(180, 112 * (owner?.petScale ?? 1) + 58) : 240) : (owner?.grouped == true ? 400 : 340) }
     var visibleCount: Int { collapsed ? 0 : min(owner?.grouped == true ? 12 : 8, entries.count) }
     var cardHeight: CGFloat { collapsed ? 32 : CGFloat(max(1, visibleCount)) * rowHeight + 40 }
-    var desiredHeight: CGFloat { cardHeight + 121 * (owner?.petScale ?? 1) + 7 }
-    var collapseRect: NSRect { NSRect(x: bounds.maxX - 29, y: cardHeight - 28, width: 24, height: 24) }
-    var groupingRect: NSRect { NSRect(x: bounds.maxX - 55, y: cardHeight - 28, width: 24, height: 24) }
+    var desiredHeight: CGFloat { cardHeight + (petVisible ? 121 * (owner?.petScale ?? 1) + 7 : 0) }
+    var collapseRect: NSRect { NSRect(x: bounds.maxX - (petVisible ? 29 : 55), y: cardHeight - 28, width: 24, height: 24) }
+    var groupingRect: NSRect { NSRect(x: bounds.maxX - (petVisible ? 55 : 81), y: cardHeight - 28, width: 24, height: 24) }
     var resizeHandleRect: NSRect { NSRect(x: bounds.maxX - 28, y: bounds.maxY - 28, width: 26, height: 26) }
-    var spriteRect: NSRect { let s = owner?.petScale ?? 1; return NSRect(x: (bounds.width - 112 * s) / 2, y: cardHeight + 5, width: 112 * s, height: 121 * s) }
+    var spriteRect: NSRect { guard petVisible else { return .zero }; let s = owner?.petScale ?? 1; return NSRect(x: (bounds.width - 112 * s) / 2, y: cardHeight + 5, width: 112 * s, height: 121 * s) }
     override var isOpaque: Bool { false }
     override func resetCursorRects() {
         super.resetCursorRects()
@@ -212,11 +216,11 @@ final class DashboardView: NSView {
     }
     override func draw(_ dirtyRect: NSRect) {
         NSColor.clear.setFill(); bounds.fill(using: .copy)
-        if let sheet {
+        if petVisible, let sheet {
             let source = NSRect(x: CGFloat(spriteColumn) * 192, y: CGFloat(10 - spriteRow) * 208, width: 192, height: 208)
             sheet.draw(in: spriteRect, from: source, operation: .sourceOver, fraction: owner?.sleeping == true ? 0.62 : 1, respectFlipped: false, hints: [.interpolation: NSImageInterpolation.high])
         }
-        if sheet == nil { drawBuiltInPet() }
+        if petVisible && sheet == nil { drawBuiltInPet() }
         let card = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 0.5, width: bounds.width - 1, height: cardHeight - 1), xRadius: 13, yRadius: 13)
         NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
         NSColor.white.withAlphaComponent(0.12).setStroke(); card.lineWidth = 0.7; card.stroke()
@@ -224,7 +228,7 @@ final class DashboardView: NSView {
         let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
         let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
         let navigationNotice = (owner?.navigationNoticeUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text(owner?.grouped == true ? "Workspaces" : "Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 73, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+        label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text(owner?.grouped == true ? "Workspaces" : "Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
         label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
         label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
         clampScroll()
@@ -255,14 +259,14 @@ final class DashboardView: NSView {
             let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(entries.count - visibleCount))
             NSColor.white.withAlphaComponent(0.24).setFill(); NSBezierPath(roundedRect: NSRect(x: bounds.width - 4, y: y, width: 2, height: thumb), xRadius: 1, yRadius: 1).fill()
         }
-        if hovered {
+        if hovered && petVisible {
             for x in [bounds.midX - 82, bounds.midX + 60] {
                 NSColor.black.withAlphaComponent(0.50).setFill(); NSBezierPath(ovalIn: NSRect(x: x, y: bounds.maxY - 28, width: 22, height: 22)).fill()
             }
             label(owner?.sleeping == true ? "☀" : "☾", in: NSRect(x: bounds.midX - 82, y: bounds.maxY - 26, width: 22, height: 19), size: 14, color: .white, centered: true)
             label("×", in: NSRect(x: bounds.midX + 60, y: bounds.maxY - 25, width: 22, height: 19), size: 15, color: .white, centered: true)
         }
-        if (owner?.reactionUntil ?? 0) > Date.timeIntervalSinceReferenceDate {
+        if petVisible && (owner?.reactionUntil ?? 0) > Date.timeIntervalSinceReferenceDate {
             label("♡", in: NSRect(x: bounds.midX + 38, y: bounds.maxY - 64, width: 26, height: 25), size: 22, color: .systemPink, centered: true)
         }
         let grip = resizeHandleRect.insetBy(dx: 3, dy: 3)
@@ -289,7 +293,7 @@ final class DashboardView: NSView {
         else if let workspace = workspaceAt(p) { toolTip = workspace.name + " · " + text("Click to expand or collapse workspace") }
         else if resizeHandleRect.contains(p) { toolTip = text("Drag to resize") }
         else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row.status, language: language)) · " + text("Click to open in VS Code") }
-        else { toolTip = text("Click to pet · Drag to move · Right-click for options") }
+        else { toolTip = text(petVisible ? "Click to pet · Drag to move · Right-click for options" : "Drag header to move · Right-click for options") }
         guard let owner, !owner.sleeping, owner.overallStatus == "idle", spriteRect.contains(p), !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { needsDisplay = true; return }
         let angle = (atan2(p.x - spriteRect.midX, p.y - spriteRect.midY) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
         let index = Int((angle / 22.5).rounded()) % 16
@@ -328,9 +332,9 @@ final class DashboardView: NSView {
         if let id = pressedWorkspaceID, workspaceAt(p)?.id == id { moving = false; owner?.toggleWorkspace(id); return }
         if let id = pressedRemoveID, rowAt(p)?.id == id, p.x > bounds.width - 30 { owner?.dismiss(id); return }
         if let id = pressedThreadID, rowAt(p)?.id == id, p.x <= bounds.width - 30 { owner?.openThread(id); return }
-        if p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX - 71)) < 14 { owner?.toggleSleep(); return }
-        if p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX + 71)) < 14 { owner?.closeAll(); return }
-        if spriteRect.contains(p) { owner?.react() }
+        if petVisible && p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX - 71)) < 14 { owner?.toggleSleep(); return }
+        if petVisible && p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX + 71)) < 14 { owner?.closeAll(); return }
+        if petVisible && spriteRect.contains(p) { owner?.react() }
     }
     override func scrollWheel(with event: NSEvent) {
         guard entries.count > visibleCount, event.scrollingDeltaY != 0 else { return }
@@ -361,6 +365,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var testOpenedURL: String?
     var navigationNoticeUntil: Double = 0
     var dashboardScale: CGFloat = 1
+    var panelOnly = false
     var grouped = false
     var foldedWorkspaces: Set<String> = []
     var collapsed = false, snapEnabled = true, completionAnimation = true, soundEnabled = false
@@ -391,6 +396,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
         if !testing {
             language = PetLanguage(preference: defaults.string(forKey: "language"))
+            panelOnly = defaults.bool(forKey: "panelOnly")
             grouped = defaults.bool(forKey: "grouped")
             foldedWorkspaces = Set(defaults.stringArray(forKey: "foldedWorkspaces") ?? [])
             collapsed = defaults.bool(forKey: "collapsed"); soundEnabled = defaults.bool(forKey: "soundEnabled")
@@ -557,6 +563,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         }
         if soundEnabled && !testing { NSSound(named: "Glass")?.play() }
     }
+    @objc func togglePanelOnly() {
+        panelOnly.toggle(); reactionUntil = 0; lookUntil = 0
+        resizeToList(); savePreferences(); updateStatusMenu()
+    }
     @objc func toggleGrouped() { grouped.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
     func toggleWorkspace(_ id: String) {
         if foldedWorkspaces.contains(id) { foldedWorkspaces.remove(id) } else { foldedWorkspaces.insert(id) }
@@ -716,6 +726,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         action(sleeping ? text("Wake up") : text("Sleep"), #selector(toggleSleep), in: petsMenu)
 
         let appearanceMenu = group(text("Appearance"))
+        let panelChoice = action(text("Panel only"), #selector(togglePanelOnly), in: appearanceMenu)
+        panelChoice.state = panelOnly ? .on : .off
+        appearanceMenu.addItem(.separator())
         for (label, value) in [("Compact list", false), ("Extended · Workspaces", true)] {
             let item = action(text(label), #selector(selectListView(_:)), in: appearanceMenu, value: value)
             item.state = grouped == value ? .on : .off
@@ -764,7 +777,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func savePosition() { if !testing, let panel { defaults.set(panel.frame.minX, forKey: "dashboardX"); defaults.set(panel.frame.minY, forKey: "dashboardY") } }
     func savePreferences() { if !testing {
         defaults.set(language.rawValue, forKey: "language")
-        for (key, value) in ["grouped": grouped, "collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
+        for (key, value) in ["panelOnly": panelOnly, "grouped": grouped, "collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
         for (key, value) in ["textSize": textSize, "petScale": petScale, "listOpacity": listOpacity, "dashboardScale": dashboardScale] { defaults.set(value, forKey: key) }
         defaults.set(Array(pinned).sorted(), forKey: "pinned")
         defaults.set(Array(foldedWorkspaces).sorted(), forKey: "foldedWorkspaces")
@@ -824,9 +837,42 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         valid = valid && (try? JSONDecoder().decode(ThreadActivity.self, from: JSONEncoder().encode(first)))?.workspace == a
         return valid
     }
+    func testPanelOnly() -> Bool {
+        let oldMode = panelOnly, oldGrouped = grouped, oldCollapsed = collapsed, oldFrame = panel.frame
+        let ids = displayThreads.map { $0.id }, oldSleeping = sleeping
+        defer { panelOnly = oldMode; grouped = oldGrouped; collapsed = oldCollapsed; view.scrollOffset = 0; resizeToList(); panel.setFrameOrigin(oldFrame.origin) }
+        panelOnly = false; collapsed = false; grouped = false; resizeToList()
+        let oldHeight = panel.frame.height
+        togglePanelOnly()
+        var valid = !view.petVisible && view.spriteRect.isEmpty && view.desiredHeight == view.cardHeight && panel.frame.height < oldHeight
+        valid = valid && !view.resizeHandleRect.intersects(view.collapseRect) && !view.resizeHandleRect.intersects(view.groupingRect)
+        capture("dashboard-panel-only-test.png")
+        func mouse(_ type: NSEvent.EventType, _ point: NSPoint) -> NSEvent {
+            NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+        }
+        if let first = displayThreads.first {
+            let point = NSPoint(x: 60, y: view.rowRect(0).midY)
+            testOpenedURL = nil
+            view.mouseDown(with: mouse(.leftMouseDown, point)); view.mouseUp(with: mouse(.leftMouseUp, point))
+            valid = valid && testOpenedURL == threadURL(first.id, live: snapshots())?.absoluteString && testOpenedURL != nil
+        }
+        let header = NSPoint(x: 20, y: view.cardHeight - 16)
+        let origin = panel.frame.origin
+        testOpenedURL = nil
+        view.mouseDown(with: mouse(.leftMouseDown, header)); view.drag(to: NSPoint(x: view.dragStart.x + 20, y: view.dragStart.y + 20))
+        view.mouseUp(with: mouse(.leftMouseUp, header))
+        valid = valid && panel.frame.origin != origin && testOpenedURL == nil && sleeping == oldSleeping
+        toggleGrouped(); valid = valid && view.logicalWidth == 400 && view.desiredHeight == view.cardHeight
+        capture("dashboard-panel-only-workspaces-test.png")
+        toggleCollapsed(); valid = valid && view.desiredHeight == 32 && view.logicalWidth == 240
+        toggleCollapsed(); togglePanelOnly()
+        valid = valid && view.petVisible && displayThreads.map { $0.id } == ids
+        return valid
+    }
     func featureTests() -> [String: Any] {
         celebrationUntil = 0
         let original = displayThreads
+        let panelOnlyWorks = testPanelOnly()
         let workspaceViewWorks = testWorkspaceView()
         testOpenedURL = nil
         let claudeID = "claude:22222222-2222-4222-8222-222222222222"
@@ -902,7 +948,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")
