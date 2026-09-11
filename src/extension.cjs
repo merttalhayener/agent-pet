@@ -4,6 +4,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { AgentActivityMonitor } = require('./agent-activity.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
+const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
 const PETS = [
   ['codex', 'Codex'], ['dewey', 'Dewey'], ['fireball', 'Fireball'],
@@ -41,7 +42,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 4, selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 5, selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -71,7 +72,12 @@ async function activate(context) {
     () => vscode.workspace.workspaceFolders?.filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath) || [],
     next => { if (JSON.stringify(activity) !== JSON.stringify(next)) { activity = next; broadcast(); } }, path.join(context.globalStorageUri.fsPath, 'desktop'));
   monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true);
-  monitor.start(); context.subscriptions.push(monitor);
+  await monitor.tick(); monitor.start(); context.subscriptions.push(monitor);
+  const navigation = createClaudeNavigation(vscode, async id => {
+    await monitor.tick();
+    return activity.threads?.find(thread => thread.id === id);
+  });
+  context.subscriptions.push(vscode.window.registerUriHandler(navigation));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('codexPet.followActivity')) { monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true); void monitor.tick(); }
   }));

@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, execFile } = require('node:child_process');
+const execFileAsync = require('node:util').promisify(execFile);
 const crypto = require('node:crypto');
 
 class DesktopBridge {
@@ -19,6 +20,35 @@ class DesktopBridge {
     });
     return this.pending;
   }
+  async upgradeRunningHelper() {
+    // Reloading an extension leaves its detached helper alive. Identify only the
+    // helper holding this user's state-directory lock, never unrelated processes.
+    let ids;
+    try { ids = (await execFileAsync('/usr/sbin/lsof', ['-t', '--', path.join(this.directory, 'desktop.lock')], { timeout: 1500 })).stdout.trim().split(/\s+/); }
+    catch { return; }
+    for (const id of ids) {
+      if (!/^\d+$/.test(id)) continue;
+      let old, args;
+      try {
+        old = (await execFileAsync('/bin/ps', ['-p', id, '-o', 'comm='], { timeout: 1000 })).stdout.trim();
+        args = (await execFileAsync('/bin/ps', ['-p', id, '-o', 'args='], { timeout: 1000 })).stdout.trim();
+      } catch { continue; }
+      const extensionDir = path.dirname(path.dirname(old));
+      if (old === this.executable || path.basename(old) !== 'codex-desktop-pet' || !/^local\.codex-pet-panel-/.test(path.basename(extensionDir)) || path.dirname(extensionDir) !== path.dirname(path.dirname(path.dirname(this.executable))) || args !== `${old} --state-dir ${this.directory}`) continue;
+      const oldVersion = path.basename(extensionDir).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+      const newVersion = path.basename(path.dirname(path.dirname(this.executable))).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+      if (!oldVersion || !newVersion) continue;
+      const differing = newVersion.findIndex((value, i) => value !== oldVersion[i]);
+      if (differing < 0 || newVersion[differing] < oldVersion[differing]) continue;
+      try { process.kill(Number(id), 'SIGTERM'); } catch (error) { if (error.code === 'ESRCH') continue; throw error; }
+      for (let i = 0; i < 20; i++) {
+        try { process.kill(Number(id), 0); } catch { break; }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      try { process.kill(Number(id), 0); } catch (error) { if (error.code === 'ESRCH') continue; throw error; }
+      throw new Error('The previous pet is still closing. Try Show Desktop Pet again.');
+    }
+  }
   async start(show = false) {
     if (process.platform !== 'darwin') return;
     await fs.mkdir(this.directory, { recursive: true });
@@ -30,6 +60,7 @@ class DesktopBridge {
     }
     else if (await fs.stat(path.join(this.directory, 'desktop-hidden')).catch(() => null)) return;
     await fs.chmod(this.executable, 0o755);
+    await this.upgradeRunningHelper();
     const child = spawn(this.executable, ['--state-dir', this.directory], { detached: true, stdio: 'ignore' });
     child.on('error', this.reportError); child.unref();
   }

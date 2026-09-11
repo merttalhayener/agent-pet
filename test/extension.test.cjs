@@ -14,7 +14,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   const vscode = {
     StatusBarAlignment: { Right: 2 },
     extensions: { getExtension: () => withCodex ? ({ extensionPath: '/test/codex' }) : undefined },
-    window: { createStatusBarItem: () => entry, showQuickPick: async () => ({ id: withCodex ? 'bsod' : 'agent-pet' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
+    window: { registerUriHandler: () => ({ dispose() {} }), createStatusBarItem: () => entry, showQuickPick: async () => ({ id: withCodex ? 'bsod' : 'agent-pet' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
     commands: { registerCommand: (id, fn) => { commands.set(id, fn); return { dispose() {} }; }, executeCommand: () => assert.fail('Unexpected VS Code UI command') },
     workspace: { workspaceFolders: [], getConfiguration: () => ({ get: (key, fallback) => key === 'desktopEnabled' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose() {} }) }
   };
@@ -24,8 +24,8 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
     async start(show) { starts.push(show); }
     async write() {}
   }
-  class AgentActivityMonitor { start() {} }
-  const dependencies = { vscode, './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
+  class AgentActivityMonitor { start() {} async tick() {} }
+  const dependencies = { vscode, './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   const api = await sandbox.module.exports.activate(context);

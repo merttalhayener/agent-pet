@@ -551,7 +551,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func openThread(_ id: String) {
         let claude = id.hasPrefix("claude:"), session = claude ? String(id.dropFirst(7)) : id
         guard UUID(uuidString: session) != nil else { return }
-        let target = claude ? "vscode://anthropic.claude-code/open?session=\(session)" : "vscode://openai.chatgpt/local/\(session)"
+        let target = claude ? "vscode://local.codex-pet-panel/claude?session=\(session)" : "vscode://openai.chatgpt/local/\(session)"
         guard let url = URL(string: target) else { return }
         if testing { testOpenedURL = url.absoluteString; return }
         NSWorkspace.shared.open(url)
@@ -661,7 +661,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let original = displayThreads
         testOpenedURL = nil
         openThread("claude:44444444-4444-4444-8444-444444444444")
-        let claudeLinkWorks = testOpenedURL == "vscode://anthropic.claude-code/open?session=44444444-4444-4444-8444-444444444444"
+        let claudeLinkWorks = testOpenedURL == "vscode://local.codex-pet-panel/claude?session=44444444-4444-4444-8444-444444444444"
         testOpenedURL = nil; openThread("claude:invalid?prompt=unwanted")
         let invalidLinkRejected = testOpenedURL == nil
         let originalLanguage = language
@@ -755,7 +755,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             let thread = displayThreads[i], y = view.rowRect(i).midY
             testOpenedURL = nil
             view.mouseDown(with: mouse(.leftMouseDown, 60, y)); view.mouseUp(with: mouse(.leftMouseUp, 60, y))
-            let expected = thread.isClaude ? "vscode://anthropic.claude-code/open?session=\(thread.sessionID)" : "vscode://openai.chatgpt/local/\(thread.id)"
+            let expected = thread.isClaude ? "vscode://local.codex-pet-panel/claude?session=\(thread.sessionID)" : "vscode://openai.chatgpt/local/\(thread.id)"
             rowClickOpensChat = rowClickOpensChat && testOpenedURL == expected
         }
         if displayThreads.count > 1 {

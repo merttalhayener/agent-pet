@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1
+
+- Open Claude chats in the right sidebar through a validated Agent Pet URI handler.
+- Move a uniquely identified, completed Claude editor tab into the sidebar; preserve active or unsaved tabs.
+- Replace an older detached desktop helper on extension reload, preserving preferences.
+- Reload VS Code once after active turns finish to enable the new navigation.
+
 ## 0.7.0
 
 - Added local Claude Code in VS Code support alongside Codex, with provider labels, independent status, and direct session links.

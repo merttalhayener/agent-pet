@@ -11,7 +11,7 @@ A desktop pet that shows what's running, what's finished, and which chat needs y
 ![Agents](https://img.shields.io/badge/Supports-Codex_%2B_Claude_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.7.0)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.7.1)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
@@ -46,12 +46,12 @@ Keep working in another app while Agent Pet follows your local conversations. Cl
 
 **English is the default interface language; Turkish is also available.** VS Code must remain running for live updates. Agent Pet is an independent community project.
 
-Claude Code support reads local VS Code session files automatically; no hooks or API keys need to be configured. Clicking a Claude row opens that session in the Claude Code extension.
+Claude Code support reads local VS Code session files automatically; no hooks or API keys need to be configured. Clicking a Claude row opens that session in the right sidebar. A completed editor tab can be moved automatically; finish and close an active editor tab before opening it from the pet again.
 
 ## Get started
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in. Codex is optional.
-2. [Download **agent-pet-0.7.0.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.7.0/agent-pet-0.7.0.vsix).
+2. [Download **agent-pet-0.7.1.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.7.1/agent-pet-0.7.1.vsix).
 3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
 4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
@@ -73,7 +73,7 @@ Agent Pet waits for a new activity record before showing a reattached chat as ru
 
 This tracks local agent activity; it cannot tell whether the agent chat UI is receiving messages. A quiet long-running tool can also show “no update.”
 
-Upgrading from an older version? Reload VS Code once to remove the old sidebar **Pet** section. Your desktop pet preferences are kept.
+Upgrading? Once active turns finish, run **Developer: Reload Window** once to load the new chat navigation. The desktop helper updates automatically and your preferences are kept.
 
 <details>
 <summary><strong>Beta notes & local data</strong></summary>
