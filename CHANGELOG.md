@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3
+
+- Reattached chats require fresh activity before showing a running spinner; 60 seconds without progress shows an unknown state, never completion.
+- Closing the pet preserves the menu bar paw and global shortcut. A VS Code status bar button can reopen or relaunch it.
+- Showing the pet no longer restores individually dismissed conversations.
+- Documented reopening and the limits of activity detection after reload.
+
 ## 0.5.2 — Desktop only
 
 - Remove the legacy Pet sidebar view and its webview assets.

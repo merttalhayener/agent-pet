@@ -11,7 +11,7 @@ A desktop pet that shows what's running, what's finished, and which chat needs y
 ![Codex support](https://img.shields.io/badge/Supports-Codex_in_VS_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.2)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.3)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
@@ -48,11 +48,23 @@ The current interface is Turkish. VS Code must remain running for live updates. 
 ## Get started
 
 1. Install the official **Codex** extension in VS Code and sign in.
-2. [Download **agent-pet-0.5.2.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.2/agent-pet-0.5.2.vsix).
+2. [Download **agent-pet-0.5.3.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.3/agent-pet-0.5.3.vsix).
 3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
 4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 **Click a row** to open a chat. **Drag the pet** to move it. **Drag ↗↙** to resize. **Right-click** for settings. Use the list's chevron to collapse or expand.
+
+### Closed the pet?
+
+Click **Agent Pet** in VS Code's bottom status bar to bring it back. You can also press **Cmd + Shift + P** and run **Agent Pet: Show Desktop Pet**.
+
+Closing the floating pet keeps the macOS menu bar paw available: choose **Peti göster**, or press **Ctrl + Option + Cmd + P**. If the helper has quit completely, use the VS Code button or command.
+
+### A chat looks stuck after reload?
+
+Agent Pet waits for a new activity record before showing a reattached chat as running. After 60 seconds without progress, its spinner becomes **Güncelleme yok** (no update). The row stays visible and resumes automatically when new activity arrives. Only an explicit completion record produces a checkmark.
+
+This tracks local agent activity; it cannot tell whether the Codex chat UI is receiving messages. A quiet long-running tool can also show “no update.”
 
 Upgrading from an older version? Reload VS Code once to remove the old sidebar **Pet** section. Your desktop pet preferences are kept.
 

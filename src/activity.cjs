@@ -6,6 +6,12 @@ const execFileAsync = promisify(execFile);
 
 const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
+const LIVE_TIMEOUT = 60 * 1000;
+
+function progress(state, at) {
+  state.lastEventAt = at || state.lastEventAt || 0;
+  state.progressVersion = (state.progressVersion || 0) + 1;
+}
 
 function applyEvent(state, record) {
   const at = Date.parse(record.timestamp) || 0;
@@ -17,6 +23,7 @@ function applyEvent(state, record) {
   }
   const p = record.payload || {};
   if (record.type === 'response_item') {
+    if (p.type !== 'message' || p.role === 'assistant') progress(state, at);
     if (p.type === 'function_call' && /(?:^|\.)request_user_input(?:_async)?$/.test(p.name || '')) {
       state.pendingInputs ||= {};
       let args; try { args = JSON.parse(p.arguments); } catch {}
@@ -51,7 +58,7 @@ function applyEvent(state, record) {
     if (type === 'task_started') { state.startedAt = at; state.finishedAt = undefined; state.pendingInputs = {}; }
     else { state.finishedAt = at; if (status !== 'ready') state.pendingInputs = {}; }
   }
-  state.lastEventAt = Date.parse(record.timestamp) || state.lastEventAt || 0;
+  if (status || ['token_count', 'agent_message', 'agent_reasoning'].includes(type)) progress(state, at);
 }
 
 function inWorkspace(cwd, roots) {
@@ -181,7 +188,7 @@ class ActivityMonitor {
       const stat = await handle.stat();
       let state = this.files.get(file);
       if (!state || stat.size < state.offset || state.ino !== stat.ino) {
-        state = { id: path.basename(file, '.jsonl').match(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i)?.[0] || path.basename(file), offset: 0, ino: stat.ino, partial: '', status: 'idle', changedAt: 0, lastEventAt: 0 };
+        state = { id: path.basename(file, '.jsonl').match(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i)?.[0] || path.basename(file), offset: 0, ino: stat.ino, partial: '', status: 'idle', changedAt: 0, lastEventAt: 0, liveConfirmed: false };
         this.files.set(file, state);
         // Read only the metadata header, then tail recent activity. Never retain messages.
         const header = Buffer.alloc(Math.min(MAX_LINE, stat.size));
@@ -206,15 +213,17 @@ class ActivityMonitor {
         if (newline < 0) return;
         text = text.slice(newline + 1); state.skipFirst = false;
       }
+      const before = state.progressVersion || 0;
       this.consume(state, text);
+      // An old task_started record is history, not proof the reloaded host is working.
+      if (!state.initializing && (state.progressVersion || 0) > before) state.liveConfirmed = true;
       if (state.initializing && !state.startedAt && state.source === 'vscode' && inWorkspace(state.cwd, this.getRoots()) && Date.now() - state.lastEventAt < 10 * 60 * 1000) {
         await this.findLifecycle(handle, stat.size, state);
       }
       state.initializing = false;
     } finally { await handle.close(); }
   }
-  snapshot() {
-    const now = Date.now();
+  snapshot(now = Date.now()) {
     const states = [...this.files.values()].filter(s => s.source === 'vscode' && inWorkspace(s.cwd, this.getRoots()));
     const active = states.filter(s => s.status === 'running' && now - s.lastEventAt < 10 * 60 * 1000);
     for (const s of states) {
@@ -225,13 +234,13 @@ class ActivityMonitor {
       if (previous && previous.lastEventAt > s.lastEventAt) continue;
       this.seenThreads.set(s.id, {
         id: s.id, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
-        status: Object.keys(s.pendingInputs || {}).length ? 'waiting' : s.status,
+        status: s.status === 'running' && s.liveConfirmed === false ? 'unknown' : Object.keys(s.pendingInputs || {}).length ? 'waiting' : s.status,
         changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt
       });
     }
     const threads = [...this.seenThreads.values()].map(t => ({
       ...t, title: this.titles.get(t.id) || t.title,
-      status: t.status === 'running' && now - t.lastEventAt >= 10 * 60 * 1000 ? 'unknown' : t.status
+      status: t.status === 'running' && now - t.lastEventAt >= LIVE_TIMEOUT ? 'unknown' : t.status
     })).sort((a, b) => a.id.localeCompare(b.id));
     const activeCount = threads.filter(t => t.status === 'running').length;
     if (threads.some(t => t.status === 'waiting')) return { status: 'waiting', active: activeCount, threads };

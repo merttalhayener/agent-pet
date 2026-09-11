@@ -41,7 +41,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 2, selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 3, selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Masaüstü peti açılamadı: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -50,6 +50,12 @@ async function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.open', open));
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.showDesktop', open));
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.choose', choose));
+  if (desktop) {
+    const entry = vscode.window.createStatusBarItem('agentPet.open', vscode.StatusBarAlignment.Right, 10);
+    entry.name = 'Agent Pet'; entry.text = '$(smiley) Agent Pet';
+    entry.tooltip = 'Masaüstü petini aç / geri getir'; entry.command = 'codexPet.showDesktop';
+    entry.show(); context.subscriptions.push(entry);
+  }
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.hideDesktop', async () => {
     if (desktop) { await fs.mkdir(desktop.directory, { recursive: true }); await fs.writeFile(path.join(desktop.directory, 'desktop-hidden'), ''); }
   }));

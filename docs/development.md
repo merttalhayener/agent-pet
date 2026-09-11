@@ -26,12 +26,12 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.5.2.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.5.3.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
 ```sh
-node --test test/activity.test.cjs
+node --test test/activity.test.cjs test/extension.test.cjs
 ```
 
 Run the native UI tests in a logged-in macOS desktop session with Codex installed:
@@ -68,3 +68,9 @@ The package currently declares `UNLICENSED`; no open-source license has been sel
 ## Desktop-only extension
 
 Version 0.5.2 removes the former sidebar webview and its contributed views. `codexPet.open` is retained as an alias for opening the desktop helper. Existing installations need one VS Code window reload to unload their old extension host. The desktop helper and saved preferences are retained.
+
+## Reload and liveness
+
+Protocol 3 requires newly appended progress before a historical running turn is reported as live. Settings changes and user message records do not confirm agent progress. Running turns with no progress for 60 seconds become unknown; explicit terminal events are still authoritative. This is an activity signal, not a guarantee of backend health or chat UI delivery.
+
+Closing the native panel hides it while retaining the menu bar entry and global shortcut. VS Code also provides a persistent status bar command to relaunch the helper. Showing the pet preserves individually dismissed rows.

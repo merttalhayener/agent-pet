@@ -11,7 +11,7 @@ Hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor? Masaüstündek
 ![Codex desteği](https://img.shields.io/badge/Destek-Codex_%2B_VS_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Durum-beta-d97706?style=flat-square)
 
-**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.2)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.3)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Çalışan ve tamamlanan sohbetleri gösteren Agent Pet" width="420">
 
@@ -48,11 +48,23 @@ Arayüz Türkçedir. Canlı güncellemeler için VS Code açık kalmalıdır. Ag
 ## Kurulum
 
 1. VS Code'a resmî **Codex** eklentisini kur ve giriş yap.
-2. [**agent-pet-0.5.2.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.2/agent-pet-0.5.2.vsix).
+2. [**agent-pet-0.5.3.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.3/agent-pet-0.5.3.vsix).
 3. VS Code'da **Extensions → ⋯ → Install from VSIX…** yolundan dosyayı seç.
 4. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
 **Satıra tıkla:** Sohbeti aç. **Peti sürükle:** Taşı. **↗↙ tutamacını çek:** Boyutlandır. **Sağ tıkla:** Ayarları aç. Listenin başlığındaki okla daralt veya genişlet.
+
+### Peti kapattın mı?
+
+VS Code'un alt durum çubuğundaki **Agent Pet** düğmesine tıkla. Alternatif olarak **Cmd + Shift + P** ile **Agent Pet: Show Desktop Pet** komutunu çalıştır.
+
+Peti kapatınca macOS menü çubuğundaki pati kalır: **Peti göster** seçeneğini veya **Ctrl + Option + Cmd + P** kısayolunu kullan. Yardımcı uygulama tamamen kapandıysa VS Code'daki düğme ya da komut yeniden başlatır.
+
+### Reload sonrası sohbet takılmış mı görünüyor?
+
+Yeniden bağlanılan sohbet, yeni bir etkinlik kaydı gelene kadar çalışıyor sayılmaz. 60 saniye ilerleme kaydı gelmezse halka **Güncelleme yok** durumuna döner. Sohbet listede kalır; yeni etkinlik gelince otomatik güncellenir. Tik yalnızca açık bir tamamlanma kaydıyla gösterilir.
+
+Pet yerel ajan etkinliğini takip eder; Codex sohbet ekranına mesaj ulaşıp ulaşmadığını göremez. Uzun süren sessiz bir işlem de “Güncelleme yok” gösterebilir.
 
 Eski sürümden güncelliyorsan VS Code'u bir kez yeniden yükle; eski yan paneldeki **Pet** bölümü kalkar. Masaüstü petinin ayarları korunur.
 

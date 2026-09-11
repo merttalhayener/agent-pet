@@ -6,13 +6,15 @@ const vm = require('node:vm');
 
 test('Open Pet opens only the desktop helper and does not recreate the old sidebar', async () => {
   const commands = new Map(), starts = [], state = new Map();
+  const entry = { show() { this.visible = true; }, dispose() {} };
   const context = {
     extensionPath: '/test/extension', globalStorageUri: { fsPath: '/test/storage' }, subscriptions: [],
     globalState: { get: (k, fallback) => state.has(k) ? state.get(k) : fallback, update: async (k, v) => state.set(k, v) }
   };
   const vscode = {
+    StatusBarAlignment: { Right: 2 },
     extensions: { getExtension: () => ({ extensionPath: '/test/codex' }) },
-    window: { showQuickPick: async () => ({ id: 'bsod' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
+    window: { createStatusBarItem: () => entry, showQuickPick: async () => ({ id: 'bsod' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
     commands: { registerCommand: (id, fn) => { commands.set(id, fn); return { dispose() {} }; }, executeCommand: () => assert.fail('Unexpected VS Code UI command') },
     workspace: { workspaceFolders: [], getConfiguration: () => ({ get: (key, fallback) => key === 'desktopEnabled' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose() {} }) }
   };
@@ -27,6 +29,7 @@ test('Open Pet opens only the desktop helper and does not recreate the old sideb
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   await sandbox.module.exports.activate(context);
+  assert.ok(entry.visible); assert.equal(entry.command, 'codexPet.showDesktop');
   assert.deepEqual(starts, [], 'Disabled automatic opening is respected');
   await commands.get('codexPet.open')(); await commands.get('codexPet.showDesktop')();
   assert.deepEqual(starts, [true, true]);

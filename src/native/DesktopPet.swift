@@ -304,9 +304,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         return byID.values.sorted { $0.id < $1.id }
     }
     func refresh() {
-        if !testing && FileManager.default.fileExists(atPath: directory.appendingPathComponent("desktop-hidden").path) { NSApp.terminate(nil); return }
+        if FileManager.default.fileExists(atPath: directory.appendingPathComponent("desktop-hidden").path) && !presentationHidden { togglePresentation() }
         let request = directory.appendingPathComponent("desktop-show-request")
-        if FileManager.default.fileExists(atPath: request.path) { clearDismissed(); if presentationHidden { togglePresentation() }; try? FileManager.default.removeItem(at: request) }
+        if FileManager.default.fileExists(atPath: request.path) { if presentationHidden { togglePresentation() }; try? FileManager.default.removeItem(at: request) }
         let toggleRequest = directory.appendingPathComponent("desktop-presentation-request")
         if FileManager.default.fileExists(atPath: toggleRequest.path) { togglePresentation(); try? FileManager.default.removeItem(at: toggleRequest) }
         let live = snapshots(), now = Date()
@@ -326,7 +326,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
                 dismissed.removeValue(forKey: thread.id)
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
-            let stale = (thread.status != "waiting" && now.timeIntervalSince1970 * 1000 - thread.lastEventAt > 10 * 60 * 1000) || now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) > 15
+            let stale = (thread.status != "waiting" && now.timeIntervalSince1970 * 1000 - thread.lastEventAt > 60 * 1000) || now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) > 15
             return ThreadActivity(id: thread.id, title: thread.title, status: (thread.status == "running" || thread.status == "waiting") && stale ? "unknown" : thread.status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
@@ -401,7 +401,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     @objc func toggleCollapsed() { collapsed.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
     @objc func togglePresentation() {
         presentationHidden.toggle(); celebrationUntil = 0; reactionUntil = 0
-        if presentationHidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
+        if presentationHidden { panel.orderOut(nil) } else {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent("desktop-hidden"))
+            panel.orderFrontRegardless()
+        }
         savePreferences(); updateStatusMenu()
     }
     @objc func toggleSetting(_ item: NSMenuItem) {
@@ -458,7 +461,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         if testing { testOpenedURL = url.absoluteString; return }
         NSWorkspace.shared.open(url)
     }
-    @objc func closeAll() { try? Data().write(to: directory.appendingPathComponent("desktop-hidden")); NSApp.terminate(nil) }
+    @objc func closeAll() {
+        try? Data().write(to: directory.appendingPathComponent("desktop-hidden"))
+        if !presentationHidden { togglePresentation() }
+    }
     @objc func dismissMenuRow(_ item: NSMenuItem) { if let id = item.representedObject as? String { dismiss(id) } }
     func dismiss(_ id: String) {
         let now = Date().timeIntervalSince1970 * 1000; dismissed[id] = now
@@ -492,7 +498,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             let item = NSMenuItem(title: title, action: #selector(toggleSetting(_:)), keyEquivalent: ""); item.target = self; item.representedObject = key; item.state = enabled ? .on : .off; menu.addItem(item)
         }
         menu.addItem(.separator())
-        for (title, action) in [(collapsed ? "Listeyi aç" : "Listeyi daralt", #selector(toggleCollapsed)), (presentationHidden ? "Peti göster · ⌃⌥⌘P" : "Sunum modu: gizle ve sessize al · ⌃⌥⌘P", #selector(togglePresentation)), (sleeping ? "Uyandır" : "Uyut", #selector(toggleSleep)), ("Tamamlananları temizle", #selector(clearCompleted)), ("Kaldırılan sohbetleri göster", #selector(restoreDismissed)), ("VS Code'a dön", #selector(openCode)), ("Masaüstü petini kapat", #selector(closeAll))] {
+        for (title, action) in [(collapsed ? "Listeyi aç" : "Listeyi daralt", #selector(toggleCollapsed)), (presentationHidden ? "Peti göster · ⌃⌥⌘P" : "Sunum modu: gizle ve sessize al · ⌃⌥⌘P", #selector(togglePresentation)), (sleeping ? "Uyandır" : "Uyut", #selector(toggleSleep)), ("Tamamlananları temizle", #selector(clearCompleted)), ("Kaldırılan sohbetleri göster", #selector(restoreDismissed)), ("VS Code'a dön", #selector(openCode)), ("Peti gizle (pati menüsünden geri aç)", #selector(closeAll))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item)
         }
         return menu
@@ -559,8 +565,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let quiet = notificationCount == 1 && celebrationUntil == 0
         togglePresentation()
         let presentationWorks = hidden && quiet && panel.isVisible && !NSApp.isActive
+        closeAll(); refresh()
+        let closed = !panel.isVisible && presentationHidden
+        try? Data().write(to: directory.appendingPathComponent("desktop-show-request"))
+        refresh()
+        let reopenWorks = closed && panel.isVisible && !presentationHidden && !FileManager.default.fileExists(atPath: directory.appendingPathComponent("desktop-hidden").path)
+        closeAll(); togglePresentation(); refresh()
+        let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

@@ -49,6 +49,8 @@ test('SQLite index discovers active chats from older date folders and supplies t
   const m = new ActivityMonitor(root, () => ['/work/app'], s => { status = s; });
   try {
     await m.tick();
+    assert.equal(status.active, 0, 'Historical start is unconfirmed');
+    await fs.appendFile(old, event('token_count')); await m.tick();
     assert.equal(status.active, 1);
     assert.equal(status.threads[0].title, 'SRS kontrolü');
     await fs.appendFile(old, event('task_complete')); await m.tick();
@@ -70,12 +72,13 @@ test('long active turn, partial append, completion, abort and replacement', asyn
   let status;
   const m = new ActivityMonitor(root, () => ['/work/app'], s => { status = s; });
   try {
-    await m.tick(); assert.equal(status.status, 'running');
+    await m.tick(); assert.equal(status.threads[0].status, 'unknown');
+    await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(status.status, 'running');
     const complete = event('task_complete');
     await fs.appendFile(file, complete.slice(0, 30)); await m.tick(); assert.equal(status.status, 'running');
     await fs.appendFile(file, complete.slice(30)); await m.tick(); assert.equal(status.status, 'ready');
     await fs.appendFile(file, event('task_started') + event('turn_aborted')); await m.tick(); assert.equal(status.status, 'idle');
-    await fs.writeFile(file, header + event('task_started')); await m.tick(); assert.equal(status.status, 'running');
+    await fs.writeFile(file, header + event('task_started')); await m.tick(); assert.equal(status.threads[0].status, 'unknown');
     m.enabled = false; await m.tick(); assert.equal(status.status, 'idle');
   } finally { m.dispose(); await fs.rm(root, { recursive: true }); }
 });
@@ -109,4 +112,25 @@ test('two chats keep independent status, deduplicate IDs, and retain completion 
   a.status = 'ready'; a.changedAt += 2; a.lastEventAt += 2;
   assert.equal(m.snapshot().active, 0, 'An older duplicate must not keep a completed chat running');
   m.dispose();
+});
+
+
+test('reload requires fresh progress; silence, settings and user records never prove work or completion', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pet-reload-'));
+  const dir = path.join(root, '2026', '09', '11'); await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, 'rollout.jsonl');
+  await fs.writeFile(file, JSON.stringify({ type: 'session_meta', payload: { id: 'reload', cwd: '/work/app', source: 'vscode' } }) + '\n' + event('task_started'));
+  let s; const m = new ActivityMonitor(root, () => ['/work/app'], value => { s = value; });
+  try {
+    await m.tick(); assert.equal(s.threads[0].status, 'unknown'); assert.equal(s.active, 0);
+    await fs.appendFile(file, event('thread_settings_applied') + event('item_completed'));
+    await m.tick(); assert.equal(s.threads[0].status, 'unknown');
+    await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(s.active, 1);
+    const last = s.threads[0].lastEventAt;
+    s = m.snapshot(last + 60001); assert.equal(s.active, 0); assert.equal(s.threads[0].status, 'unknown');
+    const reload = new ActivityMonitor(root, () => ['/work/app'], value => { s = value; });
+    try { await reload.tick(); assert.equal(s.threads[0].status, 'unknown'); } finally { reload.dispose(); }
+    await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(s.active, 1);
+    await fs.appendFile(file, event('task_complete')); await m.tick(); assert.equal(s.threads[0].status, 'ready');
+  } finally { m.dispose(); await fs.rm(root, { recursive: true }); }
 });

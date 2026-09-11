@@ -27,7 +27,7 @@ async function main() {
   assert.ok(result.visible && result.spriteLoaded && result.transparent && result.floating && !result.hidesOnDeactivate);
   assert.ok(result.sleepWorks); assert.ok(result.removeKeepsOther); assert.equal(result.restoredCount, 2 + extra.length); assert.equal(result.visibleRows, Math.min(8, 2 + extra.length)); assert.ok(result.scrollReachesLast);
   assert.equal(result.appActive, false);
-  for (const key of ['collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
+  for (const key of ['reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
   if (process.argv.includes('--hotkey')) assert.ok(result.hotKeyRegistered);
   assert.ok(result.reopenedChatStaysAfterCompletion); assert.ok(result.dismissedSameTurnStaysHidden);
   assert.ok(result.bottomCornersStay); assert.ok(result.listChangeKeepsCorner); assert.ok(result.refreshDoesNotMoveDrag);
