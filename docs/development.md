@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.9.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.9.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -105,3 +105,9 @@ Claude’s URI handler accepts VS Code’s numeric windowId parameter while stil
 ## Panel-only mode (0.9.0)
 
 `panelOnly` is a native preference (default false). It removes the character area from the window geometry and disables character hover actions while preserving row navigation, grouping, and notifications. Header controls shift left to leave a separate top-right resize target. Both compact and grouped layouts support it. The native self-test covers reduced geometry, header hit targets, chat clicks, header dragging, grouped/collapsed views, and restoring the character.
+
+## Overlapping workspaces (0.9.1)
+
+Protocol 8 adds local folder roots to workspace descriptors and the transcript cwd to chat records. When multiple live workspaces report the same chat, ownership prefers the deepest matching root, then fewer workspace roots; existing ownership breaks only equally specific ties. This repairs a previously retained broad-workspace assignment when a dedicated project window appears. It is a folder-based preference, not proof of which window originally created a session. Event freshness still selects status independently. Panel-only mode is unrelated to this selection.
+
+Monitors also re-filter previously seen chats against their current roots so removing a folder from a workspace stops that window from claiming those chats. Upgrade all open extension hosts to publish the new metadata.

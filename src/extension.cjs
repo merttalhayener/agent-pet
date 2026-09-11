@@ -47,7 +47,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 7, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 8, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));

@@ -66,7 +66,18 @@ enum PetLanguage: String, CaseIterable {
 }
 
 struct PetAsset: Codable { let id: String; let name: String; let file: String }
-struct WorkspaceInfo: Codable, Equatable { let id: String; let name: String }
+struct WorkspaceInfo: Codable, Equatable {
+    let id: String; let name: String
+    var roots: [String]? = nil
+    func matchDepth(_ cwd: String?) -> Int {
+        guard let cwd else { return -1 }
+        let location = URL(fileURLWithPath: cwd).standardizedFileURL.path
+        return (roots ?? []).compactMap { root -> Int? in
+            let normalized = URL(fileURLWithPath: root).standardizedFileURL.path
+            return location == normalized || location.hasPrefix(normalized == "/" ? "/" : normalized + "/") ? normalized.count : nil
+        }.max() ?? -1
+    }
+}
 struct DashboardEntry {
     var thread: ThreadActivity? = nil
     var workspace: WorkspaceInfo? = nil
@@ -85,6 +96,7 @@ struct ThreadActivity: Codable, Equatable {
     var startedAt: Double? = nil
     var finishedAt: Double? = nil
     var workspace: WorkspaceInfo? = nil
+    var cwd: String? = nil
 }
 struct Activity: Codable {
     let status: String
@@ -446,13 +458,14 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
                 if (protocolByID[thread.id] ?? 0) >= (snapshot.protocolVersion ?? 0), let previous = byID[thread.id], max(previous.lastEventAt, previous.changedAt) > max(thread.lastEventAt, thread.changedAt) { continue }
                 var tagged = thread
                 tagged.workspace = thread.workspace ?? snapshot.workspace ?? byID[thread.id]?.workspace
+                tagged.cwd = thread.cwd ?? byID[thread.id]?.cwd
                 byID[thread.id] = tagged
                 protocolByID[thread.id] = snapshot.protocolVersion ?? 0
             }
         }
-        // Shared folders can report the same chat from several windows. Keep its
-        // existing live workspace, otherwise choose a stable identity, independent
-        // of heartbeat order. Chat status still comes from the newest event above.
+        // Prefer the deepest matching folder, then the workspace containing fewer
+        // roots. This lets a dedicated project window beat a broad multi-root
+        // workspace. Retained ownership breaks only equally specific ties.
         var memberships: [String: [WorkspaceInfo]] = [:]
         for snapshot in live {
             for thread in snapshot.activity.threads ?? [] {
@@ -461,7 +474,18 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         }
         for (id, workspaces) in memberships {
             let previous = retained[id]?.workspace
-            byID[id]?.workspace = workspaces.first { $0.id == previous?.id } ?? workspaces.sorted { $0.id < $1.id }.first
+            let cwd = byID[id]?.cwd
+            let ranked = workspaces.sorted { a, b in
+                let ad = a.matchDepth(cwd), bd = b.matchDepth(cwd)
+                if ad != bd { return ad > bd }
+                if ad >= 0 {
+                    let ac = a.roots?.count ?? Int.max, bc = b.roots?.count ?? Int.max
+                    if ac != bc { return ac < bc }
+                }
+                if (a.id == previous?.id) != (b.id == previous?.id) { return a.id == previous?.id }
+                return a.id < b.id
+            }
+            byID[id]?.workspace = ranked.first
         }
         return byID.values.sorted { $0.id < $1.id }
     }
@@ -491,7 +515,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
             let stale = (thread.status != "waiting" && now.timeIntervalSince1970 * 1000 - thread.lastEventAt > 60 * 1000) || now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) > 15
-            return ThreadActivity(id: thread.id, title: thread.title, status: (thread.status == "running" || thread.status == "waiting") && stale ? "unknown" : thread.status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace)
+            return ThreadActivity(id: thread.id, title: thread.title, status: (thread.status == "running" || thread.status == "waiting") && stale ? "unknown" : thread.status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
@@ -837,6 +861,30 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         valid = valid && (try? JSONDecoder().decode(ThreadActivity.self, from: JSONEncoder().encode(first)))?.workspace == a
         return valid
     }
+    func testWorkspaceOwnership() -> Bool {
+        let originalRetained = retained
+        defer { retained = originalRetained }
+        let broad = WorkspaceInfo(id: "broad", name: "Product", roots: ["/work/ios", "/work/server", "/work/game"])
+        let dedicated = WorkspaceInfo(id: "ios", name: "ios", roots: ["/work/ios"])
+        let parent = WorkspaceInfo(id: "parent", name: "work", roots: ["/work"])
+        var thread = ThreadActivity(id: "ownership-test", title: "Sample", status: "running", changedAt: 1, lastEventAt: 1, workspace: broad, cwd: "/work/ios/Sources")
+        retained[thread.id] = thread
+        thread.workspace = nil
+        func snapshot(_ workspace: WorkspaceInfo, _ time: Double) -> Snapshot {
+            Snapshot(protocolVersion: 8, workspace: workspace, updatedAt: time, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "running", active: 1, threads: [thread], trackingDisabled: false), pets: [])
+        }
+        let windows = [snapshot(broad, 3), snapshot(parent, 2), snapshot(dedicated, 1)]
+        let result = mergeThreads(windows).first { $0.id == thread.id }
+        var valid = result?.workspace?.id == dedicated.id && result?.cwd == thread.cwd
+        valid = valid && mergeThreads(windows.reversed()).first { $0.id == thread.id }?.workspace?.id == dedicated.id
+        valid = valid && dedicated.matchDepth("/work/ios-other") == -1
+        valid = valid && mergeThreads([snapshot(broad, 1)]).first { $0.id == thread.id }?.workspace?.id == broad.id
+        var completed = thread; completed = ThreadActivity(id: thread.id, title: thread.title, status: "ready", changedAt: 5, lastEventAt: 5, cwd: thread.cwd)
+        let completion = Snapshot(protocolVersion: 8, workspace: broad, updatedAt: 5, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "ready", active: 0, threads: [completed], trackingDisabled: false), pets: [])
+        let latest = mergeThreads([snapshot(dedicated, 1), completion]).first { $0.id == thread.id }
+        valid = valid && latest?.workspace?.id == dedicated.id && latest?.status == "ready"
+        return valid
+    }
     func testPanelOnly() -> Bool {
         let oldMode = panelOnly, oldGrouped = grouped, oldCollapsed = collapsed, oldFrame = panel.frame
         let ids = displayThreads.map { $0.id }, oldSleeping = sleeping
@@ -872,6 +920,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func featureTests() -> [String: Any] {
         celebrationUntil = 0
         let original = displayThreads
+        let workspaceOwnershipWorks = testWorkspaceOwnership()
         let panelOnlyWorks = testPanelOnly()
         let workspaceViewWorks = testWorkspaceView()
         testOpenedURL = nil
@@ -948,7 +997,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

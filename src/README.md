@@ -11,7 +11,7 @@ A desktop pet that shows what's running, what's finished, and which chat needs y
 ![Agents](https://img.shields.io/badge/Supports-Codex_%2B_Claude_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.0)** · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1)** · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
 
 <img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
@@ -51,7 +51,7 @@ Claude Code support reads local VS Code session files automatically; no hooks or
 ## Get started
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in. Codex is optional.
-2. [Download **agent-pet-0.9.0.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.9.0/agent-pet-0.9.0.vsix).
+2. [Download **agent-pet-0.9.1.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.9.1/agent-pet-0.9.1.vsix).
 3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
 4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
@@ -69,7 +69,7 @@ Use the list’s **▤** button or **Appearance → Extended · Workspaces** to 
 
 <img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/images/workspaces.png" alt="Extended view with Website and Mobile App workspace groups" width="400">
 
-Multi-root `.code-workspace` files form one group. View and group choices survive restart. Older chats without workspace information remain under **Other chats** until their workspace reports them again. Switch back with **Appearance → Compact list**.
+Multi-root `.code-workspace` files form one group. If the same project is also open separately, chats prefer the most specific matching folder, then the workspace with fewer folders. Panel-only mode does not change this rule. View and group choices survive restart. Older chats without workspace information remain under **Other chats** until their workspace reports them again. Switch back with **Appearance → Compact list**.
 
 ### Language
 

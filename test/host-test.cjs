@@ -14,6 +14,7 @@ exports.run = async function () {
     assert.equal(extension.packageJSON.contributes.views, undefined, 'No legacy sidebar view contribution');
     assert.equal(extension.packageJSON.contributes.menus, undefined, 'No obsolete view toolbar');
     for (const link of Object.values(api.getDiagnostics().navigation)) assert.match(link, /[?&]windowId=\d+/);
+    assert.deepEqual(api.getDiagnostics().workspace.roots, [...new Set((vscode.workspace.workspaceFolders || []).filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath))].sort());
     assert.match(api.getDiagnostics().workspace.id, /^[a-f0-9]{64}$/);
     assert.equal(api.getDiagnostics().workspace.name, vscode.workspace.name || vscode.workspace.workspaceFolders?.[0]?.name || 'No workspace');
     assert.equal(api.getDiagnostics().desktopSupported, process.platform === 'darwin');

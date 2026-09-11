@@ -1,7 +1,9 @@
-Agent Pet 0.9.0 adds **Panel only** mode.
+Agent Pet 0.9.1 fixes **grouping across overlapping workspaces**.
 
-Choose **Appearance → Panel only** from the paw menu or the panel’s right-click menu. The pet character and its empty space disappear; chats, status indicators, and workspace groups remain visible.
+If a project belongs to a multi-root workspace and is also open in its own VS Code window, its chats now prefer the more specific workspace. Previously retained group assignments update automatically. Panel-only mode continues to affect appearance only.
 
-Drag the panel header to move it and use the top-right resize handle. The mode works in compact and workspace views, remembers your preference, and can be switched off from the same menu.
+The rule uses the chat’s working directory: deepest matching folder first, then fewer workspace folders. Removing a folder also stops that window from claiming its old chats.
 
-English and Turkish. Requires Apple Silicon and macOS 26+. After installing, reload VS Code once after active turns finish to load the updated desktop helper.
+After installing, wait for active turns to finish and run **Developer: Reload Window in every open VS Code window**. This update needs the new working-directory and workspace-root metadata from each extension host.
+
+English and Turkish. Apple Silicon, macOS 26+.

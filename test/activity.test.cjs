@@ -134,3 +134,14 @@ test('reload requires fresh progress; silence, settings and user records never p
     await fs.appendFile(file, event('task_complete')); await m.tick(); assert.equal(s.threads[0].status, 'ready');
   } finally { m.dispose(); await fs.rm(root, { recursive: true }); }
 });
+
+test('workspace changes exclude previously seen chats outside the new roots', () => {
+ let roots = ['/work/ios'];
+ const m = new ActivityMonitor('/unused', () => roots, () => {});
+ const now = Date.now();
+ m.files.set('sample', { id: 'sample', cwd: '/work/ios', source: 'vscode', status: 'ready', changedAt: now, lastEventAt: now });
+ assert.equal(m.snapshot().threads[0].cwd, '/work/ios');
+ roots = ['/work/server']; assert.equal(m.snapshot().threads.length, 0);
+ roots = ['/work/ios']; assert.equal(m.snapshot().threads.length, 1);
+ m.dispose();
+});

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1
+
+- Fix chats remaining under a broad multi-root workspace when the project is also open in a dedicated window.
+- Prefer the deepest matching project folder, then the workspace with fewer folders; repair retained group assignments automatically.
+- Stop claiming previously seen chats after their folder is removed from a workspace.
+- Keep workspace ownership independent of panel-only mode.
+
 ## 0.9.0
 
 - Added **Appearance → Panel only** to hide the character while keeping the chat panel visible.

@@ -239,12 +239,12 @@ class ActivityMonitor {
       const previous = this.seenThreads.get(s.id);
       if (previous && previous.lastEventAt > s.lastEventAt) continue;
       this.seenThreads.set(s.id, {
-        id: s.id, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
+        id: s.id, cwd: s.cwd, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
         status: Object.keys(s.pendingInputs || {}).length ? 'waiting' : s.status === 'running' && s.liveConfirmed === false ? 'unknown' : s.status,
         changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt
       });
     }
-    const threads = [...this.seenThreads.values()].map(t => ({
+    const threads = [...this.seenThreads.values()].filter(t => inWorkspace(t.cwd, this.getRoots())).map(t => ({
       ...t, title: this.titles.get(t.id) || t.title,
       status: t.status === 'running' && now - t.lastEventAt >= LIVE_TIMEOUT ? 'unknown' : t.status
     })).sort((a, b) => a.id.localeCompare(b.id));
