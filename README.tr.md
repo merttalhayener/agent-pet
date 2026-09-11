@@ -11,7 +11,7 @@ Hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor? Masaüstündek
 ![Ajan desteği](https://img.shields.io/badge/Destek-Codex_%2B_Claude_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Durum-beta-d97706?style=flat-square)
 
-**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.7.1)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.8.0)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Çalışan ve tamamlanan sohbetleri gösteren Agent Pet" width="420">
 
@@ -51,7 +51,7 @@ Claude Code desteği yerel VS Code oturumlarını otomatik okur; hook veya API a
 ## Kurulum
 
 1. VS Code'a **Codex**, **Claude Code** veya ikisini birden kur ve giriş yap. Codex zorunlu değil.
-2. [**agent-pet-0.7.1.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.7.1/agent-pet-0.7.1.vsix).
+2. [**agent-pet-0.8.0.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.8.0/agent-pet-0.8.0.vsix).
 3. VS Code'da **Extensions → ⋯ → Install from VSIX…** yolundan dosyayı seç.
 4. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
@@ -88,3 +88,11 @@ Eski sürümden güncelliyorsan VS Code'u bir kez yeniden yükle; eski yan panel
 **[Derleme ve teknik ayrıntılar](docs/development.md)** · **[Sorun bildir](https://github.com/merttalhayener/agent-pet/issues)**
 
 Güncellerken aktif işler bittikten sonra bir kez **Developer: Reload Window** çalıştır. Yeni sohbet yönlendirmesi yüklenir, masaüstü yardımcısı otomatik güncellenir; tercihlerin korunur.
+
+### Çalışma alanları
+
+Listedeki **▤** düğmesi veya **Görünüm → Genişletilmiş · Çalışma alanları** ile sohbetleri VS Code çalışma alanına göre grupla. Grup başlığına tıklayarak açıp kapat; çalışan ve toplam sohbet sayısını başlıkta gör. Codex ve Claude sohbetleri aynı çalışma alanının altında kalır.
+
+<img src="docs/images/workspaces.png" alt="Website ve Mobile App çalışma alanlarını gösteren genişletilmiş görünüm" width="400">
+
+Çok klasörlü `.code-workspace` dosyaları tek grup olur. Görünüm ve grup tercihlerin yeniden açınca korunur. Çalışma alanı bilgisi olmayan eski kayıtlar, ilgili pencere tekrar bildirene kadar **Diğer sohbetler** altında kalır. **Görünüm → Kompakt liste** ile eski görünüme dönebilirsin. Güncellemeden sonra aktif işler bitince açık çalışma alanı pencerelerinde bir kez **Developer: Reload Window** çalıştır.

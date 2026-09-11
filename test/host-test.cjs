@@ -13,6 +13,8 @@ exports.run = async function () {
     assert.equal(extension.packageJSON.extensionDependencies, undefined);
     assert.equal(extension.packageJSON.contributes.views, undefined, 'No legacy sidebar view contribution');
     assert.equal(extension.packageJSON.contributes.menus, undefined, 'No obsolete view toolbar');
+    assert.match(api.getDiagnostics().workspace.id, /^[a-f0-9]{64}$/);
+    assert.equal(api.getDiagnostics().workspace.name, vscode.workspace.name || vscode.workspace.workspaceFolders?.[0]?.name || 'No workspace');
     assert.equal(api.getDiagnostics().desktopSupported, process.platform === 'darwin');
     const commands = await vscode.commands.getCommands(true);
     assert.ok(commands.includes('codexPet.open'));

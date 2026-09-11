@@ -6,6 +6,8 @@ const { AgentActivityMonitor } = require('./agent-activity.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
+const { describeWorkspace } = require('./workspace.cjs');
+
 const PETS = [
   ['codex', 'Codex'], ['dewey', 'Dewey'], ['fireball', 'Fireball'],
   ['hoots', 'Hoots'], ['bsod', 'BSOD'], ['null-signal', 'Null Signal'],
@@ -42,7 +44,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 5, selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 6, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -81,6 +83,6 @@ async function activate(context) {
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('codexPet.followActivity')) { monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true); void monitor.tick(); }
   }));
-  return { availablePets: pets.map(p => p.id), open, getDiagnostics: () => ({ desktopSupported: Boolean(desktop), activity }) };
+  return { availablePets: pets.map(p => p.id), open, getDiagnostics: () => ({ workspace: describeWorkspace(vscode.workspace), desktopSupported: Boolean(desktop), activity }) };
 }
 module.exports = { activate };

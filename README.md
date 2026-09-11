@@ -11,7 +11,7 @@ A desktop pet that shows what's running, what's finished, and which chat needs y
 ![Agents](https://img.shields.io/badge/Supports-Codex_%2B_Claude_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.7.1)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.8.0)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
@@ -51,11 +51,19 @@ Claude Code support reads local VS Code session files automatically; no hooks or
 ## Get started
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in. Codex is optional.
-2. [Download **agent-pet-0.7.1.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.7.1/agent-pet-0.7.1.vsix).
+2. [Download **agent-pet-0.8.0.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.8.0/agent-pet-0.8.0.vsix).
 3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
 4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 **Click a row** to open a chat. **Drag the pet** to move it. **Drag ↗↙** to resize. **Right-click** for settings. Use the list's chevron to collapse or expand.
+
+### Workspaces
+
+Use the list’s **▤** button or **Appearance → Extended · Workspaces** to group chats by VS Code workspace. Click a group header to fold or expand it. Each header shows running and total chat counts; Codex and Claude chats stay together under their workspace.
+
+<img src="docs/images/workspaces.png" alt="Extended view with Website and Mobile App workspace groups" width="400">
+
+Multi-root `.code-workspace` files form one group. View and group choices survive restart. Older chats without workspace information remain under **Other chats** until their workspace reports them again. Switch back with **Appearance → Compact list**.
 
 ### Language
 
@@ -73,7 +81,7 @@ Agent Pet waits for a new activity record before showing a reattached chat as ru
 
 This tracks local agent activity; it cannot tell whether the agent chat UI is receiving messages. A quiet long-running tool can also show “no update.”
 
-Upgrading? Once active turns finish, run **Developer: Reload Window** once to load the new chat navigation. The desktop helper updates automatically and your preferences are kept.
+Upgrading? Once active turns finish, run **Developer: Reload Window** once in each open workspace window to load workspace grouping. The desktop helper updates automatically and your preferences are kept.
 
 <details>
 <summary><strong>Beta notes & local data</strong></summary>

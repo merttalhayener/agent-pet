@@ -25,12 +25,14 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
     async write() {}
   }
   class AgentActivityMonitor { start() {} async tick() {} }
-  const dependencies = { vscode, './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
+  const dependencies = { vscode, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   const api = await sandbox.module.exports.activate(context);
   assert.ok(api.availablePets.includes('agent-pet'));
   if (!withCodex) { assert.equal(snapshot().selected, 'agent-pet'); assert.ok(snapshot().selectedAt > 0); }
+  assert.equal(snapshot().workspace.name, 'No workspace');
+  assert.match(snapshot().workspace.id, /^[a-f0-9]{64}$/);
   assert.ok(entry.visible); assert.equal(entry.command, 'codexPet.showDesktop');
   assert.deepEqual(starts, [], 'Disabled automatic opening is respected');
   await commands.get('codexPet.open')(); await commands.get('codexPet.showDesktop')();

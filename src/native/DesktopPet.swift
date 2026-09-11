@@ -8,6 +8,13 @@ enum PetLanguage: String, CaseIterable {
     func text(_ key: String) -> String { self == .turkish ? Self.translations[key] ?? key : key }
     private static let translations: [String: String] = [
         "Chats": "Sohbetler",
+        "Workspaces": "Çalışma alanları",
+        "No workspace": "Çalışma alanı yok",
+        "Other chats": "Diğer sohbetler",
+        "Compact list": "Kompakt liste",
+        "Extended · Workspaces": "Genişletilmiş · Çalışma alanları",
+        "Group by workspace": "Çalışma alanına göre grupla",
+        "Click to expand or collapse workspace": "Çalışma alanını açmak veya daraltmak için tıkla",
         "Completed": "Tamamlandı",
         "No active chats yet": "Henüz aktif sohbet yok",
         "Expand chat list": "Sohbet listesini aç",
@@ -56,6 +63,13 @@ enum PetLanguage: String, CaseIterable {
 }
 
 struct PetAsset: Codable { let id: String; let name: String; let file: String }
+struct WorkspaceInfo: Codable, Equatable { let id: String; let name: String }
+struct DashboardEntry {
+    var thread: ThreadActivity? = nil
+    var workspace: WorkspaceInfo? = nil
+    var count = 0
+    var running = 0
+}
 struct ThreadActivity: Codable, Equatable {
     let id: String
     var isClaude: Bool { id.hasPrefix("claude:") }
@@ -67,6 +81,7 @@ struct ThreadActivity: Codable, Equatable {
     let lastEventAt: Double
     var startedAt: Double? = nil
     var finishedAt: Double? = nil
+    var workspace: WorkspaceInfo? = nil
 }
 struct Activity: Codable {
     let status: String
@@ -76,6 +91,7 @@ struct Activity: Codable {
 }
 struct Snapshot: Codable {
     var protocolVersion: Int? = nil
+    var workspace: WorkspaceInfo? = nil
     let updatedAt: Double
     let selectedAt: Double
     let sleepAt: Double
@@ -97,7 +113,7 @@ final class DashboardView: NSView {
     var hovered = false, hoveredRow: String?
     var scrollOffset = 0
     var dragStart = NSPoint.zero, windowStart = NSPoint.zero
-    var dragged = false, pressedRemoveID: String?, pressedThreadID: String?
+    var dragged = false, pressedRemoveID: String?, pressedThreadID: String?, pressedWorkspaceID: String?
     var resizing = false
     var moving = false
     var resizeStartFrame = NSRect.zero
@@ -105,12 +121,27 @@ final class DashboardView: NSView {
     var language: PetLanguage { owner?.language ?? .english }
     func text(_ key: String) -> String { language.text(key) }
     var rows: [ThreadActivity] { owner?.displayThreads ?? [] }
+    var entries: [DashboardEntry] {
+        guard owner?.grouped == true else { return rows.map { DashboardEntry(thread: $0) } }
+        let groups = Dictionary(grouping: rows) { $0.workspace?.id ?? "legacy" }
+        return groups.keys.sorted { a, b in
+            let an = groups[a]?.first?.workspace?.name ?? text("Other chats")
+            let bn = groups[b]?.first?.workspace?.name ?? text("Other chats")
+            return an == bn ? a < b : an.localizedStandardCompare(bn) == .orderedAscending
+        }.flatMap { id -> [DashboardEntry] in
+            let threads = groups[id] ?? []
+            let workspace = threads.first?.workspace ?? WorkspaceInfo(id: id, name: text("Other chats"))
+            let header = DashboardEntry(workspace: workspace, count: threads.count, running: threads.filter { $0.status == "running" }.count)
+            return [header] + ((owner?.foldedWorkspaces.contains(id) ?? false) ? [] : threads.map { DashboardEntry(thread: $0) })
+        }
+    }
     var collapsed: Bool { owner?.collapsed ?? false }
-    var logicalWidth: CGFloat { collapsed ? max(180, 112 * (owner?.petScale ?? 1) + 58) : 340 }
-    var visibleCount: Int { collapsed ? 0 : min(8, rows.count) }
+    var logicalWidth: CGFloat { collapsed ? max(180, 112 * (owner?.petScale ?? 1) + 58) : (owner?.grouped == true ? 400 : 340) }
+    var visibleCount: Int { collapsed ? 0 : min(owner?.grouped == true ? 12 : 8, entries.count) }
     var cardHeight: CGFloat { collapsed ? 32 : CGFloat(max(1, visibleCount)) * rowHeight + 40 }
     var desiredHeight: CGFloat { cardHeight + 121 * (owner?.petScale ?? 1) + 7 }
     var collapseRect: NSRect { NSRect(x: bounds.maxX - 29, y: cardHeight - 28, width: 24, height: 24) }
+    var groupingRect: NSRect { NSRect(x: bounds.maxX - 55, y: cardHeight - 28, width: 24, height: 24) }
     var resizeHandleRect: NSRect { NSRect(x: bounds.maxX - 28, y: bounds.maxY - 28, width: 26, height: 26) }
     var spriteRect: NSRect { let s = owner?.petScale ?? 1; return NSRect(x: (bounds.width - 112 * s) / 2, y: cardHeight + 5, width: 112 * s, height: 121 * s) }
     override var isOpaque: Bool { false }
@@ -119,14 +150,19 @@ final class DashboardView: NSView {
         for i in 0..<visibleCount { addCursorRect(rowRect(i), cursor: .pointingHand) }
         addCursorRect(resizeHandleRect, cursor: .crosshair)
         addCursorRect(collapseRect, cursor: .pointingHand)
+        addCursorRect(groupingRect, cursor: .pointingHand)
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    func clampScroll() { scrollOffset = max(0, min(scrollOffset, rows.count - visibleCount)) }
+    func clampScroll() { scrollOffset = max(0, min(scrollOffset, entries.count - visibleCount)) }
     func rowRect(_ visibleIndex: Int) -> NSRect {
         NSRect(x: 6, y: cardHeight - 32 - CGFloat(visibleIndex + 1) * rowHeight, width: bounds.width - 12, height: rowHeight)
     }
     func rowAt(_ p: NSPoint) -> ThreadActivity? {
-        for i in 0..<visibleCount where rowRect(i).contains(p) { return rows[i + scrollOffset] }
+        for i in 0..<visibleCount where rowRect(i).contains(p) { return entries[i + scrollOffset].thread }
+        return nil
+    }
+    func workspaceAt(_ p: NSPoint) -> WorkspaceInfo? {
+        for i in 0..<visibleCount where rowRect(i).contains(p) { return entries[i + scrollOffset].workspace }
         return nil
     }
     override func updateTrackingAreas() {
@@ -184,11 +220,22 @@ final class DashboardView: NSView {
         let running = rows.filter { $0.status == "running" }.count, waiting = rows.filter { $0.status == "waiting" }.count
         let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
         let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        label(collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text("Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 47, height: 17), size: 10, color: celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+        label(collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text(owner?.grouped == true ? "Workspaces" : "Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 73, height: 17), size: 10, color: celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
         label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
+        label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
         clampScroll()
+        let items = entries
         for i in 0..<visibleCount {
-            let thread = rows[i + scrollOffset], rect = rowRect(i)
+            let item = items[i + scrollOffset], rect = rowRect(i)
+            if let workspace = item.workspace {
+                NSColor.white.withAlphaComponent(0.07).setFill(); NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 2), xRadius: 5, yRadius: 5).fill()
+                label(owner?.foldedWorkspaces.contains(workspace.id) == true ? "›" : "⌄", in: NSRect(x: 14, y: rect.midY - 8, width: 15, height: 18), size: 13, color: .systemTeal)
+                label(workspace.name == "No workspace" ? text("No workspace") : workspace.name, in: NSRect(x: 34, y: rect.midY - 7, width: bounds.width - 170, height: 17), size: 11, color: .systemTeal)
+                let summary = String(format: text(item.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), item.running, item.count)
+                label(summary, in: NSRect(x: bounds.width - 130, y: rect.midY - 6, width: 115, height: 15), size: 9, color: NSColor.white.withAlphaComponent(0.6))
+                continue
+            }
+            guard let thread = item.thread else { continue }
             if thread.id == hoveredRow { NSColor.white.withAlphaComponent(0.06).setFill(); NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill() }
             indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
             let size = owner?.textSize ?? 11.5
@@ -199,9 +246,9 @@ final class DashboardView: NSView {
             if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
         }
         if rows.isEmpty && !collapsed { label(text("No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
-        if rows.count > visibleCount && !collapsed {
-            let track = cardHeight - 22, thumb = max(18, track * CGFloat(visibleCount) / CGFloat(rows.count))
-            let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(rows.count - visibleCount))
+        if entries.count > visibleCount && !collapsed {
+            let track = cardHeight - 22, thumb = max(18, track * CGFloat(visibleCount) / CGFloat(entries.count))
+            let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(entries.count - visibleCount))
             NSColor.white.withAlphaComponent(0.24).setFill(); NSBezierPath(roundedRect: NSRect(x: bounds.width - 4, y: y, width: 2, height: thumb), xRadius: 1, yRadius: 1).fill()
         }
         if hovered {
@@ -234,6 +281,8 @@ final class DashboardView: NSView {
         let p = convert(event.locationInWindow, from: nil)
         hoveredRow = rowAt(p)?.id
         if collapseRect.contains(p) { toolTip = collapsed ? text("Expand chat list") : text("Collapse chat list") }
+        else if groupingRect.contains(p) { toolTip = text(owner?.grouped == true ? "Compact list" : "Group by workspace") }
+        else if let workspace = workspaceAt(p) { toolTip = workspace.name + " · " + text("Click to expand or collapse workspace") }
         else if resizeHandleRect.contains(p) { toolTip = text("Drag to resize") }
         else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row.status, language: language)) · " + text("Click to open in VS Code") }
         else { toolTip = text("Click to pet · Drag to move · Right-click for options") }
@@ -244,6 +293,7 @@ final class DashboardView: NSView {
     }
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
+        pressedWorkspaceID = workspaceAt(p)?.id
         pressedRemoveID = p.x > bounds.width - 30 ? rowAt(p)?.id : nil
         pressedThreadID = pressedRemoveID == nil ? rowAt(p)?.id : nil
         dragStart = NSEvent.mouseLocation; windowStart = window?.frame.origin ?? .zero; dragged = false
@@ -265,11 +315,13 @@ final class DashboardView: NSView {
         window?.setFrameOrigin(NSPoint(x: windowStart.x + p.x - dragStart.x, y: windowStart.y + p.y - dragStart.y))
     }
     override func mouseUp(with event: NSEvent) {
-        defer { pressedRemoveID = nil; pressedThreadID = nil; moving = false }
+        defer { pressedRemoveID = nil; pressedThreadID = nil; pressedWorkspaceID = nil; moving = false }
         if resizing { resizing = false; owner?.savePreferences(); owner?.savePosition(); owner?.resizeToList(); return }
         if dragged { owner?.snapToEdge(); owner?.savePosition(); return }
         let p = convert(event.locationInWindow, from: nil)
         if collapseRect.contains(p) { moving = false; owner?.toggleCollapsed(); return }
+        if groupingRect.contains(p) { moving = false; owner?.toggleGrouped(); return }
+        if let id = pressedWorkspaceID, workspaceAt(p)?.id == id { moving = false; owner?.toggleWorkspace(id); return }
         if let id = pressedRemoveID, rowAt(p)?.id == id, p.x > bounds.width - 30 { owner?.dismiss(id); return }
         if let id = pressedThreadID, rowAt(p)?.id == id, p.x <= bounds.width - 30 { owner?.openThread(id); return }
         if p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX - 71)) < 14 { owner?.toggleSleep(); return }
@@ -277,7 +329,7 @@ final class DashboardView: NSView {
         if spriteRect.contains(p) { owner?.react() }
     }
     override func scrollWheel(with event: NSEvent) {
-        guard rows.count > visibleCount, event.scrollingDeltaY != 0 else { return }
+        guard entries.count > visibleCount, event.scrollingDeltaY != 0 else { return }
         scrollOffset += event.scrollingDeltaY < 0 ? 1 : -1; clampScroll(); needsDisplay = true
     }
     override func rightMouseDown(with event: NSEvent) {
@@ -304,6 +356,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var imagePath = ""
     var testOpenedURL: String?
     var dashboardScale: CGFloat = 1
+    var grouped = false
+    var foldedWorkspaces: Set<String> = []
     var collapsed = false, snapEnabled = true, completionAnimation = true, soundEnabled = false
     var presentationHidden = false
     var language = PetLanguage.english
@@ -332,6 +386,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
         if !testing {
             language = PetLanguage(preference: defaults.string(forKey: "language"))
+            grouped = defaults.bool(forKey: "grouped")
+            foldedWorkspaces = Set(defaults.stringArray(forKey: "foldedWorkspaces") ?? [])
             collapsed = defaults.bool(forKey: "collapsed"); soundEnabled = defaults.bool(forKey: "soundEnabled")
             snapEnabled = defaults.object(forKey: "snapEnabled") == nil || defaults.bool(forKey: "snapEnabled")
             completionAnimation = defaults.object(forKey: "completionAnimation") == nil || defaults.bool(forKey: "completionAnimation")
@@ -377,9 +433,24 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         for snapshot in live.sorted(by: { ($0.protocolVersion ?? 0) == ($1.protocolVersion ?? 0) ? $0.updatedAt < $1.updatedAt : ($0.protocolVersion ?? 0) < ($1.protocolVersion ?? 0) }) {
             for thread in snapshot.activity.threads ?? [] {
                 if (protocolByID[thread.id] ?? 0) >= (snapshot.protocolVersion ?? 0), let previous = byID[thread.id], max(previous.lastEventAt, previous.changedAt) > max(thread.lastEventAt, thread.changedAt) { continue }
-                byID[thread.id] = thread
+                var tagged = thread
+                tagged.workspace = thread.workspace ?? snapshot.workspace ?? byID[thread.id]?.workspace
+                byID[thread.id] = tagged
                 protocolByID[thread.id] = snapshot.protocolVersion ?? 0
             }
+        }
+        // Shared folders can report the same chat from several windows. Keep its
+        // existing live workspace, otherwise choose a stable identity, independent
+        // of heartbeat order. Chat status still comes from the newest event above.
+        var memberships: [String: [WorkspaceInfo]] = [:]
+        for snapshot in live {
+            for thread in snapshot.activity.threads ?? [] {
+                if let workspace = thread.workspace ?? snapshot.workspace { memberships[thread.id, default: []].append(workspace) }
+            }
+        }
+        for (id, workspaces) in memberships {
+            let previous = retained[id]?.workspace
+            byID[id]?.workspace = workspaces.first { $0.id == previous?.id } ?? workspaces.sorted { $0.id < $1.id }.first
         }
         return byID.values.sorted { $0.id < $1.id }
     }
@@ -409,7 +480,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
             let stale = (thread.status != "waiting" && now.timeIntervalSince1970 * 1000 - thread.lastEventAt > 60 * 1000) || now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) > 15
-            return ThreadActivity(id: thread.id, title: thread.title, status: (thread.status == "running" || thread.status == "waiting") && stale ? "unknown" : thread.status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt)
+            return ThreadActivity(id: thread.id, title: thread.title, status: (thread.status == "running" || thread.status == "waiting") && stale ? "unknown" : thread.status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
@@ -480,6 +551,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             completionText = completed.count == 1 ? "✓ " + completed[0].title : "✓ " + String(format: text("%d chats completed"), completed.count)
         }
         if soundEnabled && !testing { NSSound(named: "Glass")?.play() }
+    }
+    @objc func toggleGrouped() { grouped.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
+    func toggleWorkspace(_ id: String) {
+        if foldedWorkspaces.contains(id) { foldedWorkspaces.remove(id) } else { foldedWorkspaces.insert(id) }
+        view.clampScroll(); resizeToList(); savePreferences()
+    }
+    @objc func selectListView(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? Bool, value != grouped else { return }
+        toggleGrouped()
     }
     @objc func toggleCollapsed() { collapsed.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
     @objc func togglePresentation() {
@@ -604,6 +684,11 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         action(sleeping ? text("Wake up") : text("Sleep"), #selector(toggleSleep), in: petsMenu)
 
         let appearanceMenu = group(text("Appearance"))
+        for (label, value) in [("Compact list", false), ("Extended · Workspaces", true)] {
+            let item = action(text(label), #selector(selectListView(_:)), in: appearanceMenu, value: value)
+            item.state = grouped == value ? .on : .off
+        }
+        appearanceMenu.addItem(.separator())
         for (title, key, values, current) in [(text("Text size"), "textSize", [10.0, 11.5, 13, 15], Double(textSize)), (text("Pet size"), "petScale", [0.75, 1, 1.25, 1.5], Double(petScale)), (text("List opacity"), "listOpacity", [0.35, 0.6, 0.8, 0.91, 1], Double(listOpacity))] {
             let group = NSMenuItem(title: title, action: nil, keyEquivalent: ""), submenu = NSMenu(title: title)
             for value in values {
@@ -647,18 +732,66 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func savePosition() { if !testing, let panel { defaults.set(panel.frame.minX, forKey: "dashboardX"); defaults.set(panel.frame.minY, forKey: "dashboardY") } }
     func savePreferences() { if !testing {
         defaults.set(language.rawValue, forKey: "language")
-        for (key, value) in ["collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
+        for (key, value) in ["grouped": grouped, "collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
         for (key, value) in ["textSize": textSize, "petScale": petScale, "listOpacity": listOpacity, "dashboardScale": dashboardScale] { defaults.set(value, forKey: key) }
         defaults.set(Array(pinned).sorted(), forKey: "pinned")
+        defaults.set(Array(foldedWorkspaces).sorted(), forKey: "foldedWorkspaces")
         defaults.set(selected, forKey: "pet"); defaults.set(selectedAt, forKey: "selectedAt"); defaults.set(sleeping, forKey: "sleeping"); defaults.set(sleepAt, forKey: "sleepAt")
     } }
     func capture(_ name: String) {
         view.display()
         if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) { view.cacheDisplay(in: view.bounds, to: bitmap); if let png = bitmap.representation(using: .png, properties: [:]) { try? png.write(to: directory.appendingPathComponent(name)) } }
     }
+    func testWorkspaceView() -> Bool {
+        let saved = displayThreads, savedGrouped = grouped, savedFolded = foldedWorkspaces
+        defer { displayThreads = saved; grouped = savedGrouped; foldedWorkspaces = savedFolded; view.scrollOffset = 0; resizeToList() }
+        let a = WorkspaceInfo(id: "project-a", name: "Website"), b = WorkspaceInfo(id: "project-b", name: "Mobile App")
+        let now = Date().timeIntervalSince1970 * 1000
+        let first = ThreadActivity(id: "11111111-1111-4111-8111-111111111111", title: "Build the landing page", status: "running", changedAt: now, lastEventAt: now, workspace: a)
+        let second = ThreadActivity(id: "claude:22222222-2222-4222-8222-222222222222", title: "Review accessibility", status: "ready", changedAt: now, lastEventAt: now, workspace: a)
+        let third = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Add sign in", status: "waiting", changedAt: now, lastEventAt: now, workspace: b)
+        displayThreads = [first, second, third]; grouped = true; foldedWorkspaces = []; resizeToList()
+        capture("dashboard-workspaces-test.png")
+        let headers = view.entries.compactMap { $0.workspace }
+        var valid = headers.map { $0.id } == [b.id, a.id] && view.entries.count == 5 && view.logicalWidth == 400
+        valid = valid && view.rowAt(NSPoint(x: 60, y: view.rowRect(0).midY)) == nil
+        func click(_ index: Int) {
+            let p = view.convert(NSPoint(x: 60, y: view.rowRect(index).midY), to: nil)
+            for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
+                let event = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+                if type == .leftMouseDown { view.mouseDown(with: event) } else { view.mouseUp(with: event) }
+            }
+        }
+        testOpenedURL = nil; click(0)
+        valid = valid && foldedWorkspaces.contains(b.id) && view.entries.count == 4 && testOpenedURL == nil
+        click(0); click(1)
+        valid = valid && testOpenedURL == "vscode://openai.chatgpt/local/33333333-3333-4333-8333-333333333333"
+        click(4)
+        valid = valid && testOpenedURL == "vscode://local.codex-pet-panel/claude?session=22222222-2222-4222-8222-222222222222"
+        // Distinct workspaces with the same name must never merge. Old records
+        // lacking workspace metadata remain visible under Other chats.
+        var other = first; other.workspace = WorkspaceInfo(id: "project-c", name: a.name)
+        var legacy = second; legacy.workspace = nil
+        displayThreads = [first, other, legacy]
+        valid = valid && view.entries.filter { $0.workspace != nil }.count == 3
+        displayThreads = (0..<15).map { index in
+            var t = first; t.workspace = WorkspaceInfo(id: "p-\(index)", name: String(format: "Project %02d", index)); return t
+        }
+        resizeToList(); view.scrollOffset = 100; view.clampScroll()
+        valid = valid && view.rowAt(NSPoint(x: 60, y: view.rowRect(view.visibleCount - 1).midY))?.workspace?.id == "p-14"
+        // The newest state wins while workspace ownership stays stable.
+        let activity = Activity(status: "running", active: 1, threads: [first], trackingDisabled: false)
+        let one = Snapshot(protocolVersion: 6, workspace: a, updatedAt: now, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: activity, pets: [])
+        var copy = first; copy.workspace = nil
+        let two = Snapshot(protocolVersion: 6, workspace: b, updatedAt: now + 1, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "running", active: 1, threads: [copy], trackingDisabled: false), pets: [])
+        valid = valid && mergeThreads([one, two]).first { $0.id == first.id }?.workspace == mergeThreads([two, one]).first { $0.id == first.id }?.workspace
+        valid = valid && (try? JSONDecoder().decode(ThreadActivity.self, from: JSONEncoder().encode(first)))?.workspace == a
+        return valid
+    }
     func featureTests() -> [String: Any] {
         celebrationUntil = 0
         let original = displayThreads
+        let workspaceViewWorks = testWorkspaceView()
         testOpenedURL = nil
         openThread("claude:44444444-4444-4444-8444-444444444444")
         let claudeLinkWorks = testOpenedURL == "vscode://local.codex-pet-panel/claude?session=44444444-4444-4444-8444-444444444444"
@@ -720,7 +853,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

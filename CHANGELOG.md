@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+
+- Added an extended view that groups Codex and Claude chats by VS Code workspace, including multi-root workspaces.
+- Added foldable group headers with running and total counts, and a one-click compact/extended view toggle.
+- Remember view and folded groups after restart; keep older untagged chats visible under Other chats.
+- Preserve stable group ownership when several windows report the same chat.
+
 ## 0.7.1
 
 - Open Claude chats in the right sidebar through a validated Agent Pet URI handler.

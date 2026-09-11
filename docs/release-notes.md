@@ -1,9 +1,11 @@
-Agent Pet 0.7.1 fixes **Claude chat navigation to the right sidebar**.
+Agent Pet 0.8.0 adds **workspace grouping**.
 
-- Pet rows now use Agent Pet’s validated session handler instead of Claude’s editor-only link.
-- A uniquely identified completed editor tab can move to the sidebar automatically. Active or unsaved tabs stay open: finish the turn, close that tab, then click its pet row again.
-- Older detached desktop helpers update automatically when the new extension loads.
+- Use the list’s **▤** button or **Appearance → Extended · Workspaces**.
+- Fold or expand each workspace and see running and total chat counts.
+- Follow Codex and Claude together under the same workspace; multi-root workspace files form one group.
+- Switch back to the compact list at any time. View and folded groups are remembered.
+- Older chats without workspace information stay under **Other chats** until their workspace reports them again.
 
-After installing, wait for active turns to finish and run **Developer: Reload Window** once. Your pet preferences and retained chats are kept.
+After installing, wait for active turns to finish and run **Developer: Reload Window** once in each open workspace window.
 
-Tested against Claude Code 2.1.268. Requires Apple Silicon and macOS 26+.
+English and Turkish. Requires Apple Silicon and macOS 26+.

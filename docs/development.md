@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.7.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.8.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -82,10 +82,16 @@ Closing the native panel hides it while retaining the menu bar entry and global 
 
 The native helper defaults to English independently of the macOS locale. `PetLanguage` contains the English/Turkish strings for menus, dashboard labels, durations, tooltips, and accessibility descriptions. The Language menu persists an `en` or `tr` preference in the existing native UserDefaults suite. Missing or invalid preferences fall back to English. Chat titles and character names are not translated. VS Code command labels and extension messages are English.
 
-## Claude Code integration (0.7.1)
+## Claude Code integration (0.8.0)
 
 The adapter reads top-level UUID `.jsonl` files in `$CLAUDE_CONFIG_DIR/projects` (default `~/.claude/projects`). It includes `entrypoint: claude-vscode` records inside the open workspace, excludes sidechains and nested subagent logs, and uses explicit `end_turn` / `stop_sequence` records for completion. `AskUserQuestion` and `ExitPlanMode` tool calls remain waiting until their matching results arrive. A missing stop reason never means completion. No Claude hooks are installed. Clicking a Claude row sets `claudeCode.preferredLocation` to `sidebar`.
 
 Claude thread IDs use a `claude:` namespace. Rows open `vscode://local.codex-pet-panel/claude?session=<uuid>`; Codex links are unchanged. The registered URI handler validates the session against tracked workspace chats and calls `claude-vscode.editor.open` with `programmatic: honor-preferred-location`. Claude prioritizes existing editor tabs: only a uniquely matched, settled, clean tab is closed after the session command confirms its identity. Running, unknown, dirty, or ambiguous tabs stay open; the user can close them after completion and click again. URI activation requires an extension-host reload after upgrading. The link handler and transcript shape were inspected in Claude Code VS Code **2.1.268**. This is an internal integration and may require updates if the extension changes. CLI-only and cloud-only sessions are excluded in this release. See [Claude Code's VS Code documentation](https://code.claude.com/docs/en/vs-code) for its session UI.
 
 Protocol 4 adds the built-in pet and combined agent snapshots. The helper writes a small `tracked-threads.json` ID list so both monitors can recover older terminal records after restart, without adding unrelated historical chats. Candidate discovery is bounded to 128 recent files per provider. Missing or inaccessible records still remain unknown.
+
+## Workspace grouping (0.8.0)
+
+Each window includes a workspace descriptor in protocol 6 snapshots: a SHA-256 identity derived from the workspace-file URI (or sorted folder URIs) and the VS Code workspace display name. Multi-root workspaces stay together; equally named folders at different locations stay distinct. The native helper retains workspace metadata with each chat and preserves stable ownership when multiple windows report the same session. Status precedence remains independent of group ownership. Older snapshots remain readable and untagged chats appear under Other chats.
+
+The extended list inserts collapsible group headers, scrolls up to 12 visible entries, and keeps chat opening/removal hit targets separate from headers. Compact mode keeps its existing ordering and eight-row limit. Grouping and folded workspace IDs persist in local preferences.
