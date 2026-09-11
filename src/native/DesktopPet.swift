@@ -2,6 +2,59 @@ import AppKit
 import Darwin
 import Carbon
 
+enum PetLanguage: String, CaseIterable {
+    case english = "en", turkish = "tr"
+    init(preference: String?) { self = PetLanguage(rawValue: preference ?? "") ?? .english }
+    func text(_ key: String) -> String { self == .turkish ? Self.translations[key] ?? key : key }
+    private static let translations: [String: String] = [
+        "Chats": "Sohbetler",
+        "Completed": "Tamamlandı",
+        "No active chats yet": "Henüz aktif sohbet yok",
+        "Expand chat list": "Sohbet listesini aç",
+        "Collapse chat list": "Sohbet listesini daralt",
+        "Drag to resize": "Boyutlandırmak için sürükle",
+        "Click to open in VS Code": "VS Code'da açmak için tıkla",
+        "Click to pet · Drag to move · Right-click for options": "Sevmek için tıkla · Taşımak için sürükle · Seçenekler için sağ tıkla",
+        "Running": "Çalışıyor",
+        "Waiting for your reply": "Yanıtın bekleniyor",
+        "Something went wrong": "Bir sorun oluştu",
+        "No update": "Güncelleme yok",
+        "Idle": "Bekliyor",
+        "Hide/show with ⌃⌥⌘P": "⌃⌥⌘P ile gizle/göster",
+        "Shortcut in use; hide/show from this menu.": "Kısayol başka uygulamada kullanımda; bu menüden gizle/göster.",
+        "Unpin chat": "Sabitlemeyi kaldır",
+        "Pin chat": "Sohbeti sabitle",
+        "Remove from list": "Listeden kaldır",
+        "Show pet": "Peti göster",
+        "Hide pet": "Peti gizle",
+        "Completion sound and animation are paused while hidden.": "Gizliyken bitiş sesi ve animasyonu da duraklatılır.",
+        "Return to VS Code": "VS Code'a dön",
+        "Pets": "Petler",
+        "Wake up": "Uyandır",
+        "Sleep": "Uyut",
+        "Appearance": "Görünüm",
+        "Text size": "Yazı boyutu",
+        "Pet size": "Pet boyutu",
+        "List opacity": "Liste opaklığı",
+        "Snap to edges": "Kenarlara hizala",
+        "Notifications": "Bildirimler",
+        "Completion animation": "Bitiş animasyonu",
+        "Completion sound": "Bitişte ses çal",
+        "Expand list": "Listeyi aç",
+        "Collapse list": "Listeyi daralt",
+        "Clear completed chats": "Tamamlananları temizle",
+        "Restore dismissed chats": "Kaldırılan sohbetleri göster",
+        "Language": "Dil",
+        "%d running · %d waiting": "%d çalışıyor · %d bekliyor",
+        "%d running · %d chats": "%d çalışıyor · %d sohbet",
+        "%d running · %d chat": "%d çalışıyor · %d sohbet",
+        "%d chats completed": "%d sohbet tamamlandı",
+        "s": "sn",
+        "min": "dk",
+        "h": "sa",
+    ]
+}
+
 struct PetAsset: Codable { let id: String; let name: String; let file: String }
 struct ThreadActivity: Codable, Equatable {
     let id: String
@@ -46,6 +99,8 @@ final class DashboardView: NSView {
     var moving = false
     var resizeStartFrame = NSRect.zero
     var rowHeight: CGFloat { max(30, (owner?.textSize ?? 11.5) + 18) }
+    var language: PetLanguage { owner?.language ?? .english }
+    func text(_ key: String) -> String { language.text(key) }
     var rows: [ThreadActivity] { owner?.displayThreads ?? [] }
     var collapsed: Bool { owner?.collapsed ?? false }
     var logicalWidth: CGFloat { collapsed ? max(180, 112 * (owner?.petScale ?? 1) + 58) : 340 }
@@ -107,9 +162,9 @@ final class DashboardView: NSView {
         NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
         NSColor.white.withAlphaComponent(0.12).setStroke(); card.lineWidth = 0.7; card.stroke()
         let running = rows.filter { $0.status == "running" }.count, waiting = rows.filter { $0.status == "waiting" }.count
-        let summary = waiting > 0 ? "\(running) çalışıyor · \(waiting) bekliyor" : "\(running) çalışıyor · \(rows.count) sohbet"
+        let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
         let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        label(collapsed ? summary : celebrating ? (owner?.completionText ?? "Tamamlandı") : "Sohbetler · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 47, height: 17), size: 10, color: celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+        label(collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text("Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - 47, height: 17), size: 10, color: celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
         label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
         clampScroll()
         for i in 0..<visibleCount {
@@ -119,10 +174,10 @@ final class DashboardView: NSView {
             let size = owner?.textSize ?? 11.5
             let pinned = owner?.pinned.contains(thread.id) ?? false
             label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - size * 0.7, width: bounds.width - 118, height: size + 5), size: size, color: .white)
-            label(DesktopPet.durationText(thread), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
+            label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
             if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
         }
-        if rows.isEmpty && !collapsed { label("Henüz aktif sohbet yok", in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
+        if rows.isEmpty && !collapsed { label(text("No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
         if rows.count > visibleCount && !collapsed {
             let track = cardHeight - 22, thumb = max(18, track * CGFloat(visibleCount) / CGFloat(rows.count))
             let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(rows.count - visibleCount))
@@ -157,10 +212,10 @@ final class DashboardView: NSView {
     override func mouseMoved(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
         hoveredRow = rowAt(p)?.id
-        if collapseRect.contains(p) { toolTip = collapsed ? "Sohbet listesini aç" : "Sohbet listesini daralt" }
-        else if resizeHandleRect.contains(p) { toolTip = "Boyutlandırmak için sürükle" }
-        else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row.status)) · VS Code'da açmak için tıkla" }
-        else { toolTip = "Sevmek için tıkla · Taşımak için sürükle · Seçenekler için sağ tıkla" }
+        if collapseRect.contains(p) { toolTip = collapsed ? text("Expand chat list") : text("Collapse chat list") }
+        else if resizeHandleRect.contains(p) { toolTip = text("Drag to resize") }
+        else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row.status, language: language)) · " + text("Click to open in VS Code") }
+        else { toolTip = text("Click to pet · Drag to move · Right-click for options") }
         guard let owner, !owner.sleeping, owner.overallStatus == "idle", spriteRect.contains(p), !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { needsDisplay = true; return }
         let angle = (atan2(p.x - spriteRect.midX, p.y - spriteRect.midY) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
         let index = Int((angle / 22.5).rounded()) % 16
@@ -230,6 +285,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var dashboardScale: CGFloat = 1
     var collapsed = false, snapEnabled = true, completionAnimation = true, soundEnabled = false
     var presentationHidden = false
+    var language = PetLanguage.english
+    func text(_ key: String) -> String { language.text(key) }
     var textSize: CGFloat = 11.5, petScale: CGFloat = 1, listOpacity: CGFloat = 0.91
     var pinned = Set<String>()
     var celebrationUntil: Double = 0, completionText = ""
@@ -239,12 +296,13 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var hotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?
     var animation: Timer?, polling: Timer?
     var overallStatus: String { displayThreads.contains { $0.status == "waiting" } ? "waiting" : displayThreads.contains { $0.status == "running" } ? "running" : displayThreads.contains { $0.status == "failed" } ? "failed" : !displayThreads.isEmpty && displayThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
-    static func statusText(_ status: String) -> String { ["running": "Çalışıyor", "waiting": "Yanıtın bekleniyor", "ready": "Tamamlandı", "failed": "Bir sorun oluştu", "unknown": "Güncelleme yok", "idle": "Bekliyor"][status] ?? "Bekliyor" }
-    static func durationText(_ thread: ThreadActivity, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
+    static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "idle": "Idle"][status] ?? "Idle") }
+    static func durationText(_ thread: ThreadActivity, language: PetLanguage = .english, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
         guard let start = thread.startedAt, start > 0 else { return "–" }
         let end = thread.finishedAt ?? (thread.status == "unknown" ? thread.lastEventAt : now)
         let seconds = max(0, Int((end - start) / 1000))
-        return seconds < 60 ? "\(seconds) sn" : seconds < 3600 ? "\(seconds / 60) dk" : "\(seconds / 3600) sa"
+        let value = seconds < 60 ? seconds : seconds < 3600 ? seconds / 60 : seconds / 3600
+        return "\(value) " + language.text(seconds < 60 ? "s" : seconds < 3600 ? "min" : "h")
     }
     init(directory: URL, testing: Bool) { self.directory = directory; self.testing = testing }
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -252,6 +310,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         lockFD = Darwin.open(directory.appendingPathComponent("desktop.lock").path, O_CREAT | O_RDWR, 0o600)
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
         if !testing {
+            language = PetLanguage(preference: defaults.string(forKey: "language"))
             collapsed = defaults.bool(forKey: "collapsed"); soundEnabled = defaults.bool(forKey: "soundEnabled")
             snapEnabled = defaults.object(forKey: "snapEnabled") == nil || defaults.bool(forKey: "snapEnabled")
             completionAnimation = defaults.object(forKey: "completionAnimation") == nil || defaults.bool(forKey: "completionAnimation")
@@ -273,7 +332,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             if let data = defaults.data(forKey: "retainedThreads"), let saved = try? JSONDecoder().decode([ThreadActivity].self, from: data) { for thread in saved { retained[thread.id] = thread; order.append(thread.id) } }
         }
         panel = PetPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 174), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "Agent Pet — Sohbetler"; panel.level = .floating; panel.hidesOnDeactivate = false
+        panel.title = "Agent Pet — " + text("Chats"); panel.level = .floating; panel.hidesOnDeactivate = false
         panel.isFloatingPanel = true; panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false; panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.acceptsMouseMovedEvents = true
         view = DashboardView(frame: NSRect(x: 0, y: 0, width: 340, height: 174)); view.owner = self
@@ -339,7 +398,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         }
         view.clampScroll(); resizeToList(); view.needsDisplay = true
         panel.invalidateCursorRects(for: view)
-        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.title): \(Self.statusText($0.status))" }.joined(separator: ". "))
+        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.title): \(Self.statusText($0.status, language: language))" }.joined(separator: ". "))
         savePreferences()
     }
     func resizeToList() {
@@ -394,7 +453,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         guard !completed.isEmpty, !presentationHidden else { return }
         if completionAnimation {
             notificationCount += 1; celebrationUntil = Date.timeIntervalSinceReferenceDate + 5
-            completionText = completed.count == 1 ? "✓ " + completed[0].title : "✓ \(completed.count) sohbet tamamlandı"
+            completionText = completed.count == 1 ? "✓ " + completed[0].title : "✓ " + String(format: text("%d chats completed"), completed.count)
         }
         if soundEnabled && !testing { NSSound(named: "Glass")?.play() }
     }
@@ -438,7 +497,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func setupMenuBarAndHotKey() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem?.button?.image = NSImage(systemSymbolName: "pawprint", accessibilityDescription: "Agent Pet")
-        statusItem?.button?.toolTip = "Agent Pet · ⌃⌥⌘P ile gizle/göster"
+        statusItem?.button?.toolTip = "Agent Pet · " + text("Hide/show with ⌃⌥⌘P")
         updateStatusMenu()
         var event = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { _, _, context in
@@ -446,10 +505,19 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             Unmanaged<DesktopPet>.fromOpaque(context).takeUnretainedValue().togglePresentation()
             return noErr
         }, 1, &event, Unmanaged.passUnretained(self).toOpaque(), &hotKeyHandler)
-        let result = RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey | cmdKey), EventHotKeyID(signature: 0x43505450, id: 1), GetApplicationEventTarget(), 0, &hotKey)
-        if result != noErr { statusItem?.button?.toolTip = "Agent Pet · Kısayol başka uygulamada kullanımda; bu menüden gizle/göster." }
+        _ = RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey | cmdKey), EventHotKeyID(signature: 0x43505450, id: 1), GetApplicationEventTarget(), 0, &hotKey)
+        updateStatusMenu()
     }
-    func updateStatusMenu() { statusItem?.menu = petMenu(thread: nil) }
+    func updateStatusMenu() {
+        statusItem?.menu = petMenu(thread: nil)
+        statusItem?.button?.toolTip = "Agent Pet · " + text(hotKey == nil ? "Shortcut in use; hide/show from this menu." : "Hide/show with ⌃⌥⌘P")
+    }
+    @objc func chooseLanguage(_ item: NSMenuItem) {
+        guard let code = item.representedObject as? String, let choice = PetLanguage(rawValue: code) else { return }
+        language = choice; celebrationUntil = 0
+        panel.title = "Agent Pet — " + text("Chats"); view.toolTip = nil
+        savePreferences(); refresh(); updateStatusMenu()
+    }
     @objc func toggleSleep() { sleeping.toggle(); sleepAt = Date().timeIntervalSince1970 * 1000; savePreferences(); step(); updateStatusMenu() }
     @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react(); updateStatusMenu() } }
     @objc func openCode() {
@@ -489,27 +557,27 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         if let thread {
             let heading = NSMenuItem(title: thread.title, action: nil, keyEquivalent: "")
             heading.isEnabled = false; menu.addItem(heading)
-            action(pinned.contains(thread.id) ? "Sabitlemeyi kaldır" : "Sohbeti sabitle", #selector(togglePinned(_:)), in: menu, value: thread.id)
-            action("Listeden kaldır", #selector(dismissMenuRow(_:)), in: menu, value: thread.id)
+            action(pinned.contains(thread.id) ? text("Unpin chat") : text("Pin chat"), #selector(togglePinned(_:)), in: menu, value: thread.id)
+            action(text("Remove from list"), #selector(dismissMenuRow(_:)), in: menu, value: thread.id)
             menu.addItem(.separator())
         }
-        let visibility = action(presentationHidden ? "Peti göster" : "Peti gizle", #selector(togglePresentation), in: menu)
+        let visibility = action(presentationHidden ? text("Show pet") : text("Hide pet"), #selector(togglePresentation), in: menu)
         visibility.keyEquivalent = "p"; visibility.keyEquivalentModifierMask = [.control, .option, .command]
-        visibility.toolTip = "Gizliyken bitiş sesi ve animasyonu da duraklatılır."
-        action("VS Code'a dön", #selector(openCode), in: menu)
+        visibility.toolTip = text("Completion sound and animation are paused while hidden.")
+        action(text("Return to VS Code"), #selector(openCode), in: menu)
         menu.addItem(.separator())
 
-        let petsMenu = group("Petler")
+        let petsMenu = group(text("Pets"))
         let names = ["bsod": "BSOD", "null-signal": "Null Signal"]
         for asset in assets {
             let item = action(names[asset.id] ?? asset.name, #selector(choosePet(_:)), in: petsMenu, value: asset.id)
             item.state = asset.id == selected ? .on : .off
         }
         petsMenu.addItem(.separator())
-        action(sleeping ? "Uyandır" : "Uyut", #selector(toggleSleep), in: petsMenu)
+        action(sleeping ? text("Wake up") : text("Sleep"), #selector(toggleSleep), in: petsMenu)
 
-        let appearanceMenu = group("Görünüm")
-        for (title, key, values, current) in [("Yazı boyutu", "textSize", [10.0, 11.5, 13, 15], Double(textSize)), ("Pet boyutu", "petScale", [0.75, 1, 1.25, 1.5], Double(petScale)), ("Liste opaklığı", "listOpacity", [0.35, 0.6, 0.8, 0.91, 1], Double(listOpacity))] {
+        let appearanceMenu = group(text("Appearance"))
+        for (title, key, values, current) in [(text("Text size"), "textSize", [10.0, 11.5, 13, 15], Double(textSize)), (text("Pet size"), "petScale", [0.75, 1, 1.25, 1.5], Double(petScale)), (text("List opacity"), "listOpacity", [0.35, 0.6, 0.8, 0.91, 1], Double(listOpacity))] {
             let group = NSMenuItem(title: title, action: nil, keyEquivalent: ""), submenu = NSMenu(title: title)
             for value in values {
                 let label = key == "textSize" ? "\(value) pt" : "\(Int(value * 100))%"
@@ -519,19 +587,25 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             group.submenu = submenu; appearanceMenu.addItem(group)
         }
         appearanceMenu.addItem(.separator())
-        let snap = action("Kenarlara hizala", #selector(toggleSetting(_:)), in: appearanceMenu, value: "snap")
+        let snap = action(text("Snap to edges"), #selector(toggleSetting(_:)), in: appearanceMenu, value: "snap")
         snap.state = snapEnabled ? .on : .off
 
-        let notifications = group("Bildirimler")
-        for (title, key, enabled) in [("Bitiş animasyonu", "animation", completionAnimation), ("Bitişte ses çal", "sound", soundEnabled)] {
+        let notifications = group(text("Notifications"))
+        for (title, key, enabled) in [(text("Completion animation"), "animation", completionAnimation), (text("Completion sound"), "sound", soundEnabled)] {
             let item = action(title, #selector(toggleSetting(_:)), in: notifications, value: key)
             item.state = enabled ? .on : .off
         }
-        let chats = group("Sohbetler")
-        action(collapsed ? "Listeyi aç" : "Listeyi daralt", #selector(toggleCollapsed), in: chats)
+        let chats = group(text("Chats"))
+        action(collapsed ? text("Expand list") : text("Collapse list"), #selector(toggleCollapsed), in: chats)
         chats.addItem(.separator())
-        action("Tamamlananları temizle", #selector(clearCompleted), in: chats)
-        action("Kaldırılan sohbetleri göster", #selector(restoreDismissed), in: chats)
+        action(text("Clear completed chats"), #selector(clearCompleted), in: chats)
+        action(text("Restore dismissed chats"), #selector(restoreDismissed), in: chats)
+        menu.addItem(.separator())
+        let languages = group(text("Language"))
+        for choice in PetLanguage.allCases {
+            let item = action(choice == .english ? "English" : "Türkçe", #selector(chooseLanguage(_:)), in: languages, value: choice.rawValue)
+            item.state = choice == language ? .on : .off
+        }
         return menu
     }
     func restorePosition() {
@@ -545,6 +619,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     }
     func savePosition() { if !testing, let panel { defaults.set(panel.frame.minX, forKey: "dashboardX"); defaults.set(panel.frame.minY, forKey: "dashboardY") } }
     func savePreferences() { if !testing {
+        defaults.set(language.rawValue, forKey: "language")
         for (key, value) in ["collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
         for (key, value) in ["textSize": textSize, "petScale": petScale, "listOpacity": listOpacity, "dashboardScale": dashboardScale] { defaults.set(value, forKey: key) }
         defaults.set(Array(pinned).sorted(), forKey: "pinned")
@@ -557,6 +632,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func featureTests() -> [String: Any] {
         celebrationUntil = 0
         let original = displayThreads
+        let originalLanguage = language
+        let englishDefault = language == .english && PetLanguage(preference: nil) == .english && PetLanguage(preference: "invalid") == .english
+        let languageItem = NSMenuItem(); languageItem.representedObject = "tr"; chooseLanguage(languageItem)
+        let turkishWorks = petMenu(thread: nil).items.contains { $0.title == "Petler" } && Self.statusText("unknown", language: language) == "Güncelleme yok"
+        capture("dashboard-turkish-test.png")
+        languageItem.representedObject = "en"; chooseLanguage(languageItem)
+        let englishWorks = petMenu(thread: nil).items.contains { $0.title == "Pets" } && Self.statusText("waiting", language: language) == "Waiting for your reply"
+        language = originalLanguage; refresh(); updateStatusMenu()
+        let languageWorks = englishDefault && turkishWorks && englishWorks && displayThreads == original
         let beforeWidth = panel.frame.width
         toggleCollapsed()
         let collapseWorks = view.visibleCount == 0 && displayThreads.count == original.count && panel.frame.width < beforeWidth
@@ -579,14 +663,14 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let snapWorks = panel.frame.origin == screen.origin
         panel.setFrameOrigin(near); snapEnabled = false; snapToEdge()
         let snapOffWorks = panel.frame.origin == near; snapEnabled = true
-        let sample = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Yanıtını bekleyen sohbet", status: "waiting", changedAt: 1000, lastEventAt: 1000, startedAt: Date().timeIntervalSince1970 * 1000 - 120000)
+        let sample = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Waiting for your reply", status: "waiting", changedAt: 1000, lastEventAt: 1000, startedAt: Date().timeIntervalSince1970 * 1000 - 120000)
         displayThreads = [sample] + original
         resizeToList(); capture("dashboard-waiting-test.png")
         let waitingWorks = overallStatus == "waiting"
         displayThreads = original; resizeToList()
         var running = sample; running = ThreadActivity(id: sample.id, title: sample.title, status: "running", changedAt: 1000, lastEventAt: 1000, startedAt: 1000)
         let completed = ThreadActivity(id: sample.id, title: sample.title, status: "ready", changedAt: 121000, lastEventAt: 121000, startedAt: 1000, finishedAt: 121000)
-        let durationWorks = Self.durationText(running, now: 121000) == "2 dk" && Self.durationText(completed, now: 900000) == "2 dk"
+        let durationWorks = Self.durationText(running, now: 121000) == "2 min" && Self.durationText(completed, now: 900000) == "2 min" && Self.durationText(completed, language: .turkish, now: 900000) == "2 dk"
         didObserve = false; observedThreads = [:]; notificationCount = 0
         observeCompletions([completed]); let startupQuiet = notificationCount == 0
         observeCompletions([running]); observeCompletions([completed]); observeCompletions([completed])
@@ -604,7 +688,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

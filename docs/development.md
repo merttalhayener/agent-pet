@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.5.4.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.6.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -74,3 +74,7 @@ Version 0.5.2 removes the former sidebar webview and its contributed views. `cod
 Protocol 3 requires newly appended progress before a historical running turn is reported as live. Settings changes and user message records do not confirm agent progress. Running turns with no progress for 60 seconds become unknown; explicit terminal events are still authoritative. This is an activity signal, not a guarantee of backend health or chat UI delivery.
 
 Closing the native panel hides it while retaining the menu bar entry and global shortcut. VS Code also provides a persistent status bar command to relaunch the helper. Showing the pet preserves individually dismissed rows.
+
+## Interface languages
+
+The native helper defaults to English independently of the macOS locale. `PetLanguage` contains the English/Turkish strings for menus, dashboard labels, durations, tooltips, and accessibility descriptions. The Language menu persists an `en` or `tr` preference in the existing native UserDefaults suite. Missing or invalid preferences fall back to English. Chat titles and character names are not translated. VS Code command labels and extension messages are English.

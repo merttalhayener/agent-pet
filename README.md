@@ -11,7 +11,7 @@ A desktop pet that shows what's running, what's finished, and which chat needs y
 ![Codex support](https://img.shields.io/badge/Supports-Codex_in_VS_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.4)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.6.0)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
@@ -43,26 +43,30 @@ Keep working in another app while Agent Pet follows your local conversations. Cl
 | **Agent** | Codex in VS Code |
 | **Other agents / platforms** | Not supported yet |
 
-The current interface is Turkish. VS Code must remain running for live updates. Agent Pet is an independent community project.
+**English is the default interface language; Turkish is also available.** VS Code must remain running for live updates. Agent Pet is an independent community project.
 
 ## Get started
 
 1. Install the official **Codex** extension in VS Code and sign in.
-2. [Download **agent-pet-0.5.4.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.4/agent-pet-0.5.4.vsix).
+2. [Download **agent-pet-0.6.0.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.6.0/agent-pet-0.6.0.vsix).
 3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
 4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 **Click a row** to open a chat. **Drag the pet** to move it. **Drag ↗↙** to resize. **Right-click** for settings. Use the list's chevron to collapse or expand.
 
+### Language
+
+Use the paw menu or right-click the pet → **Language → English / Türkçe**. The desktop interface changes immediately and remembers your choice after restart. Existing installations also start in English until a language is selected. Conversation titles keep their original text.
+
 ### Closed the pet?
 
 Click **Agent Pet** in VS Code's bottom status bar to bring it back. You can also press **Cmd + Shift + P** and run **Agent Pet: Show Desktop Pet**.
 
-Closing the floating pet keeps the macOS menu bar paw available: choose **Peti göster**, or press **Ctrl + Option + Cmd + P**. If the helper has quit completely, use the VS Code button or command.
+Closing the floating pet keeps the macOS menu bar paw available: choose **Show pet**, or press **Ctrl + Option + Cmd + P**. If the helper has quit completely, use the VS Code button or command.
 
 ### A chat looks stuck after reload?
 
-Agent Pet waits for a new activity record before showing a reattached chat as running. After 60 seconds without progress, its spinner becomes **Güncelleme yok** (no update). The row stays visible and resumes automatically when new activity arrives. Only an explicit completion record produces a checkmark.
+Agent Pet waits for a new activity record before showing a reattached chat as running. After 60 seconds without progress, its spinner becomes **No update**. The row stays visible and resumes automatically when new activity arrives. Only an explicit completion record produces a checkmark.
 
 This tracks local agent activity; it cannot tell whether the Codex chat UI is receiving messages. A quiet long-running tool can also show “no update.”
 

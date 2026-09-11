@@ -2,7 +2,7 @@
   "name": "codex-pet-panel",
   "displayName": "Agent Pet",
   "description": "A floating desktop companion for AI coding agents. Currently supports Codex in VS Code.",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {

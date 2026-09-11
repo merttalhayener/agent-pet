@@ -11,7 +11,7 @@ Hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor? Masaüstündek
 ![Codex desteği](https://img.shields.io/badge/Destek-Codex_%2B_VS_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Durum-beta-d97706?style=flat-square)
 
-**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.4)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.6.0)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Çalışan ve tamamlanan sohbetleri gösteren Agent Pet" width="420">
 
@@ -43,26 +43,30 @@ Başka uygulamada çalışırken yerel sohbetlerini takip et. Satıra tıklayıp
 | **Ajan** | VS Code içindeki Codex |
 | **Diğer ajanlar / platformlar** | Henüz desteklenmiyor |
 
-Arayüz Türkçedir. Canlı güncellemeler için VS Code açık kalmalıdır. Agent Pet bağımsız bir topluluk projesidir.
+**Varsayılan arayüz dili İngilizcedir; Türkçe de desteklenir.** Canlı güncellemeler için VS Code açık kalmalıdır. Agent Pet bağımsız bir topluluk projesidir.
 
 ## Kurulum
 
 1. VS Code'a resmî **Codex** eklentisini kur ve giriş yap.
-2. [**agent-pet-0.5.4.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.4/agent-pet-0.5.4.vsix).
+2. [**agent-pet-0.6.0.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.6.0/agent-pet-0.6.0.vsix).
 3. VS Code'da **Extensions → ⋯ → Install from VSIX…** yolundan dosyayı seç.
 4. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
 **Satıra tıkla:** Sohbeti aç. **Peti sürükle:** Taşı. **↗↙ tutamacını çek:** Boyutlandır. **Sağ tıkla:** Ayarları aç. Listenin başlığındaki okla daralt veya genişlet.
 
+### Dil seçimi
+
+Pati menüsünden veya pete sağ tıklayarak **Language → Türkçe** seç. İngilizceye dönmek için **Dil → English** yolunu kullan. Değişiklik anında uygulanır ve yeniden açıldığında korunur. Önceki sürümden güncelleyenler için de ilk dil İngilizcedir. Sohbet başlıkları özgün haliyle kalır.
+
 ### Peti kapattın mı?
 
 VS Code'un alt durum çubuğundaki **Agent Pet** düğmesine tıkla. Alternatif olarak **Cmd + Shift + P** ile **Agent Pet: Show Desktop Pet** komutunu çalıştır.
 
-Peti kapatınca macOS menü çubuğundaki pati kalır: **Peti göster** seçeneğini veya **Ctrl + Option + Cmd + P** kısayolunu kullan. Yardımcı uygulama tamamen kapandıysa VS Code'daki düğme ya da komut yeniden başlatır.
+Peti kapatınca macOS menü çubuğundaki pati kalır: **Show pet / Peti göster** seçeneğini veya **Ctrl + Option + Cmd + P** kısayolunu kullan. Yardımcı uygulama tamamen kapandıysa VS Code'daki düğme ya da komut yeniden başlatır.
 
 ### Reload sonrası sohbet takılmış mı görünüyor?
 
-Yeniden bağlanılan sohbet, yeni bir etkinlik kaydı gelene kadar çalışıyor sayılmaz. 60 saniye ilerleme kaydı gelmezse halka **Güncelleme yok** durumuna döner. Sohbet listede kalır; yeni etkinlik gelince otomatik güncellenir. Tik yalnızca açık bir tamamlanma kaydıyla gösterilir.
+Yeniden bağlanılan sohbet, yeni bir etkinlik kaydı gelene kadar çalışıyor sayılmaz. 60 saniye ilerleme kaydı gelmezse halka **No update / Güncelleme yok** durumuna döner. Sohbet listede kalır; yeni etkinlik gelince otomatik güncellenir. Tik yalnızca açık bir tamamlanma kaydıyla gösterilir.
 
 Pet yerel ajan etkinliğini takip eder; Codex sohbet ekranına mesaj ulaşıp ulaşmadığını göremez. Uzun süren sessiz bir işlem de “Güncelleme yok” gösterebilir.
 

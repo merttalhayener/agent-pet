@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Added English and Turkish desktop interface languages, with English as the default.
+- Added a persistent Language menu; switching updates menus, dashboard labels, durations, tooltips, and accessibility descriptions immediately.
+- Updated VS Code messages to English and refreshed the README's language instructions and screenshots.
+
 ## 0.5.4
 
 - Shortened the menu: show/hide and return to VS Code come first; pets, appearance, notifications, and chats have dedicated submenus.

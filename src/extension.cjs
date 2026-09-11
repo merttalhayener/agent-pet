@@ -28,7 +28,7 @@ async function activate(context) {
   if (!pets.some(p => p.id === selected)) selected = pets[0]?.id || 'codex';
   function broadcast() { if (desktop) void desktop.write().catch(() => {}); }
   async function choose() {
-    const pick = await vscode.window.showQuickPick(pets.map(p => ({ label: p.name, id: p.id })), { title: 'Pet seç', placeHolder: 'Masaüstü arkadaşını seç' });
+    const pick = await vscode.window.showQuickPick(pets.map(p => ({ label: p.name, id: p.id })), { title: 'Choose pet', placeHolder: 'Choose your desktop companion' });
     if (!pick) return;
     selected = pick.id; selectedAt = Date.now();
     await context.globalState.update('pet', selected);
@@ -36,13 +36,13 @@ async function activate(context) {
     broadcast();
   }
   async function open() {
-    if (!desktop) { void vscode.window.showInformationMessage('Masaüstü peti bu sürümde macOS için kullanılabilir.'); return; }
+    if (!desktop) { void vscode.window.showInformationMessage('The desktop pet is available on macOS in this release.'); return; }
     await desktop.start(true).catch(error => desktop.reportError(error));
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
       () => ({ protocolVersion: 3, selected, sleeping, selectedAt, sleepAt, activity, pets }),
-      error => { void vscode.window.showErrorMessage(`Masaüstü peti açılamadı: ${error.message}`); });
+      error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
   }
@@ -53,7 +53,7 @@ async function activate(context) {
   if (desktop) {
     const entry = vscode.window.createStatusBarItem('agentPet.open', vscode.StatusBarAlignment.Right, 10);
     entry.name = 'Agent Pet'; entry.text = '$(smiley) Agent Pet';
-    entry.tooltip = 'Masaüstü petini aç / geri getir'; entry.command = 'codexPet.showDesktop';
+    entry.tooltip = 'Open or restore the desktop pet'; entry.command = 'codexPet.showDesktop';
     entry.show(); context.subscriptions.push(entry);
   }
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.hideDesktop', async () => {
