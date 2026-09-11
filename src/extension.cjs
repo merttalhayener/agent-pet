@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
-const { ActivityMonitor } = require('./activity.cjs');
+const { AgentActivityMonitor } = require('./agent-activity.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
 
 const PETS = [
@@ -21,11 +21,11 @@ async function activate(context) {
   const codex = vscode.extensions.getExtension('openai.chatgpt');
   const assetDir = codex && path.join(codex.extensionPath, 'webview', 'assets');
   const available = await fs.readdir(assetDir || '').catch(() => []);
-  const pets = PETS.flatMap(([id, name]) => {
+  const pets = [{ id: 'agent-pet', name: 'Agent Pet', file: '' }, ...PETS.flatMap(([id, name]) => {
     const file = available.find(f => f.startsWith(`${id}-spritesheet-`) && f.endsWith('.webp'));
     return file ? [{ id, name, file: path.join(assetDir, file) }] : [];
-  });
-  if (!pets.some(p => p.id === selected)) selected = pets[0]?.id || 'codex';
+  })];
+  if (!pets.some(p => p.id === selected)) { selected = 'agent-pet'; selectedAt = Date.now(); }
   function broadcast() { if (desktop) void desktop.write().catch(() => {}); }
   async function choose() {
     const pick = await vscode.window.showQuickPick(pets.map(p => ({ label: p.name, id: p.id })), { title: 'Choose pet', placeHolder: 'Choose your desktop companion' });
@@ -41,7 +41,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 3, selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 4, selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -66,9 +66,10 @@ async function activate(context) {
     await desktop.start();
     await fs.writeFile(path.join(desktop.directory, 'desktop-presentation-request'), '');
   }));
-  const monitor = new ActivityMonitor(path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'sessions'),
+  const monitor = new AgentActivityMonitor(path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'sessions'),
+    path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects'),
     () => vscode.workspace.workspaceFolders?.filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath) || [],
-    next => { if (JSON.stringify(activity) !== JSON.stringify(next)) { activity = next; broadcast(); } });
+    next => { if (JSON.stringify(activity) !== JSON.stringify(next)) { activity = next; broadcast(); } }, path.join(context.globalStorageUri.fsPath, 'desktop'));
   monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true);
   monitor.start(); context.subscriptions.push(monitor);
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {

@@ -58,6 +58,9 @@ enum PetLanguage: String, CaseIterable {
 struct PetAsset: Codable { let id: String; let name: String; let file: String }
 struct ThreadActivity: Codable, Equatable {
     let id: String
+    var isClaude: Bool { id.hasPrefix("claude:") }
+    var sessionID: String { isClaude ? String(id.dropFirst(7)) : id }
+    var agentName: String { isClaude ? "Claude Code" : "Codex" }
     let title: String
     let status: String
     let changedAt: Double
@@ -152,12 +155,29 @@ final class DashboardView: NSView {
             label(status == "failed" || status == "waiting" ? "!" : status == "unknown" ? "?" : "–", in: NSRect(x: center.x - 5, y: center.y - 7, width: 10, height: 15), size: 10, color: color, centered: true)
         }
     }
+    func drawBuiltInPet() {
+        let r = spriteRect
+        func part(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ color: NSColor, _ radius: CGFloat = 5) {
+            color.setFill()
+            NSBezierPath(roundedRect: NSRect(x: r.minX + x * r.width / 112, y: r.minY + y * r.height / 121, width: w * r.width / 112, height: h * r.height / 121), xRadius: radius, yRadius: radius).fill()
+        }
+        let metal = NSColor(calibratedRed: 0.77, green: 0.80, blue: 0.94, alpha: owner?.sleeping == true ? 0.62 : 1)
+        let accent = NSColor(calibratedRed: 0.48, green: 0.42, blue: 0.96, alpha: 1)
+        part(34, 3, 17, 19, metal); part(61, 3, 17, 19, metal)
+        part(28, 18, 56, 41, metal, 10); part(16, 25, 11, 27, metal); part(85, 25, 11, 27, metal)
+        part(52, 99, 8, 14, metal, 3); part(49, 110, 14, 10, accent)
+        part(16, 51, 80, 53, metal, 14); part(23, 58, 66, 38, .init(calibratedWhite: 0.13, alpha: 1), 10)
+        let blink = owner?.sleeping == true || (owner?.tick ?? 0) % 70 > 66
+        part(36, 74, 8, blink ? 3 : 11, accent, 3); part(67, 74, 8, blink ? 3 : 11, accent, 3)
+        part(49, 65, 14, 3, .white, 2); part(47, 29, 18, 17, accent, 5)
+    }
     override func draw(_ dirtyRect: NSRect) {
         NSColor.clear.setFill(); bounds.fill(using: .copy)
         if let sheet {
             let source = NSRect(x: CGFloat(spriteColumn) * 192, y: CGFloat(10 - spriteRow) * 208, width: 192, height: 208)
             sheet.draw(in: spriteRect, from: source, operation: .sourceOver, fraction: owner?.sleeping == true ? 0.62 : 1, respectFlipped: false, hints: [.interpolation: NSImageInterpolation.high])
         }
+        if sheet == nil { drawBuiltInPet() }
         let card = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 0.5, width: bounds.width - 1, height: cardHeight - 1), xRadius: 13, yRadius: 13)
         NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
         NSColor.white.withAlphaComponent(0.12).setStroke(); card.lineWidth = 0.7; card.stroke()
@@ -173,7 +193,8 @@ final class DashboardView: NSView {
             indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
             let size = owner?.textSize ?? 11.5
             let pinned = owner?.pinned.contains(thread.id) ?? false
-            label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - size * 0.7, width: bounds.width - 118, height: size + 5), size: size, color: .white)
+            label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 118, height: size + 5), size: size, color: .white)
+            label(thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 118, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
             label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
             if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
         }
@@ -369,13 +390,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let toggleRequest = directory.appendingPathComponent("desktop-presentation-request")
         if FileManager.default.fileExists(atPath: toggleRequest.path) { togglePresentation(); try? FileManager.default.removeItem(at: toggleRequest) }
         let live = snapshots(), now = Date()
-        if let latest = live.max(by: { $0.updatedAt < $1.updatedAt }) { assets = latest.pets }
+        if let latest = live.max(by: { ($0.protocolVersion ?? 0) == ($1.protocolVersion ?? 0) ? $0.updatedAt < $1.updatedAt : ($0.protocolVersion ?? 0) < ($1.protocolVersion ?? 0) }) { assets = latest.pets }
         if let choice = live.max(by: { $0.selectedAt < $1.selectedAt }), choice.selectedAt > selectedAt { selected = choice.selected; selectedAt = choice.selectedAt }
         if let choice = live.max(by: { $0.sleepAt < $1.sleepAt }), choice.sleepAt > sleepAt { sleeping = choice.sleeping; sleepAt = choice.sleepAt }
         let threads = mergeThreads(live)
         for id in live.flatMap({ $0.activity.threads ?? [] }).map({ $0.id }) { lastObserved[id] = now }
         retained = Dictionary(uniqueKeysWithValues: threads.map { ($0.id, $0) })
         if !testing, let data = try? JSONEncoder().encode(threads), defaults.data(forKey: "retainedThreads") != data { defaults.set(data, forKey: "retainedThreads") }
+        let trackedFile = directory.appendingPathComponent("tracked-threads.json")
+        if let data = try? JSONEncoder().encode(threads.map { $0.id }.sorted()), (try? Data(contentsOf: trackedFile)) != data { try? data.write(to: trackedFile, options: .atomic) }
         for thread in threads where !order.contains(thread.id) { order.append(thread.id) }
         displayThreads = threads.compactMap { thread in
             let hiddenAt = dismissed[thread.id] ?? (testing ? 0 : defaults.double(forKey: "dismissed.\(thread.id)"))
@@ -393,12 +416,13 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             return ap == bp ? (order.firstIndex(of: a.id) ?? 0) < (order.firstIndex(of: b.id) ?? 0) : ap < bp
         }
         observeCompletions(displayThreads)
-        if let asset = assets.first(where: { $0.id == selected }) ?? assets.first, asset.file != imagePath, let image = NSImage(contentsOfFile: asset.file) {
+        if selected == "agent-pet" || (!assets.contains { $0.id == selected } && assets.first?.id == "agent-pet") { view.sheet = nil; imagePath = "builtin" }
+        else if let asset = assets.first(where: { $0.id == selected }) ?? assets.first, asset.file != imagePath, let image = NSImage(contentsOfFile: asset.file) {
             image.size = NSSize(width: 1536, height: 2288); view.sheet = image; imagePath = asset.file
         }
         view.clampScroll(); resizeToList(); view.needsDisplay = true
         panel.invalidateCursorRects(for: view)
-        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.title): \(Self.statusText($0.status, language: language))" }.joined(separator: ". "))
+        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.agentName), \($0.title): \(Self.statusText($0.status, language: language))" }.joined(separator: ". "))
         savePreferences()
     }
     func resizeToList() {
@@ -525,7 +549,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"), configuration: config)
     }
     func openThread(_ id: String) {
-        guard UUID(uuidString: id) != nil, let url = URL(string: "vscode://openai.chatgpt/local/\(id)") else { return }
+        let claude = id.hasPrefix("claude:"), session = claude ? String(id.dropFirst(7)) : id
+        guard UUID(uuidString: session) != nil else { return }
+        let target = claude ? "vscode://anthropic.claude-code/open?session=\(session)" : "vscode://openai.chatgpt/local/\(session)"
+        guard let url = URL(string: target) else { return }
         if testing { testOpenedURL = url.absoluteString; return }
         NSWorkspace.shared.open(url)
     }
@@ -632,6 +659,11 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func featureTests() -> [String: Any] {
         celebrationUntil = 0
         let original = displayThreads
+        testOpenedURL = nil
+        openThread("claude:44444444-4444-4444-8444-444444444444")
+        let claudeLinkWorks = testOpenedURL == "vscode://anthropic.claude-code/open?session=44444444-4444-4444-8444-444444444444"
+        testOpenedURL = nil; openThread("claude:invalid?prompt=unwanted")
+        let invalidLinkRejected = testOpenedURL == nil
         let originalLanguage = language
         let englishDefault = language == .english && PetLanguage(preference: nil) == .english && PetLanguage(preference: "invalid") == .english
         let languageItem = NSMenuItem(); languageItem.representedObject = "tr"; chooseLanguage(languageItem)
@@ -688,7 +720,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")
@@ -723,7 +755,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             let thread = displayThreads[i], y = view.rowRect(i).midY
             testOpenedURL = nil
             view.mouseDown(with: mouse(.leftMouseDown, 60, y)); view.mouseUp(with: mouse(.leftMouseUp, 60, y))
-            rowClickOpensChat = rowClickOpensChat && testOpenedURL == "vscode://openai.chatgpt/local/\(thread.id)"
+            let expected = thread.isClaude ? "vscode://anthropic.claude-code/open?session=\(thread.sessionID)" : "vscode://openai.chatgpt/local/\(thread.id)"
+            rowClickOpensChat = rowClickOpensChat && testOpenedURL == expected
         }
         if displayThreads.count > 1 {
             let y = view.rowRect(0).midY
@@ -771,7 +804,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             reopenedChatStaysAfterCompletion = restored && displayThreads.contains { $0.id == sample.id && $0.status == "ready" }
         }
         let raw = initial.map { ["id": $0.id, "title": $0.title, "status": $0.status, "indicator": $0.status == "running" ? "spinner" : $0.status == "ready" ? "check" : "other"] }
-        let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "spriteLoaded": view.sheet != nil, "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
+        let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "spriteLoaded": view.sheet != nil, "builtinPet": imagePath == "builtin", "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
         let clicks: [String: Any] = ["reopenedChatStaysAfterCompletion": reopenedChatStaysAfterCompletion, "dismissedSameTurnStaysHidden": dismissedSameTurnStaysHidden, "bottomCornersStay": bottomCornersStay, "listChangeKeepsCorner": listChangeKeepsCorner, "refreshDoesNotMoveDrag": refreshDoesNotMoveDrag, "cornerResizeWorks": cornerResizeWorks, "refreshPreservesSize": refreshPreservesSize, "minimumWorks": minimumWorks, "maximumWorks": maximumWorks, "rowClickOpensChat": rowClickOpensChat, "dragDoesNotOpen": dragDoesNotOpen, "removeDoesNotOpen": removeDoesNotOpen, "changedRowDoesNotOpen": changedRowDoesNotOpen]
         let features = featureTests()
         if let data = try? JSONSerialization.data(withJSONObject: result.merging(clicks) { _, new in new }.merging(features) { _, new in new }, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: directory.appendingPathComponent("dashboard-test.json")); print(String(data: data, encoding: .utf8)!) }

@@ -6,16 +6,16 @@
 
 - The release helper is built for **Apple Silicon and macOS 26 or later**. Windows, Linux, and Intel Mac desktop helpers are not included.
 - VS Code **1.96.2+** is declared by the extension manifest. The integration was tested with Codex extension **26.908.31748**; it relies on that extension's current sprite layout, conversation links, and local session format.
-- Chat discovery follows recent local Codex activity in the open VS Code workspace. It is not a complete list of open tabs or cloud-only conversations; subagents are excluded.
+- Chat discovery follows recent local Codex and Claude Code activity in the open VS Code workspace. It is not a complete list of open tabs or cloud-only conversations; subagents are excluded.
 - The yellow indicator follows recorded `request_user_input` and `request_user_input_async` calls and their replies. Some permission dialogs are not recorded, so this is **not a complete approval monitor**.
 - A missing update produces an unknown status, never a false completion. Older retained chats without a recoverable start time show a dash instead of a duration.
 - This beta has been tested on the development Mac. Broader device compatibility and Developer ID signing/notarization are not yet provided.
 
 ## Local data and assets
 
-The extension reads local Codex session records and the local thread index, then exchanges chat IDs, titles, timestamps, and statuses with its helper. It does not send these records to a server. The project adds no telemetry or network-based tracking.
+The extension reads local Codex and Claude Code session records and the local thread index, then exchanges chat IDs, titles, timestamps, and statuses with its helper. It does not send these records to a server. The project adds no telemetry or network-based tracking.
 
-Pet artwork is loaded from the user's installed Codex extension. **Sprite sheets are not bundled in the source repository or VSIX.** Documentation screenshots use sample conversations. Artwork and product names remain associated with their respective owners.
+An original vector robot is drawn directly by the native helper and works without other extensions. Additional pet artwork is loaded from the user's installed Codex extension. **Sprite sheets are not bundled in the source repository or VSIX.** Documentation screenshots use sample conversations. Artwork and product names remain associated with their respective owners.
 
 ## Build from source
 
@@ -26,18 +26,19 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.6.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.7.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
 ```sh
-node --test test/activity.test.cjs test/extension.test.cjs
+node --test test/activity.test.cjs test/claude-activity.test.cjs test/extension.test.cjs
 ```
 
 Run the native UI tests in a logged-in macOS desktop session with Codex installed:
 
 ```sh
-node test/native-dashboard.cjs
+node test/native-dashboard.cjs --mixed
+node test/native-dashboard.cjs --builtin --mixed
 node test/native-dashboard.cjs --overflow
 ```
 
@@ -53,7 +54,9 @@ Agent Pet was previously called Codex Pet Panel. The internal VS Code extension 
 | --- | --- |
 | `src/native/DesktopPet.swift` | Floating panel, drawing, menus, shortcuts, and preferences |
 | `src/extension.cjs` | VS Code integration and desktop commands |
-| `src/activity.cjs` | Local chat lifecycle and question tracking |
+| `src/activity.cjs` | Codex lifecycle and question tracking |
+| `src/claude-activity.cjs` | Claude Code transcript adapter |
+| `src/agent-activity.cjs` | Combined status and retained conversation reconciliation |
 | `src/desktop.cjs` | Helper launch and local snapshot bridge |
 | `scripts/build-native.py` | Native helper compilation |
 | `build.py` | VSIX packaging |
@@ -78,3 +81,11 @@ Closing the native panel hides it while retaining the menu bar entry and global 
 ## Interface languages
 
 The native helper defaults to English independently of the macOS locale. `PetLanguage` contains the English/Turkish strings for menus, dashboard labels, durations, tooltips, and accessibility descriptions. The Language menu persists an `en` or `tr` preference in the existing native UserDefaults suite. Missing or invalid preferences fall back to English. Chat titles and character names are not translated. VS Code command labels and extension messages are English.
+
+## Claude Code integration (0.7.0)
+
+The adapter reads top-level UUID `.jsonl` files in `$CLAUDE_CONFIG_DIR/projects` (default `~/.claude/projects`). It includes `entrypoint: claude-vscode` records inside the open workspace, excludes sidechains and nested subagent logs, and uses explicit `end_turn` / `stop_sequence` records for completion. `AskUserQuestion` and `ExitPlanMode` tool calls remain waiting until their matching results arrive. A missing stop reason never means completion. No Claude hooks or settings are installed or changed.
+
+Claude thread IDs use a `claude:` namespace. Rows open `vscode://anthropic.claude-code/open?session=<uuid>`; Codex links are unchanged. The link handler and transcript shape were inspected in Claude Code VS Code **2.1.268**. This is an internal integration and may require updates if the extension changes. CLI-only and cloud-only sessions are excluded in this release. See [Claude Code's VS Code documentation](https://code.claude.com/docs/en/vs-code) for its session UI.
+
+Protocol 4 adds the built-in pet and combined agent snapshots. The helper writes a small `tracked-threads.json` ID list so both monitors can recover older terminal records after restart, without adding unrelated historical chats. Candidate discovery is bounded to 128 recent files per provider. Missing or inaccessible records still remain unknown.

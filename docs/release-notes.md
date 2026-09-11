@@ -1,7 +1,10 @@
-Agent Pet 0.6.0 adds English as the default language, with Turkish available from **Language → Türkçe** in the paw or right-click menu.
+Agent Pet 0.7.0 adds **Claude Code in VS Code** alongside Codex.
 
-Switching languages updates the desktop interface immediately and remembers your choice after restart. Menus, dashboard labels, durations, tooltips, and accessibility descriptions are localized. Conversation titles remain unchanged. VS Code commands and extension messages are English.
+- Both agents appear in one list, with provider labels and direct links to their sessions.
+- Claude question/plan prompts, explicit completion, and interrupted turns have independent status.
+- Codex is now optional. An original vector robot is included for Claude-only installations; Codex characters remain available when Codex is installed.
+- Retained chats are rechecked after restart so an older completion record replaces a stuck `?` indicator.
 
-The README includes language instructions and updated English screenshots. Install the attached VSIX; existing pet and appearance preferences are preserved.
+Claude support currently covers local VS Code sessions, not CLI-only or cloud-only sessions. Missing activity or missing completion records still show **No update**, never a guessed completion. The adapter was checked against Claude Code 2.1.268's local format and URI handler; future changes may need compatibility updates.
 
-Requires Apple Silicon, macOS 26+, and Codex in VS Code.
+No hooks or API keys need configuring. Install the VSIX and run **Agent Pet: Show Desktop Pet**. Requires Apple Silicon and macOS 26+.

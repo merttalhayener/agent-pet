@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0
+
+- Added local Claude Code in VS Code support alongside Codex, with provider labels, independent status, and direct session links.
+- Removed the required Codex extension dependency and added an original vector pet for Claude-only installations.
+- Reconcile retained conversations after restart so older explicit completions replace stale unknown indicators.
+- Added mixed-provider lifecycle, question, partial-record, workspace, and historical-completion coverage.
+
 ## 0.6.0
 
 - Added English and Turkish desktop interface languages, with English as the default.

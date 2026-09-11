@@ -8,10 +8,10 @@ Hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor? Masaüstündek
 
 ![macOS 26+](https://img.shields.io/badge/macOS-26%2B-111827?style=flat-square&logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-only-64748b?style=flat-square)
-![Codex desteği](https://img.shields.io/badge/Destek-Codex_%2B_VS_Code-16865d?style=flat-square)
+![Ajan desteği](https://img.shields.io/badge/Destek-Codex_%2B_Claude_Code-16865d?style=flat-square)
 ![Beta](https://img.shields.io/badge/Durum-beta-d97706?style=flat-square)
 
-**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.6.0)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+**[macOS için indir](https://github.com/merttalhayener/agent-pet/releases/tag/v0.7.0)** · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 <img src="docs/images/desktop.png" alt="Çalışan ve tamamlanan sohbetleri gösteren Agent Pet" width="420">
 
@@ -19,7 +19,7 @@ Hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor? Masaüstündek
 
 ## Tek pet. Takip ettiğin sohbetler bir arada.
 
-Başka uygulamada çalışırken yerel sohbetlerini takip et. Satıra tıklayıp VS Code'daki sohbete dön. Biten sohbetler sen kaldırana kadar listede kalsın.
+Başka uygulamada çalışırken yerel sohbetlerini takip et. Satıra tıklayıp VS Code'daki sohbete dön. Biten sohbetler sen kaldırana kadar listede kalsın. Her satırda **Codex** veya **Claude Code** etiketi görünür.
 
 | Durumu gör | Kendine göre ayarla | Odaklan |
 | --- | --- | --- |
@@ -40,15 +40,18 @@ Başka uygulamada çalışırken yerel sohbetlerini takip et. Satıra tıklayıp
 | | Şu an |
 | --- | --- |
 | **İşletim sistemi** | Apple Silicon üzerinde macOS 26+ |
-| **Ajan** | VS Code içindeki Codex |
-| **Diğer ajanlar / platformlar** | Henüz desteklenmiyor |
+| **Ajanlar** | VS Code içindeki Codex ve Claude Code |
+| **Yalnızca CLI / bulut oturumları** | Bu sürümde desteklenmiyor |
+| **Diğer platformlar** | Henüz desteklenmiyor |
 
 **Varsayılan arayüz dili İngilizcedir; Türkçe de desteklenir.** Canlı güncellemeler için VS Code açık kalmalıdır. Agent Pet bağımsız bir topluluk projesidir.
 
+Claude Code desteği yerel VS Code oturumlarını otomatik okur; hook veya API anahtarı ayarı gerekmez. Claude satırına tıklamak aynı sohbeti Claude Code eklentisinde açar.
+
 ## Kurulum
 
-1. VS Code'a resmî **Codex** eklentisini kur ve giriş yap.
-2. [**agent-pet-0.6.0.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.6.0/agent-pet-0.6.0.vsix).
+1. VS Code'a **Codex**, **Claude Code** veya ikisini birden kur ve giriş yap. Codex zorunlu değil.
+2. [**agent-pet-0.7.0.vsix** dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.7.0/agent-pet-0.7.0.vsix).
 3. VS Code'da **Extensions → ⋯ → Install from VSIX…** yolundan dosyayı seç.
 4. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
@@ -66,9 +69,9 @@ Peti kapatınca macOS menü çubuğundaki pati kalır: **Show pet / Peti göster
 
 ### Reload sonrası sohbet takılmış mı görünüyor?
 
-Yeniden bağlanılan sohbet, yeni bir etkinlik kaydı gelene kadar çalışıyor sayılmaz. 60 saniye ilerleme kaydı gelmezse halka **No update / Güncelleme yok** durumuna döner. Sohbet listede kalır; yeni etkinlik gelince otomatik güncellenir. Tik yalnızca açık bir tamamlanma kaydıyla gösterilir.
+Yeniden bağlanılan sohbet, yeni bir etkinlik kaydı gelene kadar çalışıyor sayılmaz. 60 saniye ilerleme kaydı gelmezse halka **No update / Güncelleme yok** durumuna döner. Sohbet listede kalır; yeni etkinlik gelince otomatik güncellenir. Tik yalnızca açık bir tamamlanma kaydıyla gösterilir. Listede tutulan eski sohbetler yeniden kontrol edilir; tamamlanma kaydı varsa `?` olarak kalmaz.
 
-Pet yerel ajan etkinliğini takip eder; Codex sohbet ekranına mesaj ulaşıp ulaşmadığını göremez. Uzun süren sessiz bir işlem de “Güncelleme yok” gösterebilir.
+Pet yerel ajan etkinliğini takip eder; ajanın sohbet ekranına mesaj ulaşıp ulaşmadığını göremez. Uzun süren sessiz bir işlem de “Güncelleme yok” gösterebilir.
 
 Eski sürümden güncelliyorsan VS Code'u bir kez yeniden yükle; eski yan paneldeki **Pet** bölümü kalkar. Masaüstü petinin ayarları korunur.
 
@@ -77,7 +80,7 @@ Eski sürümden güncelliyorsan VS Code'u bir kez yeniden yükle; eski yan panel
 
 - Açık çalışma alanındaki yakın tarihli yerel sohbetleri takip eder; tüm açık sekmeleri veya bulut sohbetlerini listelemez.
 - Yanıt bekleyen sorular yerel kayıtlardan algılanır; bazı izin pencereleri algılanamaz.
-- Eklenti telemetri eklemez, sohbet kayıtlarını sunucuya göndermez. Pet görselleri kurulu Codex eklentisinden okunur.
+- Eklenti telemetri eklemez, sohbet kayıtlarını sunucuya göndermez. Dahili robot Codex olmadan çalışır. Ek karakter görselleri kurulu Codex eklentisinden okunur.
 - Developer ID imzası/notarizasyonu ve genel bir açık kaynak lisansı henüz sağlanmıyor.
 
 </details>

@@ -15,10 +15,10 @@ manifest = f'''<?xml version="1.0" encoding="utf-8"?>
     <Identity Language="en-US" Id="{p['name']}" Version="{p['version']}" Publisher="{p['publisher']}"/>
     <DisplayName>{p['displayName']}</DisplayName>
     <Description xml:space="preserve">{p['description']}</Description>
-    <Tags>pet,agent,codex,desktop</Tags><Categories>Other</Categories><GalleryFlags/>
+    <Tags>pet,agent,codex,claude,desktop</Tags><Categories>Other</Categories><GalleryFlags/>
     <Properties>
       <Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.96.2"/>
-      <Property Id="Microsoft.VisualStudio.Code.ExtensionDependencies" Value="openai.chatgpt"/>
+      <Property Id="Microsoft.VisualStudio.Code.ExtensionDependencies" Value=""/>
       <Property Id="Microsoft.VisualStudio.Code.ExtensionPack" Value=""/>
       <Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="ui"/>
       <Property Id="Microsoft.VisualStudio.Code.LocalizedLanguages" Value=""/>

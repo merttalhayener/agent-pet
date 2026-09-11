@@ -73,7 +73,13 @@ class ActivityMonitor {
     this.root = root; this.getRoots = getRoots; this.onStatus = onStatus;
     this.files = new Map(); this.candidates = []; this.lastDiscovery = 0;
     this.enabled = true; this.disposed = false; this.busy = false;
-    this.titles = new Map(); this.seenThreads = new Map();
+    this.titles = new Map(); this.seenThreads = new Map(); this.trackedIds = new Set();
+  }
+  setTrackedIds(ids) {
+    for (const [file, state] of this.files) {
+      if (ids.has(state.id) && !this.trackedIds.has(state.id) && (!state.startedAt || state.status === 'unknown')) this.files.delete(file);
+    }
+    this.trackedIds = ids;
   }
   start() { void this.tick(); this.timer = setInterval(() => void this.tick(), 1500); }
   dispose() { this.disposed = true; clearInterval(this.timer); this.files.clear(); this.seenThreads.clear(); }
@@ -217,7 +223,7 @@ class ActivityMonitor {
       this.consume(state, text);
       // An old task_started record is history, not proof the reloaded host is working.
       if (!state.initializing && (state.progressVersion || 0) > before) state.liveConfirmed = true;
-      if (state.initializing && !state.startedAt && state.source === 'vscode' && inWorkspace(state.cwd, this.getRoots()) && Date.now() - state.lastEventAt < 10 * 60 * 1000) {
+      if (state.initializing && !state.startedAt && state.source === 'vscode' && inWorkspace(state.cwd, this.getRoots()) && (Date.now() - state.lastEventAt < 10 * 60 * 1000 || this.trackedIds.has(state.id))) {
         await this.findLifecycle(handle, stat.size, state);
       }
       state.initializing = false;
@@ -229,12 +235,12 @@ class ActivityMonitor {
     for (const s of states) {
       if (!s.id) continue;
       const recentUnknown = s.status === 'unknown' && now - s.lastEventAt < 10 * 60 * 1000;
-      if (!this.seenThreads.has(s.id) && !active.includes(s) && !recentUnknown && (!s.changedAt || now - s.changedAt > 90000)) continue;
+      if (!this.trackedIds.has(s.id) && !this.seenThreads.has(s.id) && !active.includes(s) && !recentUnknown && (!s.changedAt || now - s.changedAt > 90000)) continue;
       const previous = this.seenThreads.get(s.id);
       if (previous && previous.lastEventAt > s.lastEventAt) continue;
       this.seenThreads.set(s.id, {
         id: s.id, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
-        status: s.status === 'running' && s.liveConfirmed === false ? 'unknown' : Object.keys(s.pendingInputs || {}).length ? 'waiting' : s.status,
+        status: Object.keys(s.pendingInputs || {}).length ? 'waiting' : s.status === 'running' && s.liveConfirmed === false ? 'unknown' : s.status,
         changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt
       });
     }

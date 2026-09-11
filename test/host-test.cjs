@@ -9,7 +9,8 @@ exports.run = async function () {
     const extension = vscode.extensions.getExtension('local.codex-pet-panel');
     assert.ok(extension, 'Pet extension discovered');
     const api = await extension.activate();
-    assert.equal(api.availablePets.length, 9);
+    assert.ok(api.availablePets.includes('agent-pet'));
+    assert.equal(extension.packageJSON.extensionDependencies, undefined);
     assert.equal(extension.packageJSON.contributes.views, undefined, 'No legacy sidebar view contribution');
     assert.equal(extension.packageJSON.contributes.menus, undefined, 'No obsolete view toolbar');
     assert.equal(api.getDiagnostics().desktopSupported, process.platform === 'darwin');
