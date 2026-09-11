@@ -10,15 +10,16 @@ exports.run = async function () {
     assert.ok(extension, 'Pet extension discovered');
     const api = await extension.activate();
     assert.equal(api.availablePets.length, 9);
-    await vscode.commands.executeCommand('codexPet.open');
-    const end = Date.now() + 20000;
-    while (api.getDiagnostics().readyViews < 1 && Date.now() < end) await new Promise(r => setTimeout(r, 200));
-    assert.ok(api.getDiagnostics().readyViews >= 1, 'Real VS Code webview loaded JS and completed message handshake');
+    assert.equal(extension.packageJSON.contributes.views, undefined, 'No legacy sidebar view contribution');
+    assert.equal(extension.packageJSON.contributes.menus, undefined, 'No obsolete view toolbar');
+    assert.equal(api.getDiagnostics().desktopSupported, process.platform === 'darwin');
     const commands = await vscode.commands.getCommands(true);
+    assert.ok(commands.includes('codexPet.open'));
+    assert.ok(commands.includes('codexPet.showDesktop'));
     assert.ok(commands.includes('codexPet.choose'));
     assert.ok(commands.includes('codexPet.togglePresentation'));
     await fs.writeFile(report, JSON.stringify({ success: true, pets: api.availablePets, ...api.getDiagnostics() }, null, 2));
-    console.log('PASS: actual VS Code activation, sidebar resolution, local asset discovery, webview script execution and message bridge.');
+    console.log('PASS: actual VS Code activation, desktop commands, local asset discovery and no sidebar contributions.');
   } catch (error) {
     await fs.writeFile(report, JSON.stringify({ success: false, error: String(error) }));
     throw error;

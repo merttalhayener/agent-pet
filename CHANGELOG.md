@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2 — Desktop only
+
+- Remove the legacy Pet sidebar view and its webview assets.
+- Make Open Pet an alias for the floating desktop helper.
+- Simplify English and Turkish READMEs with visual feature previews and a clear support matrix.
+- Move build instructions and technical limitations into a separate developer guide.
+
 ## 0.5.1 — Agent Pet
 
 - Rename the project and public-facing UI to Agent Pet.

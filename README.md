@@ -1,130 +1,69 @@
+<div align="center">
+
 # Agent Pet
 
-A floating desktop companion for AI coding agents. One pet, a live task list, and a quick way to jump back into the conversation that needs you.
+**Your coding agents, at a glance.**
 
-**Currently supports Codex in VS Code.** The project has a general agent-focused identity; integrations with other agents are not available yet.
+A desktop pet that shows what's running, what's finished, and which chat needs you.
 
-[Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+![macOS 26+](https://img.shields.io/badge/macOS-26%2B-111827?style=flat-square&logo=apple)
+![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-only-64748b?style=flat-square)
+![Codex support](https://img.shields.io/badge/Supports-Codex_in_VS_Code-16865d?style=flat-square)
+![Beta](https://img.shields.io/badge/Status-beta-d97706?style=flat-square)
 
-<img src="docs/images/desktop.png" alt="A floating pet above two sample conversations, with running and completed indicators" width="380">
+**[Download for macOS](https://github.com/merttalhayener/agent-pet/releases/tag/v0.5.2)** · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
-**Beta · Apple Silicon · macOS 26+ · VS Code + Codex required**
+<img src="docs/images/desktop.png" alt="Agent Pet showing a running chat and a completed chat" width="420">
 
-This is an independent community extension, not an official OpenAI or Microsoft product. The current interface is in Turkish.
+</div>
 
-## Supported integrations
+## One pet. All your tracked chats.
 
-| Integration | Status |
+Keep working in another app while Agent Pet follows your local conversations. Click a chat to return to it in VS Code. Finished chats stay until you dismiss them.
+
+| See the state | Make it yours | Stay focused |
+| --- | --- | --- |
+| 🔵 Running · ✅ Done · 🟡 Needs a reply | Choose a pet, resize it, adjust text and opacity | Collapse the list or pin important chats |
+| Elapsed time for each turn | Move freely or snap to a screen edge | Completion animation and optional sound |
+
+<table>
+<tr>
+<td align="center" width="50%"><strong>Small when you need space</strong><br><br><img src="docs/images/compact.png" alt="Compact pet with an activity count" width="210"></td>
+<td align="center" width="50%"><strong>Know when a chat needs you</strong><br><br><img src="docs/images/waiting.png" alt="Yellow indicator on a chat waiting for a reply" width="350"></td>
+</tr>
+</table>
+
+**Presenting or sharing your screen?** Press **Ctrl + Option + Cmd + P** to hide the pet and mute feedback. Press it again to restore, or use the menu bar paw icon.
+
+## What is supported?
+
+| | Available now |
 | --- | --- |
-| Codex in VS Code | Available |
-| Other coding agents | Not available yet |
+| **Operating system** | macOS 26+ on Apple Silicon |
+| **Agent** | Codex in VS Code |
+| **Other agents / platforms** | Not supported yet |
 
-## Install
+The current interface is Turkish. VS Code must remain running for live updates. Agent Pet is an independent community project.
 
-1. Install the official **Codex** extension (`openai.chatgpt`) in VS Code and sign in to Codex.
-2. Download `agent-pet-0.5.1.vsix` from the **[Releases](https://github.com/merttalhayener/agent-pet/releases)** page.
-3. In VS Code, open **Extensions → ⋯ → Install from VSIX…** and select the file.
-4. Reload VS Code if prompted, open your project, and run **Agent Pet: Show Desktop Pet** from the Command Palette.
+## Get started
 
-Alternatively, with the VS Code `code` command on your PATH:
+1. Install the official **Codex** extension in VS Code and sign in.
+2. [Download **agent-pet-0.5.2.vsix**](https://github.com/merttalhayener/agent-pet/releases/download/v0.5.2/agent-pet-0.5.2.vsix).
+3. In VS Code: **Extensions → ⋯ → Install from VSIX…** → select the file.
+4. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
-```sh
-code --install-extension agent-pet-0.5.1.vsix
-```
+**Click a row** to open a chat. **Drag the pet** to move it. **Drag ↗↙** to resize. **Right-click** for settings. Use the list's chevron to collapse or expand.
 
-The floating helper stays visible when VS Code is in the background. VS Code must remain running to supply live chat updates.
+Upgrading from an older version? Reload VS Code once to remove the old sidebar **Pet** section. Your desktop pet preferences are kept.
 
-## Features
+<details>
+<summary><strong>Beta notes & local data</strong></summary>
 
-- **One pet, multiple chats.** Each tracked conversation has its own status: blue spinner for running, green check for completed, yellow indicator for a pending question.
-- **Click to open a chat.** Clicking a row opens that conversation in VS Code.
-- **Completed chats stay.** Remove a row with its hover × button. A later task in that conversation brings it back and keeps it visible after completion.
-- **Elapsed time.** Turn duration updates while work is running and freezes on completion.
-- **Completion feedback.** A short celebration and title banner when a chat finishes; optional sound, disabled by default.
-- **Compact mode.** Collapse the list to a pet and activity count with the header chevron.
-- **Pin conversations.** Right-click a row and choose **Sohbeti sabitle**.
-- **Resize and customize.** Drag the diagonal double arrow to scale the panel. The **Görünüm** menu changes pet size, text size, and list opacity independently.
-- **Edge snapping.** Drag near a screen edge to align; toggle with **Kenarlara hizala**. Bottom corners remain stable as the list changes.
-- **Presentation mode.** Hide the pet and mute completion feedback without stopping tracking.
-- **Remembered preferences.** Position, scale, appearance, pins, collapsed state, and sound preferences persist.
+- Tracks recent local conversations in the open workspace, not every open tab or cloud-only chat.
+- Pending questions are detected from local records; some permission dialogs cannot be detected.
+- No telemetry is added and no chat records are sent to a server by this extension. Pet artwork comes from your installed Codex extension.
+- Developer ID signing/notarization and a general open-source license are not yet provided.
 
-## Controls
+</details>
 
-| Action | Control |
-| --- | --- |
-| Open a conversation | Click its row |
-| Move the panel | Drag the pet or list background |
-| Resize the panel | Drag the top-right diagonal double arrow |
-| Collapse / expand | Click the list header chevron |
-| Character, appearance, sound, pinning | Right-click the pet or a conversation |
-| Hide / show and mute / unmute feedback | **Control + Option + Command + P** |
-| Restore a hidden panel | Same shortcut, or the paw icon in the macOS menu bar |
-| Reopen after closing the helper | **Agent Pet: Show Desktop Pet** in VS Code |
-
-If another app owns the global shortcut, use the paw menu; its tooltip reports the conflict. Closing the helper fully also unregisters the shortcut.
-
-<img src="docs/images/compact.png" alt="Compact mode showing just the pet and chat count" width="220">
-
-## Requirements and current limits
-
-- The release helper is built for **Apple Silicon and macOS 26 or later**. Windows, Linux, and Intel Mac desktop helpers are not included.
-- VS Code **1.96.2+** is declared by the extension manifest. The integration was tested with Codex extension **26.908.31748**; it relies on that extension's current sprite layout, conversation links, and local session format.
-- Chat discovery follows recent local Codex activity in the open VS Code workspace. It is not a complete list of open tabs or cloud-only conversations; subagents are excluded.
-- The yellow indicator follows recorded `request_user_input` and `request_user_input_async` calls and their replies. Some permission dialogs are not recorded, so this is **not a complete approval monitor**.
-- A missing update produces an unknown status, never a false completion. Older retained chats without a recoverable start time show a dash instead of a duration.
-- This beta has been tested on the development Mac. Broader device compatibility and Developer ID signing/notarization are not yet provided.
-
-## Local data and assets
-
-The extension reads local Codex session records and the local thread index, then exchanges chat IDs, titles, timestamps, and statuses with its helper. It does not send these records to a server. The project adds no telemetry or network-based tracking.
-
-Pet artwork is loaded from the user's installed Codex extension. **Sprite sheets are not bundled in the source repository or VSIX.** Documentation screenshots use sample conversations. Artwork and product names remain associated with their respective owners.
-
-## Build from source
-
-On an Apple Silicon Mac, install Python 3, Node.js, and Xcode Command Line Tools with a macOS 26 SDK. Clone this repository, then run:
-
-```sh
-python3 scripts/build-native.py
-python3 build.py
-```
-
-The package is written to `artifacts/agent-pet-0.5.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
-
-Run the activity monitor tests:
-
-```sh
-node --test test/activity.test.cjs
-```
-
-Run the native UI tests in a logged-in macOS desktop session with Codex installed:
-
-```sh
-node test/native-dashboard.cjs
-node test/native-dashboard.cjs --overflow
-```
-
-Set `CODEX_PET_ASSET_DIR` if Codex's `webview/assets` directory is in a nonstandard location. Native tests use temporary sample chats under `artifacts/` and do not modify pet preferences. The optional `--hotkey` test briefly registers the global shortcut; close the regular helper first to avoid a conflict.
-
-## Upgrade compatibility
-
-Agent Pet was previously called Codex Pet Panel. The internal VS Code extension ID (`local.codex-pet-panel`), command IDs, and preference keys are retained so existing installations update in place and keep their settings. New download packages use the `agent-pet` name.
-
-## Project layout
-
-| File | Purpose |
-| --- | --- |
-| `src/native/DesktopPet.swift` | Floating panel, drawing, menus, shortcuts, and preferences |
-| `src/extension.cjs` | VS Code integration and sidebar |
-| `src/activity.cjs` | Local chat lifecycle and question tracking |
-| `src/desktop.cjs` | Helper launch and local snapshot bridge |
-| `src/media/` | Sidebar HTML, CSS, and JavaScript |
-| `scripts/build-native.py` | Native helper compilation |
-| `build.py` | VSIX packaging |
-| `test/` | Lifecycle and native UI regression tests |
-
-## Feedback and licensing
-
-Please open an issue with your macOS, VS Code, and Codex extension versions, the expected behavior, and steps to reproduce. Use sample conversation names in screenshots and avoid posting session transcripts or credentials.
-
-The package currently declares `UNLICENSED`; no open-source license has been selected. Publishing the source does not grant a general license to reuse the code. The external pet artwork is not licensed by this repository.
+**[Build & technical details](docs/development.md)** · **[Report an issue](https://github.com/merttalhayener/agent-pet/issues)**

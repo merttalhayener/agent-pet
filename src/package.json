@@ -2,7 +2,7 @@
   "name": "codex-pet-panel",
   "displayName": "Agent Pet",
   "description": "A floating desktop companion for AI coding agents. Currently supports Codex in VS Code.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {
@@ -52,40 +52,6 @@
         "category": "Agent Pet"
       }
     ],
-    "views": {
-      "codexSecondaryViewContainer": [
-        {
-          "id": "codexPet.secondary",
-          "name": "Pet",
-          "type": "webview",
-          "when": "!chatgpt.doesNotSupportSecondarySidebar",
-          "visibility": "visible"
-        }
-      ],
-      "codexViewContainer": [
-        {
-          "id": "codexPet.primary",
-          "name": "Pet",
-          "type": "webview",
-          "when": "chatgpt.doesNotSupportSecondarySidebar",
-          "visibility": "visible"
-        }
-      ]
-    },
-    "menus": {
-      "view/title": [
-        {
-          "command": "codexPet.choose",
-          "when": "view == codexPet.secondary || view == codexPet.primary",
-          "group": "navigation"
-        },
-        {
-          "command": "codexPet.showDesktop",
-          "when": "view == codexPet.secondary || view == codexPet.primary",
-          "group": "navigation"
-        }
-      ]
-    },
     "configuration": {
       "title": "Agent Pet",
       "properties": {
