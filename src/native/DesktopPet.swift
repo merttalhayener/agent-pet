@@ -55,6 +55,9 @@ enum PetLanguage: String, CaseIterable {
         "Remove from list": "Listeden kaldır",
         "Show pet": "Peti göster",
         "Hide pet": "Peti gizle",
+        "Show panel": "Paneli göster",
+        "Hide panel": "Paneli gizle",
+        "Keep the chat panel visible.": "Sohbet paneli görünür kalır.",
         "Completion sound and animation are paused while hidden.": "Gizliyken bitiş sesi ve animasyonu da duraklatılır.",
         "Return to VS Code": "VS Code'a dön",
         "Pets": "Petler",
@@ -842,7 +845,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             action(text("Remove from list"), #selector(dismissMenuRow(_:)), in: menu, value: thread.id)
             menu.addItem(.separator())
         }
-        let visibility = action(presentationHidden ? text("Show pet") : text("Hide pet"), #selector(togglePresentation), in: menu)
+        let characterVisibility = action(panelOnly ? text("Show pet") : text("Hide pet"), #selector(togglePanelOnly), in: menu)
+        characterVisibility.toolTip = text("Keep the chat panel visible.")
+        let visibility = action(presentationHidden ? text("Show panel") : text("Hide panel"), #selector(togglePresentation), in: menu)
         visibility.keyEquivalent = "p"; visibility.keyEquivalentModifierMask = [.control, .option, .command]
         visibility.toolTip = text("Completion sound and animation are paused while hidden.")
         action(text("Return to VS Code"), #selector(openCode), in: menu)
@@ -1091,6 +1096,37 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && latest?.workspace?.id == dedicated.id && latest?.status == "ready"
         return valid
     }
+    func testVisibilityMenu() -> Bool {
+        let oldMode = panelOnly, oldHidden = presentationHidden, oldLanguage = language, oldFrame = panel.frame
+        let oldGrouped = grouped, oldFolded = foldedWorkspaces, ids = displayThreads.map { $0.id }
+        defer {
+            panelOnly = oldMode; presentationHidden = oldHidden; language = oldLanguage
+            resizeToList(); panel.setFrameOrigin(oldFrame.origin)
+            if oldHidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
+            updateStatusMenu()
+        }
+        func click(_ title: String) -> Bool {
+            guard let item = petMenu(thread: nil).items.first(where: { $0.title == text(title) }), let selector = item.action else { return false }
+            return NSApp.sendAction(selector, to: item.target, from: item)
+        }
+        var valid = true
+        for choice in PetLanguage.allCases {
+            language = choice; panelOnly = false; presentationHidden = false; resizeToList(); panel.orderFrontRegardless()
+            valid = click("Hide pet") && valid
+            valid = valid && panelOnly && !view.petVisible && panel.isVisible && !presentationHidden
+            valid = valid && grouped == oldGrouped && foldedWorkspaces == oldFolded && displayThreads.map { $0.id } == ids
+            // Hiding/restoring the window must retain panel-only mode.
+            valid = click("Hide panel") && valid
+            valid = valid && presentationHidden && !panel.isVisible && panelOnly
+            valid = click("Show panel") && valid
+            valid = valid && !presentationHidden && panel.isVisible && panelOnly
+            valid = click("Show pet") && valid
+            valid = valid && !panelOnly && view.petVisible && panel.isVisible
+            let item = petMenu(thread: nil).items.first { $0.title == text("Hide panel") }
+            valid = valid && item?.keyEquivalent == "p" && item?.keyEquivalentModifierMask == [.control, .option, .command]
+        }
+        return valid
+    }
     func testPanelOnly() -> Bool {
         let oldMode = panelOnly, oldGrouped = grouped, oldCollapsed = collapsed, oldFrame = panel.frame
         let ids = displayThreads.map { $0.id }, oldSleeping = sleeping
@@ -1207,6 +1243,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         celebrationUntil = 0
         let original = displayThreads
         let workspaceOwnershipWorks = testWorkspaceOwnership()
+        let visibilityMenuWorks = testVisibilityMenu()
         let panelOnlyWorks = testPanelOnly()
         let workspaceViewWorks = testWorkspaceView()
         testOpenedURL = nil
@@ -1291,7 +1328,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

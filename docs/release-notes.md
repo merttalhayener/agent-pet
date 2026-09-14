@@ -1,16 +1,11 @@
-# Agent Pet v0.11.0 — Marketplace preparation
+# Agent Pet v0.11.1 — Hide the pet, keep your chats
 
-- Public extension identity: `merttalhayener.agent-pet`.
-- Official prerelease package for Apple Silicon / macOS 26+.
-- MIT license, original store icon, updated documentation and third-party notices.
-- Explicit preview replacement that retains pet preferences.
-- Claude links use the new extension identity and the owning VS Code window.
-- VS Code manages Marketplace updates; Agent Pet retains idle-window reload protection.
+**Hide pet** previously hid the entire window. It now hides only the character and leaves the chat panel visible. **Show pet** restores the character.
 
-**The Marketplace package has been uploaded and is awaiting Microsoft verification.** Publisher setup is complete. This GitHub release provides the same VSIX for manual installation.
-
-**Moving from the old preview:** install the new VSIX, choose **Replace preview**, finish active chats and reload each VS Code window. The old GitHub updater deliberately skips this differently identified package.
+Use **Hide panel / Show panel** or **Ctrl + Option + Cmd + P** to hide or restore the entire window. Workspace groups and panel-only preferences are preserved. English and Turkish menus are updated, and the VS Code command is now **Agent Pet: Hide Panel**.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Prerelease.
 
-Validation: 52 Node tests passed; native dashboard tests passed with built-in artwork, Codex/Claude fixtures and an overflowing list. The packaged VSIX installed and activated in an isolated VS Code profile, and the extracted app passed strict code-signature verification. Marketplace availability remains pending Microsoft verification.
+The VSIX is ready for upload as a new Marketplace version. Marketplace publication of 0.11.1 is pending publisher upload.
+
+Validation: 52 Node tests passed. Native dashboard tests passed, including actual menu dispatch in English/Turkish, keeping workspace groups and chats when hiding only the pet, and retaining panel-only mode when hiding/restoring the window. The native app passed strict signature verification.

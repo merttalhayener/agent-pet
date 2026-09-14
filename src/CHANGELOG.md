@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.1 — Separate pet and panel visibility
+
+- Fix **Hide pet** hiding the entire panel: it now hides only the character.
+- Add **Hide panel / Show panel** for the whole window; retain the global shortcut.
+- Keep workspace groups, chats and panel-only preference when toggling visibility.
+- Rename the VS Code hide command to **Hide Panel**, retaining its command ID.
+- Update English/Turkish labels and usage instructions.
+
+
 ## 0.11.0 — Marketplace prerelease
 
 - Prepare the public `merttalhayener.agent-pet` identity for Apple Silicon macOS.

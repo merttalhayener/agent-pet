@@ -53,3 +53,7 @@ English is the default. Choose **Language → English / Türkçe** from the paw 
 No telemetry is added and no chat records are sent to a server by this extension. An included vector robot works without Codex; optional character artwork comes from the installed Codex extension.
 
 This is a beta for Apple Silicon and macOS 26+. Developer ID signing/notarization and a general open-source license are not yet provided. See [development details](development.md).
+
+## Pet and panel visibility
+
+**Hide pet / Show pet** controls only the character, keeping chats, workspace groups and notifications available. **Hide panel / Show panel** controls the whole window and pauses alerts while hidden. The paw menu and **Ctrl + Option + Cmd + P** restore the window, preserving panel-only mode. The VS Code command is now **Agent Pet: Hide Panel**; its existing command ID is retained.

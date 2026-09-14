@@ -2,7 +2,7 @@
   "name": "agent-pet",
   "displayName": "Agent Pet",
   "description": "Track Codex and Claude Code chats across VS Code workspaces with a floating macOS panel and optional pet.",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "publisher": "merttalhayener",
   "license": "MIT",
   "engines": {
@@ -41,7 +41,7 @@
       },
       {
         "command": "codexPet.hideDesktop",
-        "title": "Hide Desktop Pet",
+        "title": "Hide Panel",
         "category": "Agent Pet"
       },
       {
