@@ -74,9 +74,19 @@ function createUpdater(vscode, context, { fetcher = fetch } = {}) {
       const current = context.extension.packageJSON.version;
       const releases = JSON.parse((await download(`https://api.github.com/repos/${REPO}/releases?per_page=100`, 4 * 1024 * 1024, fetcher)).toString('utf8'));
       const latest = selectRelease(releases, newer(state.installed, current) ? state.installed : current);
-      if (!latest) { if (manual) void vscode.window.showInformationMessage(tr('Agent Pet is up to date. If you just installed an update, reload each window after its active chats finish.', 'Agent Pet güncel. Yeni güncelleme kurduysan aktif sohbetler bitince her pencereyi yeniden yükle.')); return; }
+      if (!latest) {
+        if (manual) {
+          const pending = newer(state.installed, current);
+          const automatic = vscode.workspace.getConfiguration('codexPet').get('autoReloadAfterUpdate', true);
+          void vscode.window.showInformationMessage(pending ? automatic
+            ? tr('Agent Pet update is installed. Automatic reload is waiting for this window to be ready.', 'Agent Pet güncellemesi kuruldu. Otomatik yenileme bu pencerenin hazır olmasını bekliyor.')
+            : tr('Agent Pet update is installed. Reload this window after active chats finish.', 'Agent Pet güncellemesi kuruldu. Aktif sohbetler bitince bu pencereyi yenile.')
+            : tr('Agent Pet is up to date.', 'Agent Pet güncel.'));
+        }
+        return;
+      }
       const install = tr('Install update', 'Güncellemeyi kur');
-      const choice = await vscode.window.showInformationMessage(tr(`Agent Pet ${latest.tag_name} is available${latest.prerelease ? ' (beta)' : ''}.`, `Agent Pet ${latest.tag_name} hazır${latest.prerelease ? ' (beta)' : ''}.`), install);
+      const choice = await vscode.window.showInformationMessage(tr(`Agent Pet ${latest.tag_name} is available${latest.prerelease ? ' (beta)' : ''}.`, `Agent Pet ${latest.tag_name} hazır${latest.prerelease ? ' (beta)' : ''}.`) + (vscode.workspace.getConfiguration('codexPet').get('autoReloadAfterUpdate', true) ? tr(' Windows reload automatically when tracked chats finish and changes are saved.', ' Takip edilen sohbetler bitip değişiklikler kaydedilince pencereler otomatik yenilenir.') : ''), install);
       if (choice !== install || disposed) return;
       installing = true;
       await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: tr('Updating Agent Pet…', 'Agent Pet güncelleniyor…') }, async () => {
@@ -88,7 +98,9 @@ function createUpdater(vscode, context, { fetcher = fetch } = {}) {
           state.installed = pkg.version; await fs.writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
         } finally { await fs.rm(temp, { recursive: true, force: true }); }
       });
-      void vscode.window.showInformationMessage(tr('Agent Pet updated. When active chats finish, run Developer: Reload Window in each open VS Code window.', 'Agent Pet güncellendi. Aktif sohbetler bitince açık VS Code pencerelerinde Developer: Reload Window çalıştır.'));
+      if (!vscode.workspace.getConfiguration('codexPet').get('autoReloadAfterUpdate', true)) {
+        void vscode.window.showInformationMessage(tr('Agent Pet updated. When active chats finish, run Developer: Reload Window in each open VS Code window.', 'Agent Pet güncellendi. Aktif sohbetler bitince açık VS Code pencerelerinde Developer: Reload Window çalıştır.'));
+      }
     } catch (error) {
       if (manual || installing) void vscode.window.showErrorMessage(`Agent Pet: ${error.message}`);
     } finally {

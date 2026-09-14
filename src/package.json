@@ -2,7 +2,7 @@
   "name": "codex-pet-panel",
   "displayName": "Agent Pet",
   "description": "A floating desktop pet for Codex and Claude Code in VS Code.",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {
@@ -72,6 +72,11 @@
           "type": "boolean",
           "default": true,
           "description": "Check GitHub for Agent Pet updates once daily (including beta releases). Download and installation require clicking Install update. No chat data is sent."
+        },
+        "codexPet.autoReloadAfterUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "After an Agent Pet in-app update, reload each window when tracked chats have finished, changes are saved and no VS Code task or debug session is active. Includes a 15-second countdown with Later. Unknown/quiet chats and disabled activity tracking postpone reload."
         }
       }
     }

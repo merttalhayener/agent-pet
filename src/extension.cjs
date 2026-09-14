@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const { AgentActivityMonitor } = require('./agent-activity.cjs');
+const { createUpdateReload } = require('./update-reload.cjs');
 const { createUpdater } = require('./updater.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
@@ -82,6 +83,13 @@ async function activate(context) {
     next => { if (JSON.stringify(activity) !== JSON.stringify(next)) { activity = next; broadcast(); } }, path.join(context.globalStorageUri.fsPath, 'desktop'));
   monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true);
   await monitor.tick(); monitor.start(); context.subscriptions.push(monitor);
+  const reload = createUpdateReload(vscode, context, async () => {
+    for (let i = 0; monitor.busy && i < 40; i++) await new Promise(resolve => setTimeout(resolve, 50));
+    if (monitor.busy || monitor.disposed || monitor.monitors.some(m => !m.enabled || m.busy || m.disposed)) return undefined;
+    await monitor.tick();
+    return activity;
+  });
+  reload.start(); context.subscriptions.push(reload);
   const navigation = createClaudeNavigation(vscode, async id => {
     await monitor.tick();
     const local = activity.threads?.find(thread => thread.id === id);

@@ -41,10 +41,10 @@ async function fixture(t, options = {}) {
   const updater = createUpdater(vscode, context, { fetcher }); t.after(() => updater.dispose());
   return { updater, installed, messages, errors, dir, vscode, context, fetcher, get requests() { return requests; } };
 }
-test('one click installs a verified local VSIX, never reloads, and remembers installed version across windows', async t => {
+test('installation verifies the VSIX and records the installed version for the separate reload controller', async t => {
   const f = await fixture(t); await f.updater.check();
   assert.deepEqual(f.installed, [data]); assert.equal(f.errors.length, 0);
-  assert.ok(f.messages.some(m => m.includes('When active chats finish')));
+  assert.ok(f.messages.some(m => m.includes('Windows reload automatically')));
   const other = createUpdater(f.vscode, f.context, { fetcher: f.fetcher }); t.after(() => other.dispose());
   await other.check(); assert.equal(f.installed.length, 1);
   assert.deepEqual((await fs.readdir(path.join(f.dir, 'updates'))).sort(), ['state.json']);

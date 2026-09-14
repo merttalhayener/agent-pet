@@ -1,12 +1,12 @@
-# Agent Pet v0.10.1 — Clearer quiet activity
+# Agent Pet v0.10.2 — Reload after chats finish
 
-- Distinguish quiet ongoing turns from disconnected/unconfirmed sessions with a clock and No recent activity label.
-- Restore the spinner on new progress; keep the reload safeguards and explicit completion checks.
-- Preserve terminal states against older or uncertain reports from other VS Code windows.
-- Use this patch release to exercise the 0.10.0 in-app updater.
+- Reload each VS Code window automatically after an in-app update once its tracked chats finish.
+- Add a 15-second countdown with Later and an autoReloadAfterUpdate preference.
+- Postpone reload for new/uncertain activity, disabled tracking, unsaved changes, running VS Code tasks or debugging.
+- Check activity again immediately before reload and keep windows independent.
 
-From v0.10.0, choose **Check for updates… → Install update** in the paw menu. After active chats finish, run **Developer: Reload Window** in each open VS Code window. This release does not reload active windows automatically.
+**Upgrading from 0.10.1 or earlier:** finish active chats and run **Developer: Reload Window** once in each open window. The old running extension does not yet contain the automatic reload controller. Subsequent in-app updates reload automatically when each window is ready.
 
-A clock means no recent activity has been recorded; a question mark means the connection or activity is unconfirmed. Neither means the task completed.
+Choose **Later** during the countdown to postpone that version, or disable `codexPet.autoReloadAfterUpdate` in VS Code settings. Unknown or quiet chats do not trigger automatic reload.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Beta.

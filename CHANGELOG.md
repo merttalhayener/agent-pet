@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.2
+
+- Reload each VS Code window automatically after an in-app update once its tracked chats finish.
+- Add a 15-second countdown with Later and an autoReloadAfterUpdate preference.
+- Postpone reload for new/uncertain activity, disabled tracking, unsaved changes, running VS Code tasks or debugging.
+- Check activity again immediately before reload and keep windows independent.
+
 ## 0.10.1
 
 - Distinguish quiet ongoing turns from disconnected/unconfirmed sessions with a clock and No recent activity label.

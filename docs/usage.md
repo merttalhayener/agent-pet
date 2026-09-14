@@ -26,13 +26,15 @@ Notifications follow newly detected requests for input, not every log update. Ex
 
 ## Updates
 
-Use **Check for updates…** in the paw menu or **Agent Pet: Check for Updates** in the Command Palette. Agent Pet also checks GitHub once daily, including beta releases. Click **Install update** to download a package, verify its SHA-256 checksum, and install it through VS Code. It never reloads a window automatically: finish active chats first, then run **Developer: Reload Window** in each open window.
+Use **Check for updates…** in the paw menu or **Agent Pet: Check for Updates** in the Command Palette. Agent Pet also checks GitHub once daily, including beta releases. Click **Install update** to download a package, verify its SHA-256 checksum, and install it through VS Code. From 0.10.2 onward, each window waits for its tracked chats to finish and then reloads automatically after a 15-second countdown. **Later** postpones that version in that workspace. New chat activity cancels the countdown. Unknown/quiet/waiting chats, disabled activity tracking, dirty text/notebook editors, active VS Code tasks, and debugging postpone reload. No elapsed timeout is treated as proof that a chat finished.
+
+Turn off `codexPet.autoReloadAfterUpdate` to keep manual reloads. **Bootstrap:** upgrading from 0.10.1 or earlier still requires one manual **Developer: Reload Window** after active chats finish; the old running extension cannot execute the newly installed reload code. Older open windows need the same one-time reload. Automatic reload applies to subsequent in-app updates.
 
 Disable background checks with `codexPet.checkForUpdates` in VS Code settings. Manual checks still work. An internet connection to GitHub is required; no chat data is included in update requests.
 
 ## Opening chats
 
-Click a row to open the chat in its live workspace window. After upgrading, reload **each** open VS Code window once after active turns finish so every window publishes current routing information.
+Click a row to open the chat in its live workspace window. Each window must load the installed extension version to publish current routing information. Automatic update reloads handle this from 0.10.2; older hosts need the one-time manual reload described above.
 
 Claude opens in the right sidebar. Claude may keep an active or unsaved session in its existing editor tab; finish the turn, close that tab, then click its pet row again. A completed, uniquely identified tab can move automatically.
 

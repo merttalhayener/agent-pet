@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.10.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.10.2.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -118,10 +118,16 @@ The native helper keeps `allThreads` separate from the filtered `displayThreads`
 
 The helper is now an ad-hoc-signed `Agent Pet.app` bundle with stable ID `local.agent-pet.desktop`, enabling macOS UserNotifications. The build is still not Developer ID signed or notarized. Notification authorization is requested only when enabled from the menu. Requests are deduplicated, muted per chat, and suppressed in presentation mode. Native tests exercise request transitions and click routing without requesting OS permission; actual banner presentation depends on user authorization and macOS Focus settings.
 
-`src/updater.cjs` reads public GitHub releases (including prereleases), limits downloads, validates release asset URLs and SHA-256 checksums, and invokes VS Code’s [installExtension command](https://github.com/microsoft/vscode-docs/blob/main/api/references/commands.md) with a local VSIX URI. A shared process lock prevents concurrent prompts/installations across windows. Package installation never invokes Reload Window. Background checks, including failed requests, back off for 24 hours; manual checks remain available.
+`src/updater.cjs` reads public GitHub releases (including prereleases), limits downloads, validates release asset URLs and SHA-256 checksums, and invokes VS Code’s [installExtension command](https://github.com/microsoft/vscode-docs/blob/main/api/references/commands.md) with a local VSIX URI. A shared process lock prevents concurrent prompts/installations across windows. In 0.10.0–0.10.1 package installation never invoked Reload Window. The separate controller added in 0.10.2 schedules reload after installation, as described below. Background checks, including failed requests, back off for 24 hours; manual checks remain available.
 
 ## Quiet activity and terminal-state reconciliation (0.10.1)
 
 After 60 seconds without recorded progress, a confirmed running turn becomes `quiet` (clock / No recent activity). It remains tracked and resumes running on new progress. Reloads still require fresh progress; disconnected or unconfirmed sessions remain unknown. Quiet sessions do not count as currently running, and their duration freezes at the last activity until progress resumes.
 
 Native reconciliation compares lifecycle timestamps before heartbeat/protocol freshness. Older running/unknown reports cannot overwrite a recorded terminal event. A new task start can replace completion normally. This avoids losing completion when different VS Code windows report the same chat while reconnecting.
+
+## Automatic update reload (0.10.2)
+
+`src/update-reload.cjs` observes the shared successful-install marker, comparing it with the version loaded in each extension host. Every window independently refreshes its local activity monitor before starting and finishing a 15-second countdown. Only explicitly settled statuses (`ready`, `idle`, `failed`) permit reload; uncertain/quiet activity and disabled tracking postpone it. Dirty text or notebook documents, active VS Code tasks, and active debugging also postpone reload. This follows supported local session records, not cloud/CLI work or every possible editor operation.
+
+The countdown offers Later, persisted for that workspace and version, and can be disabled globally with `codexPet.autoReloadAfterUpdate`. New activity resets the countdown. Installing a newer package does not replace already running JavaScript, so upgrading from <=0.10.1 needs a one-time manual reload before this controller can manage subsequent updates. Tests cover independent windows, fresh activity on the last check, uncertain statuses, editor/task protection, deferral and malformed markers.

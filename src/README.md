@@ -9,7 +9,7 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 **macOS 26+ · Apple Silicon · English / Türkçe · Beta**
 
-[**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.1) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
+[**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.2) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
 
 </div>
 
@@ -47,10 +47,10 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 ## Install
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
-2. [Download the VSIX](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.1/agent-pet-0.10.1.vsix), then use **Extensions → ⋯ → Install from VSIX…**.
+2. [Download the VSIX](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.2/agent-pet-0.10.2.vsix), then use **Extensions → ⋯ → Install from VSIX…**.
 3. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
-Upgrading? After active turns finish, run **Developer: Reload Window** in each open VS Code window.
+Updates now reload each window automatically after tracked chats finish and changes are saved, with a 15-second **Later** option. **Upgrading from 0.10.1 or earlier?** Run **Developer: Reload Window** once after active turns finish to enable this behavior.
 
 ## Quick controls
 

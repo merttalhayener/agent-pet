@@ -9,7 +9,7 @@ Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni
 
 **macOS 26+ · Apple Silicon · English / Türkçe · Beta**
 
-[**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.1) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+[**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.2) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 </div>
 
@@ -47,10 +47,10 @@ Daha az dikkat dağınıklığı için **Görünüm → Yalnızca panel** seç. 
 ## Kurulum
 
 1. VS Code’a **Codex**, **Claude Code** veya ikisini birden kur ve giriş yap.
-2. [VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.1/agent-pet-0.10.1.vsix), **Extensions → ⋯ → Install from VSIX…** ile kur.
+2. [VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.2/agent-pet-0.10.2.vsix), **Extensions → ⋯ → Install from VSIX…** ile kur.
 3. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
-Güncellerken aktif işler bittikten sonra her açık VS Code penceresinde **Developer: Reload Window** çalıştır.
+Güncellemeler artık takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **0.10.1 veya öncesinden geçiyorsan**, bu davranışı etkinleştirmek için aktif işler bittikten sonra bir kez **Developer: Reload Window** çalıştır.
 
 ## Hızlı kullanım
 
