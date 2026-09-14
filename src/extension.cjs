@@ -7,6 +7,7 @@ const { createUpdateReload } = require('./update-reload.cjs');
 const { prepareMarketplaceMigration } = require('./marketplace-migration.cjs');
 const { createMarketplaceUpdater, installedMarketplaceVersion, installedMarketplacePackage } = require('./marketplace-updater.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
+const { createSupportCenter } = require('./support.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
 const { describeWorkspace } = require('./workspace.cjs');
@@ -30,6 +31,11 @@ async function activate(context) {
   let selectedAt = context.globalState.get('petSelectedAt', 0);
   const sleepAt = context.globalState.get('petSleepAt', 0);
   let desktop;
+  let focusedAt = vscode.window.state?.focused ? Date.now() : 0;
+  if (vscode.window.onDidChangeWindowState) context.subscriptions.push(vscode.window.onDidChangeWindowState(state => {
+    if (state.focused) focusedAt = Date.now();
+    if (desktop?.timer) broadcast();
+  }));
   const navigationLinks = await resolveWindowNavigation(vscode, extensionId).catch(() => undefined);
   let activity = { status: 'idle', active: 0 };
   const pets = PETS;
@@ -49,7 +55,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 10, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 11, extensionVersion: context.extension.packageJSON.version, focused: Boolean(vscode.window.state?.focused), focusedAt, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); }, extensionId, async () => path.join((await installedMarketplacePackage(context)).extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'));
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -97,10 +103,19 @@ async function activate(context) {
     const route = routes[id];
     return route?.workspaceID === describeWorkspace(vscode.workspace).id && typeof route.title === 'string' ? { id, title: route.title, status: 'unknown' } : undefined;
   }, extensionId);
-  context.subscriptions.push(vscode.window.registerUriHandler(navigation));
+  const support = createSupportCenter(vscode, context, desktop, () => activity, open);
+  context.subscriptions.push(vscode.window.registerUriHandler({ handleUri(uri) {
+    if (uri.authority === extensionId && uri.path === '/support' && /^(?:windowId=\d+)?$/.test(uri.query || '')) return support.show('connections');
+    return navigation.handleUri(uri);
+  } }));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('codexPet.followActivity')) { monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true); void monitor.tick(); }
   }));
+  context.subscriptions.push(support,
+    vscode.commands.registerCommand('agentPet.getStarted', () => support.show('setup')),
+    vscode.commands.registerCommand('agentPet.connections', () => support.show('connections')),
+    vscode.commands.registerCommand('agentPet.diagnostics', () => support.show('diagnostics')));
+  support.start();
   return { availablePets: pets.map(p => p.id), open, getDiagnostics: () => ({ navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), desktopSupported: Boolean(desktop), activity }) };
 }
 module.exports = { activate };

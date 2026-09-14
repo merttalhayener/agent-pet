@@ -27,12 +27,13 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.14.2-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.16.0-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
 ```sh
 node --test test/*.test.cjs
+node test/support-ui.cjs # Render the actual webview in an isolated local Chrome profile
 ```
 
 Run the native UI tests in a logged-in macOS desktop session:
@@ -165,3 +166,9 @@ node test/desktop-handover.cjs
 The first check uses temporary copies of the built app, sample heartbeats and a temporary removal marker. It takes about 90 seconds, never uninstalls the user's extension, and avoids saved pet preferences. It verifies app-directory deletion with stale hosts, repeated hook cleanup, preservation of the newer app and extension folder, another connected window, reload grace, and exit without deletion after the final disconnect.
 
 `node test/vscode-uninstall.cjs` additionally installs the actual VSIX into isolated CLI directories, uninstalls it, then explicitly runs its packaged deferred uninstall hook. CLI-only VS Code has no live profile watcher and does not immediately write `.obsolete`; this test validates the deferred hook contract, not immediate GUI uninstall timing.
+
+## Support center (0.16.0)
+
+`support.cjs` owns the singleton webview, first-run prompt, allowed actions, connection history and privacy-filtered report. `support.html` / `support-ui.js` are bundled without external resources; a per-panel CSP nonce permits only their inline script/style. The native helper publishes `helper-health.json` once per refresh and removes it on normal termination. Protocol 11 client snapshots include the extension version, stable per-host client ID and focus state. The support menu uses an expiring, targeted request plus the platform-generated window URI.
+
+A helper heartbeat is fresh for five seconds; client heartbeats are connected for fifteen seconds, and recently disconnected rows remain for ten minutes. Record-directory checks test readability only. Diagnostics never parse transcript content and copy only known fields/error codes. The first-run marker is created exclusively in shared local storage to prevent duplicate welcome prompts across windows.

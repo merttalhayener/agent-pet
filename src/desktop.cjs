@@ -13,6 +13,10 @@ class DesktopBridge {
     this.lifecycle = Promise.resolve();
     this.directory = directory; this.executable = executable; this.getSnapshot = getSnapshot; this.reportError = reportError;
     this.file = path.join(directory, `client-${process.pid}-${crypto.randomBytes(5).toString('hex')}.json`);
+    this.clientId = path.basename(this.file);
+    this.errors = [];
+    const report = this.reportError;
+    this.reportError = error => { this.errors.push({ at: Date.now(), code: String(error.code || "HELPER_ERROR").slice(0, 80) }); this.errors = this.errors.slice(-20); report(error); };
     this.disposed = false;
     this.pending = Promise.resolve();
   }
@@ -20,7 +24,7 @@ class DesktopBridge {
     this.pending = this.pending.catch(() => {}).then(async () => {
       if (this.disposed || this.removed) return;
       const tmp = this.file + '.tmp';
-      await fs.writeFile(tmp, JSON.stringify({ ...this.getSnapshot(), updatedAt: Date.now() }), { mode: 0o600 });
+      await fs.writeFile(tmp, JSON.stringify({ ...this.getSnapshot(), clientId: this.clientId, updatedAt: Date.now() }), { mode: 0o600 });
       await fs.rename(tmp, this.file);
     });
     return this.pending;

@@ -41,6 +41,16 @@ Choose **Hide pet** for fewer distractions. Your chats stay visible; **Show pet*
 
 Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not supported. VS Code must stay open for live updates. No API keys or hooks to configure.
 
+## Get connected
+
+Open **Agent Pet: Get Started** for a short setup guide: check your agent extensions, show your companion, and optionally enable waiting notifications.
+
+**Connections** shows which VS Code windows are sending updates, their workspaces, and their last connection time. **Diagnostics** compares the loaded extension, installed extension, and running pet versions. Copy a report when something goes wrong; chat text, project names and file paths are excluded.
+
+Open these tabs from the Command Palette or the paw menu’s **Connections & diagnostics**.
+
+<img src="docs/images/connections.png" alt="Agent Pet Connections tab with one connected workspace and one recently disconnected workspace, using sample data" width="800">
+
 ## Stay focused
 
 - **Filters:** show all chats, running chats, or those waiting for you; narrow to one workspace.
@@ -52,11 +62,11 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). Version **0.14.0** includes only original characters; the regular-release package is ready and Marketplace upload is pending.
+Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.0** adds setup, connections and diagnostics; its Marketplace upload is pending.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
-3. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
+3. Choose **Get started** in the welcome prompt, or run **Agent Pet: Get Started** from the Command Palette.
 
 **Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.
 

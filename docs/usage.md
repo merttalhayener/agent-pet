@@ -1,5 +1,15 @@
 # Usage & troubleshooting
 
+## Setup, connections and diagnostics
+
+Run **Agent Pet: Get Started** from the Command Palette. A one-time welcome prompt offers the guide when a window is focused; **Later** dismisses it without blocking your work. You can return to it at any time. The guide checks installed Codex / Claude Code extensions, opens the desktop companion, and optionally requests waiting-notification permission. Sign in within each agent’s own UI; installed does not mean authenticated.
+
+Run **Agent Pet: Connections** or use **Connections & diagnostics** in the paw menu. Each row is a VS Code extension-host connection, with its workspace, version, tracking setting, chat count and last heartbeat. A heartbeat under 15 seconds is connected. Recently disconnected windows remain visible for up to ten minutes while the support screen is open. This is separate from a conversation’s running, waiting or completed status. Multiple windows require Agent Pet to be installed and enabled in each applicable profile.
+
+Run **Agent Pet: Diagnostics** to compare the extension version loaded in this window, the package installed on disk, and the pet actually reporting health. An old loaded version means that window still needs a safe reload after active work finishes. Helper health is refreshed independently of chat activity; missing health from an older running helper is reported as unavailable. Notification permission and local record-directory readability are shown too.
+
+**Copy diagnostics** puts JSON on the clipboard; it does not send anything. The report includes versions, OS/VS Code details, per-window connection/tracking booleans and chat counts, and recent helper/support error codes recorded in this window. It omits transcript text, titles, workspace names/paths, client IDs and raw exception messages. It is not a complete agent log. The support screen follows the pet’s English/Türkçe language setting and works without external web resources.
+
 ## Views
 
 Use **Appearance → Panel only** to hide the character and its empty space. The chat list stays visible. Drag its header to move it and the top-right handle to resize it. Uncheck the option to restore the character.

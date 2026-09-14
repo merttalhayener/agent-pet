@@ -1,13 +1,16 @@
-# Agent Pet v0.14.2 — Delete the uninstalled macOS app
+# Agent Pet v0.16.0 — Setup, connections and diagnostics
 
-Uninstall now closes the pet and physically deletes that installation’s `Agent Pet.app` bundle. The previous version only stopped the process and left file deletion to VS Code.
+A new support screen helps you set up Agent Pet and understand what is connected.
 
-The running helper cleans up its own bundle after VS Code marks that exact version removed from all profiles. The extension also cleans up a removed app that was already quit, and the official uninstall hook covers final cleanup. If neither component is running, cleanup follows VS Code’s hook schedule.
+- **Get Started:** a short, dismissible guide to agent extensions, the desktop companion and optional waiting notifications.
+- **Connections:** workspace/window heartbeats, tracking and chat counts, independent of chat completion status.
+- **Diagnostics:** loaded extension, installed extension and running pet versions; notification permission, readable agent-record directories and recent helper/support error codes.
+- **Copy diagnostics:** a local JSON report without chat text, project names, file paths or raw exception messages.
 
-Other installed versions, shared preferences and conversation files are preserved. Normal Quit, closing VS Code and window reloads do not uninstall the app. Cleanup validates the package identity and refuses redirected bundle paths.
+Open **Agent Pet: Get Started / Connections / Diagnostics** in the Command Palette, or **Connections & diagnostics** in the paw menu. English and Türkçe are supported.
 
-Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
+After updating, finish active chats and reload existing VS Code windows to load the new commands and connection protocol. The desktop helper uses the existing automatic handover mechanism.
 
-Marketplace upload of `agent-pet-marketplace-0.14.2-darwin-arm64.vsix` is pending.
+Apple Silicon · macOS 26+ · Regular release. Marketplace upload of `agent-pet-marketplace-0.16.0-darwin-arm64.vsix` is pending.
 
-Validation: 68 Node tests; native UI and deletion guards; real native app-directory deletion and repeated hook cleanup; preservation of the newer app and normal-disconnect files; process handover; packaged VSIX uninstall hook in an isolated CLI installation.
+Validation: Node regression tests, native support routing and health checks, rendered webview interaction checks in English/Türkçe and at narrow width, and packaged manifest/signature checks.

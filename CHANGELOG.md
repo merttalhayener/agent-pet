@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.0 — Setup, connections and diagnostics
+
+- Add a one-time, dismissible setup guide with agent checks, companion controls and optional waiting notifications.
+- Show per-window workspace connections, heartbeat age and tracking separately from chat status.
+- Compare loaded, installed and running helper versions in a bilingual diagnostics screen.
+- Copy a local diagnostic report without conversation text, project names, paths or raw error messages.
+- Open connections from the paw menu in the most recently focused compatible VS Code window.
+- Add native health reporting, strict webview actions and privacy/connection/UI regression coverage.
+
 ## 0.14.2 — Delete the uninstalled macOS app
 
 - Delete the removed installation’s `Agent Pet.app` bundle, instead of only stopping its process and waiting for VS Code to delete the files.

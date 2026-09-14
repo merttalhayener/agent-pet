@@ -10,6 +10,10 @@ enum PetLanguage: String, CaseIterable {
     func text(_ key: String) -> String { self == .turkish ? Self.translations[key] ?? key : key }
     private static let translations: [String: String] = [
         "Stopped": "Durduruldu",
+        "Connections & diagnostics": "Bağlantılar ve tanılama",
+        "VS Code windows connected": "VS Code penceresi bağlı",
+        "VS Code disconnected": "VS Code bağlantısı kesildi",
+        "Reload VS Code to enable diagnostics": "Tanılama için VS Code penceresini yenile",
         "No chats match these filters": "Bu filtrelere uyan sohbet yok",
         "Filtered": "Filtreli",
         "Assign workspace": "Çalışma alanı ata",
@@ -132,6 +136,10 @@ struct Activity: Codable {
 }
 struct WindowNavigation: Codable { let codex: String; let claude: String }
 struct Snapshot: Codable {
+    var extensionVersion: String? = nil
+    var clientId: String? = nil
+    var focused: Bool? = nil
+    var focusedAt: Double? = nil
     var extensionId: String? = nil
     var navigation: WindowNavigation? = nil
     var protocolVersion: Int? = nil
@@ -421,6 +429,8 @@ struct HelperLifetime {
 final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
     let directory: URL
     let testing: Bool
+    var authorizationStatus = -1
+    var authorizationCheckedAt: TimeInterval = 0
     var lifetime = HelperLifetime()
     var ownsLock = false
     var terminationSignal: DispatchSourceSignal?
@@ -561,6 +571,37 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             return s
         }
     }
+    func writeHealth(_ live: [Snapshot]) {
+        if !testing && ProcessInfo.processInfo.systemUptime - authorizationCheckedAt > 15 {
+            authorizationCheckedAt = ProcessInfo.processInfo.systemUptime
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                DispatchQueue.main.async { self.authorizationStatus = settings.authorizationStatus.rawValue }
+            }
+        }
+        let health: [String: Any] = ["updatedAt": Date().timeIntervalSince1970 * 1000, "pid": ProcessInfo.processInfo.processIdentifier,
+            "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development",
+            "connections": live.count, "language": language.rawValue, "notifications": authorizationStatus,
+            "waitingNotifications": waitingNotifications, "petVisible": !panelOnly && !presentationHidden,
+            "panelVisible": !panelHidden && !presentationHidden]
+        if let data = try? JSONSerialization.data(withJSONObject: health) { try? data.write(to: directory.appendingPathComponent("helper-health.json"), options: .atomic) }
+    }
+    @objc func openSupportCenter() {
+        let candidates = snapshots().filter { $0.clientId?.range(of: #"^client-[0-9]+-[a-f0-9]+\.json$"#, options: .regularExpression) != nil && ($0.protocolVersion ?? 0) >= 11 }
+        guard let target = candidates.sorted(by: { ($0.focused == true ? 1 : 0, $0.focusedAt ?? 0, $0.updatedAt) > ($1.focused == true ? 1 : 0, $1.focusedAt ?? 0, $1.updatedAt) }).first,
+              let clientId = target.clientId else {
+            if testing { return }
+            let alert = NSAlert(); alert.messageText = text("Reload VS Code to enable diagnostics"); alert.runModal(); return
+        }
+        let request: [String: Any] = ["clientId": clientId, "tab": "connections", "createdAt": Date().timeIntervalSince1970 * 1000]
+        if let data = try? JSONSerialization.data(withJSONObject: request) { try? data.write(to: directory.appendingPathComponent("desktop-support-request.json"), options: .atomic) }
+        if let link = target.navigation?.claude, var components = URLComponents(string: link),
+           ["vscode", "vscode-insiders"].contains(components.scheme ?? ""), components.host == target.extensionId,
+           ["merttalhayener.agent-pet", "local.codex-pet-panel"].contains(components.host ?? "") {
+            components.path = "/support"
+            components.queryItems = components.queryItems?.filter { $0.name == "windowId" && $0.value?.range(of: #"^\d+$"#, options: .regularExpression) != nil }
+            if let url = components.url { if testing { testOpenedURL = url.absoluteString } else { NSWorkspace.shared.open(url) } }
+        }
+    }
     func mergeThreads(_ live: [Snapshot]) -> [ThreadActivity] {
         var byID = retained
         var protocolByID: [String: Int] = [:]
@@ -625,7 +666,13 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         }
         let toggleRequest = directory.appendingPathComponent("desktop-presentation-request")
         if FileManager.default.fileExists(atPath: toggleRequest.path) { togglePresentation(); try? FileManager.default.removeItem(at: toggleRequest) }
+        let notificationsRequest = directory.appendingPathComponent("desktop-notifications-request")
+        if FileManager.default.fileExists(atPath: notificationsRequest.path) {
+            try? FileManager.default.removeItem(at: notificationsRequest)
+            if !waitingNotifications { toggleWaitingNotifications() }
+        }
         let live = snapshots(), now = Date()
+        writeHealth(live)
         if !testing || CommandLine.arguments.contains("--lifecycle-test") {
             if lifetime.shouldExit(connected: !live.isEmpty, removed: HelperLifetime.installationRemoved(bundle: Bundle.main.bundleURL), now: ProcessInfo.processInfo.systemUptime) {
                 NSApp.terminate(nil); return
@@ -1000,6 +1047,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         action(text("Clear completed chats"), #selector(clearCompleted), in: chats)
         action(text("Restore dismissed chats"), #selector(restoreDismissed), in: chats)
         menu.addItem(.separator())
+        let connections = snapshots().count
+        let connectionItem = NSMenuItem(title: connections > 0 ? "\(connections) " + text("VS Code windows connected") : text("VS Code disconnected"), action: nil, keyEquivalent: "")
+        connectionItem.isEnabled = false; menu.addItem(connectionItem)
+        action(text("Connections & diagnostics"), #selector(openSupportCenter), in: menu)
         action(text("Check for updates…"), #selector(checkForUpdates), in: menu)
         let languages = group(text("Language"))
         for choice in PetLanguage.allCases {
@@ -1547,7 +1598,30 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let reinstall = !state.shouldExit(connected: true, removed: false, now: 211)
         return first && reloadGrace && otherWindow && reconnect && closed && resumed && removalGrace && removed && reinstall
     }
+    func testSupportCenter() -> Bool {
+        let first = directory.appendingPathComponent("client-901-abc.json"), second = directory.appendingPathComponent("client-902-def.json")
+        let requestFile = directory.appendingPathComponent("desktop-support-request.json")
+        defer { for file in [first, second, requestFile] { try? FileManager.default.removeItem(at: file) } }
+        guard let original = snapshots().first, let data = try? JSONEncoder().encode(original),
+              var sample = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return false }
+        sample["protocolVersion"] = 11; sample["extensionId"] = "merttalhayener.agent-pet"
+        sample["navigation"] = ["codex": "vscode://openai.chatgpt/local/?windowId=42", "claude": "vscode://merttalhayener.agent-pet/claude?windowId=42"]
+        sample["clientId"] = first.lastPathComponent; sample["focused"] = false; sample["focusedAt"] = Date().timeIntervalSince1970 * 1000 - 200
+        sample["updatedAt"] = Date().timeIntervalSince1970 * 1000 - 100
+        if let data = try? JSONSerialization.data(withJSONObject: sample) { try? data.write(to: first) }
+        sample["clientId"] = second.lastPathComponent; sample["focused"] = false; sample["focusedAt"] = 0
+        sample["updatedAt"] = Date().timeIntervalSince1970 * 1000
+        if let data = try? JSONSerialization.data(withJSONObject: sample) { try? data.write(to: second) }
+        testOpenedURL = nil; openSupportCenter()
+        guard let requestData = try? Data(contentsOf: requestFile), let request = try? JSONSerialization.jsonObject(with: requestData) as? [String: Any] else { return false }
+        let routed = request["clientId"] as? String == first.lastPathComponent && testOpenedURL == "vscode://merttalhayener.agent-pet/support?windowId=42"
+        writeHealth(snapshots())
+        guard let healthData = try? Data(contentsOf: directory.appendingPathComponent("helper-health.json")),
+              let health = try? JSONSerialization.jsonObject(with: healthData) as? [String: Any] else { return false }
+        return routed && health["connections"] as? Int == snapshots().count && health["version"] as? String == Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String && health["activity"] == nil && health["workspace"] == nil
+    }
     func selfTest() {
+        precondition(testSupportCenter(), "Support routing or health report failed")
         precondition(testBundleRemoval(), "Bundle removal scope/metadata guards failed")
         precondition(testHelperLifetime(), "Helper lifetime grace, reload, multi-window or removal failed")
         capture("dashboard-test.png")
@@ -1638,6 +1712,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         NSApp.terminate(nil)
     }
     func applicationWillTerminate(_ notification: Notification) { animation?.invalidate(); polling?.invalidate(); savePosition(); if let hotKey { UnregisterEventHotKey(hotKey) }; if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }; if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }; if lockFD >= 0 {
+            if ownsLock { try? FileManager.default.removeItem(at: directory.appendingPathComponent("helper-health.json")) }
             if ownsLock && (!testing || CommandLine.arguments.contains("--lifecycle-test")) { HelperLifetime.removeUninstalledBundle(Bundle.main.bundleURL) }
             flock(lockFD, LOCK_UN); Darwin.close(lockFD)
         } }
