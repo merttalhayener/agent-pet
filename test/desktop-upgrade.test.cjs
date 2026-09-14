@@ -6,7 +6,7 @@ const source=fs.readFileSync(require('node:path').join(__dirname, '../src/deskto
 function fixture(old, args, aliveAfterTerm=false) {
  const signals=[];let alive=true;
  const directory='/state with spaces';
- const sandbox={module:{exports:{}},setTimeout:fn=>{fn();},process:{kill:(id,signal)=>{signals.push([id,signal]);if(!alive)throw Object.assign(new Error('gone'),{code:'ESRCH'});if(signal==='SIGTERM'&&!aliveAfterTerm)alive=false;}},require:name=>name==='node:child_process'?{spawn:()=>{},execFile:(cmd,argv,options,cb)=>cb(null,cmd.endsWith('lsof')?'123\n':argv.includes('comm=')?old:args??`${old} --state-dir ${directory}`,'')}:name==='node:util'?{promisify:fn=>(...args)=>new Promise((resolve,reject)=>fn(...args,(e,stdout,stderr)=>e?reject(e):resolve({stdout,stderr})))}:name==='./helper-lifecycle.cjs'?require('../src/helper-lifecycle.cjs'):require(name)};
+ const sandbox={module:{exports:{}},setTimeout:fn=>{fn();},process:{kill:(id,signal)=>{signals.push([id,signal]);if(!alive)throw Object.assign(new Error('gone'),{code:'ESRCH'});if(signal==='SIGTERM'&&!aliveAfterTerm)alive=false;}},require:name=>name==='node:child_process'?{spawn:()=>{},execFile:(cmd,argv,options,cb)=>cb(null,cmd.endsWith('lsof')?'123\n':argv.includes('comm=')?old:args??`${old} --state-dir ${directory}`,'')}:name==='node:util'?{promisify:fn=>(...args)=>new Promise((resolve,reject)=>fn(...args,(e,stdout,stderr)=>e?reject(e):resolve({stdout,stderr})))}:name==='./helper-lifecycle.cjs'?require('../src/helper-lifecycle.cjs'):name==='./uninstall.cjs'?require('../src/uninstall.cjs'):require(name)};
  vm.runInNewContext(source,sandbox);
  return {bridge:new sandbox.module.exports.DesktopBridge(directory,'/extensions/local.codex-pet-panel-0.7.1/bin/codex-desktop-pet',()=>{},()=>{}),signals};
 }
@@ -51,7 +51,7 @@ function lifecycleFixture({running=true, available=true}={}) {
  const timers=[]; const sandbox={module:{exports:{}},setTimeout,setInterval:fn=>{timers.push(fn);return {unref(){}};},clearInterval:()=>{},process:{platform:'darwin',pid:99},require:name=>{
   if(name==='node:fs/promises')return {constants:{X_OK:1},access:async p=>{calls.push(['validate',p]);if(!available)throw Error('incomplete installation');},unlink:async p=>{files.delete(p);},writeFile:async p=>{files.add(p);},stat:async p=>{if(files.has(p))return {};throw Error('missing');},mkdir:async()=>{},rename:async()=>{}};
   if(name==='node:child_process')return {execFile(){},spawn:(exe,args)=>{calls.push(['spawn',exe,args]);active=true;return {on(){},unref(){}};}};
-  return name==='./helper-lifecycle.cjs'?require('../src/helper-lifecycle.cjs'):require(name);
+  return name==='./helper-lifecycle.cjs'?require('../src/helper-lifecycle.cjs'):name==='./uninstall.cjs'?require('../src/uninstall.cjs'):require(name);
  }};
  vm.runInNewContext(source,sandbox);
  const bridge=new sandbox.module.exports.DesktopBridge('/state',old,()=>({}),e=>calls.push(['error',e.message]),'merttalhayener.agent-pet',async()=>candidate);

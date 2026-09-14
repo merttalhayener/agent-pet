@@ -58,7 +58,7 @@ Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür
 
 0.11.4 itibarıyla çalışan masaüstü paneli, yeni sürüm kurulduktan birkaç saniye sonra eski süreci kapatıp yeni sürüme geçer; görünürlük tercihleri ve aktif sohbetler korunur. Eski sürümden ilk geçişte bu mekanizmanın başlaması için bir kez pencere yenilenmesi gerekir. Güncellemeler takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **GitHub önizlemesinden geçiyorsan**, **Replace preview** seçeneğini kullan; aktif işler bitince her pencerede bir kez **Developer: Reload Window** çalıştır.
 
-macOS uygulaması eklentinin içindedir; Applications klasörüne ayrı kurulmaz. 0.14.1’den itibaren eklenti tüm profillerden kaldırılınca panel otomatik kapanır. Bağlı VS Code pencerelerinin tümü kapanınca yardımcı uygulama da yeniden bağlantı için yaklaşık bir dakika bekleyip kapanır. Uygulama dosyalarını VS Code kendi temizliği sırasında siler; bunun için VS Code’u yeniden başlatmak gerekebilir.
+macOS uygulaması eklentinin içindedir; Applications klasörüne ayrı kurulmaz. 0.14.2’den itibaren uninstall, peti kapatır ve ilgili kurulumun `Agent Pet.app` klasörünü siler. Başka profilde hâlâ kurulu olan sürüm korunur. Tüm VS Code pencerelerini kapatmak uygulamayı kaldırmaz; pet yaklaşık bir dakika sonra kapanır. Eklenti ve petin ikisi de çalışmıyorsa temizlik, VS Code’un kaldırma hookunu çalıştırmasıyla yapılır.
 
 ## Hızlı kullanım
 
@@ -79,6 +79,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.14.1** normal release kanalını kullanır; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.14.1) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.14.2** normal release kanalını kullanır; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.14.2) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
 Özgün kaynak kod, Byte, Miso, Fern ve uygulama ikonu [MIT lisanslıdır](LICENSE). Harici karakter görseli yüklenmez veya dağıtılmaz. Codex ve Claude Code adları desteklenen entegrasyonları belirtir; Agent Pet bağımsız bir topluluk projesidir.

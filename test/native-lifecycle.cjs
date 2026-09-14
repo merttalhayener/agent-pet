@@ -24,11 +24,17 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   // Old installation removed, even if its old host continues writing snapshots.
   await fs.writeFile(path.join(root,'.obsolete'),JSON.stringify({[path.basename(folders[0])]:true}));
   await waitExit(old,15000);assert.ok(alive(current));
-  console.log('PASS: obsolete native app exited despite fresh old-host heartbeats; current version stayed alive.');
+  await assert.rejects(fs.stat(path.join(folders[0],'bin/Agent Pet.app')),{code:'ENOENT'});
+  assert.ok(await fs.stat(folders[1]+BUNDLE_SUFFIX));
+  console.log('PASS: obsolete native app exited and deleted its .app; current version stayed alive and installed.');
+  await fs.cp(path.join(__dirname,'../src/bin/Agent Pet.app'),path.join(folders[0],'bin/Agent Pet.app'),{recursive:true});
   await fs.writeFile(path.join(root,'.obsolete'),'{}');const oldAgain=launch(0);await delay(1200);
   await uninstall(folders[0]);await waitExit(oldAgain,3000);assert.ok(alive(current));
-  assert.ok(await fs.stat(folders[0]+BUNDLE_SUFFIX)); // Actual file deletion belongs to VS Code.
-  console.log('PASS: uninstall hook stopped its own app without affecting the newer native app.');
+  await assert.rejects(fs.stat(path.join(folders[0],'bin/Agent Pet.app')),{code:'ENOENT'});
+  assert.ok(await fs.stat(path.join(folders[0],'package.json')));
+  assert.ok(await fs.stat(folders[1]+BUNDLE_SUFFIX));
+  await uninstall(folders[0]); // Repeated cleanup is safe after self-removal.
+  console.log('PASS: uninstall hook deleted only its app, preserved the extension folder/newer app, and tolerated repeat cleanup.');
   clearInterval(timers[0]);await fs.rm(folders[0],{recursive:true});
   await heartbeat(states[1],'two');const second=setInterval(()=>heartbeat(states[1],'two').catch(()=>{}),1000);timers.push(second);
   clearInterval(timers[1]);await fs.unlink(path.join(states[1],'client-one.json'));await delay(2000);assert.ok(alive(current));
@@ -36,7 +42,9 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   clearInterval(second);await fs.unlink(path.join(states[1],'client-two.json'));await delay(2000);assert.ok(alive(current));
   // A normal reload reconnects within the grace period.
   await heartbeat(states[1],'reload');await delay(1200);assert.ok(alive(current));await fs.unlink(path.join(states[1],'client-reload.json'));
-  await waitExit(current,65000);
+  const disconnectedAt=Date.now();await waitExit(current,65000);
+  assert.ok(Date.now()-disconnectedAt>=58000,'helper must honor reconnect grace');
+  assert.ok(await fs.stat(folders[1]+BUNDLE_SUFFIX)); // Normal disconnect never uninstalls.
   console.log('PASS: a brief reload survived; helper exited normally after the last client disconnected (60-second grace).');
  }finally{
   for(const timer of timers)clearInterval(timer);

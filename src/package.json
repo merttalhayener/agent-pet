@@ -2,7 +2,7 @@
   "name": "agent-pet",
   "displayName": "Agent Pet",
   "description": "Track Codex and Claude Code chats across VS Code workspaces with a floating macOS panel and optional pet.",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "publisher": "merttalhayener",
   "license": "MIT",
   "engines": {

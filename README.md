@@ -62,7 +62,7 @@ Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudi
 
 Subsequent Marketplace updates use VS Code’s update settings. From 0.11.4, the running desktop panel switches to the newly installed helper within a few seconds, keeping visibility preferences and active chats. The first upgrade from an older version needs a window reload to enable this mechanism. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
 
-The macOS app is bundled inside the extension; there is no separate Applications-folder installation. From 0.14.1, removing the last installed copy closes its panel automatically. Closing all connected VS Code windows also closes the helper after a short reconnect grace period (about one minute). VS Code removes the bundled app files during extension cleanup, which may require restarting VS Code.
+The macOS app is bundled inside the extension; there is no separate Applications-folder installation. From 0.14.2, uninstall closes the helper and deletes that installation’s `Agent Pet.app` bundle. A version still installed in another profile is kept. Closing all connected VS Code windows only closes the helper after a short reconnect grace period (about one minute); it does not uninstall the app. If neither the extension nor helper is running, VS Code’s uninstall hook performs cleanup when it next runs.
 
 ## Quick controls
 

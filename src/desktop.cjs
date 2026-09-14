@@ -3,7 +3,8 @@ const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
 const execFileAsync = require('node:util').promisify(execFile);
 const crypto = require('node:crypto');
-const { markedForRemoval } = require('./helper-lifecycle.cjs');
+const { markedForRemoval, extensionRoot } = require('./helper-lifecycle.cjs');
+const { uninstall } = require('./uninstall.cjs');
 
 class DesktopBridge {
   constructor(directory, executable, getSnapshot, reportError, extensionId = 'local.codex-pet-panel', resolveExecutable) {
@@ -23,6 +24,10 @@ class DesktopBridge {
       await fs.rename(tmp, this.file);
     });
     return this.pending;
+  }
+  async removeInstalledHelper(executable) {
+    const root = extensionRoot(executable);
+    if (root) await uninstall(root);
   }
   async hasRunningHelper() {
     try { return /^\d+(?:\s+\d+)*$/.test((await execFileAsync('/usr/sbin/lsof', ['-t', '--', path.join(this.directory, 'desktop.lock')], { timeout: 1500 })).stdout.trim()); }
@@ -71,7 +76,6 @@ class DesktopBridge {
     this.lifecycle = this.lifecycle.catch(() => {}).then(async () => {
       if (this.disposed) return;
       const running = await this.hasRunningHelper();
-      if (background && !running && !this.restartPending && !this.removed) return; // Do not reopen a deliberately quit app.
       if (running) this.restartPending = false;
       const executable = this.resolveExecutable ? await this.resolveExecutable() : this.executable;
       // Stop this client's heartbeat after uninstall. A newer installed package
@@ -80,12 +84,17 @@ class DesktopBridge {
         this.removed = true;
         await this.pending.catch(() => {});
         await fs.unlink(this.file).catch(() => {});
+        if (this.cleanedRemoval !== executable) {
+          await this.removeInstalledHelper(executable);
+          this.cleanedRemoval = executable;
+        }
         return;
       }
+      if (background && !running && !this.restartPending && !this.removed) return; // Respect deliberate Quit.
       // Validate the replacement exists before closing the working helper.
       await fs.access(executable, fs.constants.X_OK);
       if (this.disposed) return;
-      if (this.removed) { this.removed = false; this.restartPending = true; await this.write(); }
+      if (this.removed) { this.cleanedRemoval = undefined; this.removed = false; this.restartPending = true; await this.write(); }
       this.executable = executable;
       if (show) {
         await fs.unlink(path.join(this.directory, 'desktop-hidden')).catch(() => {});

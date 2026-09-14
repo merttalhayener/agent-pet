@@ -27,7 +27,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.14.1-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.14.2-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -145,15 +145,15 @@ The helper is currently ad-hoc signed; it is not Developer ID signed or notarize
 
 For verified distribution outside the Mac App Store, sign with a Developer ID certificate and submit the app to Apple’s automatic notarization service. The standard Apple Developer Program membership is 99 USD per year, or local pricing where available. This membership has not been purchased for Agent Pet. See [Developer ID](https://developer.apple.com/developer-id/) and [membership details](https://developer.apple.com/programs/whats-included/).
 
-## Helper ownership and removal (0.14.1)
+## Helper ownership and removal (0.14.2)
 
-The app bundle stays in the installed extension's `bin/Agent Pet.app`. Agent Pet does not create an Applications-folder copy, login item or LaunchAgent. VS Code owns deletion of the extension folder, including the bundle.
+The app bundle stays in the installed extension's `bin/Agent Pet.app`. Agent Pet does not create an Applications-folder copy, login item or LaunchAgent. Agent Pet deletes the removed installation’s native bundle. VS Code owns cleanup of the enclosing extension folder.
 
 The helper watches live window snapshots. After the last fresh snapshot disappears it allows 60 seconds for reconnection, then terminates normally; an extension-host crash can add the 15-second snapshot expiry. Any connected window resets this grace period. UI tests exercise the same lifetime decision with a deterministic clock. SIGTERM also uses normal AppKit shutdown to release the lock and save the panel position.
 
 VS Code's `.obsolete` installation marker is an additional early-exit signal: an exact version is marked only after removal from all profiles. The helper allows 10 seconds for update handover before exiting a removed installation, even if an old extension host still publishes snapshots. Missing/corrupt marker data is ignored. An installed folder physically removed from disk also triggers this guard. The default profile index alone is never evidence of uninstall. DesktopBridge withdraws its heartbeat for a removed candidate and can recover when a valid updated package becomes available.
 
-The supported `vscode:uninstall` Node hook stops only processes with the exact executable path inside its own validated package, rechecks each PID, and unregisters only that bundle path from Launch Services. It does not stop newer packages, delete shared preferences, or remove folders itself. VS Code runs the final hook/physical cleanup on its own schedule, commonly on shutdown/startup; uninstall in one profile does not remove a version retained by another profile. See [the uninstall hook contract](https://code.visualstudio.com/api/references/extension-manifest#extension-uninstall-hook) and [VS Code's all-profile removal watcher](https://github.com/microsoft/vscode/blob/main/src/vs/platform/extensionManagement/node/extensionsWatcher.ts).
+The supported `vscode:uninstall` Node hook stops only processes with the exact executable path inside its own validated package, rechecks each PID, unregisters that bundle path from Launch Services, and deletes only its `bin/Agent Pet.app` directory. It rejects redirected bundle paths and preserves other versions, the enclosing extension directory and shared preferences. For earlier cleanup, the native helper deletes its own bundle on shutdown only when an exact all-profile removal marker and matching package manifest are present. The live extension also runs package cleanup when it observes this marker, even if the pet was already quit. Normal Quit, disconnect, missing/corrupt markers and an installation still used by another profile do not authorize deletion. VS Code runs the final hook on its own schedule if neither component is running, commonly on shutdown/startup; uninstall in one profile does not remove a version retained by another profile. See [the uninstall hook contract](https://code.visualstudio.com/api/references/extension-manifest#extension-uninstall-hook) and [VS Code's all-profile removal watcher](https://github.com/microsoft/vscode/blob/main/src/vs/platform/extensionManagement/node/extensionsWatcher.ts).
 
 Run isolated native lifecycle and version-handover integration checks on macOS:
 
@@ -162,4 +162,6 @@ node test/native-lifecycle.cjs
 node test/desktop-handover.cjs
 ```
 
-The first check uses temporary copies of the built app, sample heartbeats and a temporary removal marker. It takes about 90 seconds, never uninstalls the user's extension, and avoids saved pet preferences. It verifies removal with stale hosts, exact-version cleanup, another connected window, reload grace, and exit after the final disconnect.
+The first check uses temporary copies of the built app, sample heartbeats and a temporary removal marker. It takes about 90 seconds, never uninstalls the user's extension, and avoids saved pet preferences. It verifies app-directory deletion with stale hosts, repeated hook cleanup, preservation of the newer app and extension folder, another connected window, reload grace, and exit without deletion after the final disconnect.
+
+`node test/vscode-uninstall.cjs` additionally installs the actual VSIX into isolated CLI directories, uninstalls it, then explicitly runs its packaged deferred uninstall hook. CLI-only VS Code has no live profile watcher and does not immediately write `.obsolete`; this test validates the deferred hook contract, not immediate GUI uninstall timing.

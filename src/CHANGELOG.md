@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.2 — Delete the uninstalled macOS app
+
+- Delete the removed installation’s `Agent Pet.app` bundle, instead of only stopping its process and waiting for VS Code to delete the files.
+- Clean up on native shutdown after an explicit all-profile removal marker, from the live extension even if the pet was quit, and through the official uninstall hook.
+- Validate package identity and bundle paths; preserve newer versions and installations still used by another profile.
+- Keep the app installed after normal Quit, disconnect and Reload Window.
+- Test real app-directory deletion, repeated cleanup and protection of other app versions.
+
 ## 0.14.1 — Keep the macOS helper with its extension
 
 - Close a removed helper even when an older extension host is still publishing snapshots.

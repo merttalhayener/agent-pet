@@ -393,12 +393,36 @@ struct HelperLifetime {
         guard let data = try? Data(contentsOf: file), let removed = try? JSONSerialization.jsonObject(with: data) as? [String: Bool] else { return false }
         return removed[root.lastPathComponent] == true
     }
+    static func removeUninstalledBundle(_ bundle: URL) {
+        // Only an explicit all-profile removal marker authorizes self-removal.
+        // A disconnect, normal Quit or missing/corrupt metadata never does.
+        let root = bundle.deletingLastPathComponent().deletingLastPathComponent()
+        guard bundle.lastPathComponent == "Agent Pet.app", bundle.deletingLastPathComponent().lastPathComponent == "bin",
+              let data = try? Data(contentsOf: root.appendingPathComponent("package.json")),
+              let pkg = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              pkg["publisher"] as? String == "merttalhayener", pkg["name"] as? String == "agent-pet",
+              let version = pkg["version"] as? String,
+              ["merttalhayener.agent-pet-" + version, "merttalhayener.agent-pet-" + version + "-darwin-arm64"].contains(root.lastPathComponent),
+              bundle.resolvingSymlinksInPath().path == root.resolvingSymlinksInPath().appendingPathComponent("bin/Agent Pet.app").path,
+              let markerData = try? Data(contentsOf: root.deletingLastPathComponent().appendingPathComponent(".obsolete")),
+              let removed = try? JSONSerialization.jsonObject(with: markerData) as? [String: Bool], removed[root.lastPathComponent] == true else { return }
+        // The normal VS Code uninstall hook also unregisters this path. Do it on
+        // early self-removal too; it never targets another version's bundle.
+        let unregister = Process()
+        unregister.executableURL = URL(fileURLWithPath: "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister")
+        unregister.arguments = ["-u", bundle.path]
+        unregister.standardOutput = FileHandle.nullDevice; unregister.standardError = FileHandle.nullDevice
+        try? unregister.run()
+        do { try FileManager.default.removeItem(at: bundle) }
+        catch { NSLog("Agent Pet app cleanup failed: %@", error.localizedDescription) }
+    }
 }
 
 final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
     let directory: URL
     let testing: Bool
     var lifetime = HelperLifetime()
+    var ownsLock = false
     var terminationSignal: DispatchSourceSignal?
     let defaults = UserDefaults(suiteName: "local.codex-pet-desktop")!
     var panel: PetPanel!
@@ -475,6 +499,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         lockFD = Darwin.open(directory.appendingPathComponent("desktop.lock").path, O_CREAT | O_RDWR, 0o600)
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
+        ownsLock = true
         // SIGTERM from an update/uninstall should flush preferences and release
         // the shared lock through the normal AppKit shutdown path.
         signal(SIGTERM, SIG_IGN)
@@ -1482,6 +1507,33 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
         return ["statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
+    func testBundleRemoval() -> Bool {
+        let fm = FileManager.default, base = directory.appendingPathComponent("bundle-removal-" + UUID().uuidString)
+        let root = base.appendingPathComponent("merttalhayener.agent-pet-0.14.2")
+        let bundle = root.appendingPathComponent("bin/Agent Pet.app")
+        let marker = base.appendingPathComponent(".obsolete")
+        defer { try? fm.removeItem(at: base) }
+        do {
+            try fm.createDirectory(at: bundle, withIntermediateDirectories: true)
+            try Data(#"{"publisher":"merttalhayener","name":"agent-pet","version":"0.14.2"}"#.utf8).write(to: root.appendingPathComponent("package.json"))
+            for raw in ["{}", "{", #"{"merttalhayener.agent-pet-0.14.2":false}"#, #"{"merttalhayener.agent-pet-0.14.3":true}"#] {
+                try Data(raw.utf8).write(to: marker)
+                HelperLifetime.removeUninstalledBundle(bundle)
+                guard fm.fileExists(atPath: bundle.path) else { return false }
+            }
+            let other = base.appendingPathComponent("other-app")
+            try fm.createDirectory(at: other, withIntermediateDirectories: true)
+            try fm.removeItem(at: bundle)
+            try fm.createSymbolicLink(at: bundle, withDestinationURL: other)
+            try Data(#"{"merttalhayener.agent-pet-0.14.2":true}"#.utf8).write(to: marker)
+            HelperLifetime.removeUninstalledBundle(bundle)
+            guard fm.fileExists(atPath: other.path), fm.fileExists(atPath: bundle.path) else { return false }
+            try fm.removeItem(at: bundle)
+            try fm.createDirectory(at: bundle, withIntermediateDirectories: true)
+            HelperLifetime.removeUninstalledBundle(bundle)
+            return !fm.fileExists(atPath: bundle.path) && fm.fileExists(atPath: root.appendingPathComponent("package.json").path) && fm.fileExists(atPath: other.path)
+        } catch { return false }
+    }
     func testHelperLifetime() -> Bool {
         var state = HelperLifetime()
         let first = !state.shouldExit(connected: false, removed: false, now: 0)
@@ -1496,6 +1548,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         return first && reloadGrace && otherWindow && reconnect && closed && resumed && removalGrace && removed && reinstall
     }
     func selfTest() {
+        precondition(testBundleRemoval(), "Bundle removal scope/metadata guards failed")
         precondition(testHelperLifetime(), "Helper lifetime grace, reload, multi-window or removal failed")
         capture("dashboard-test.png")
         let initial = displayThreads
@@ -1584,7 +1637,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         if let data = try? JSONSerialization.data(withJSONObject: result.merging(clicks) { _, new in new }.merging(features) { _, new in new }, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: directory.appendingPathComponent("dashboard-test.json")); print(String(data: data, encoding: .utf8)!) }
         NSApp.terminate(nil)
     }
-    func applicationWillTerminate(_ notification: Notification) { animation?.invalidate(); polling?.invalidate(); savePosition(); if let hotKey { UnregisterEventHotKey(hotKey) }; if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }; if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }; if lockFD >= 0 { flock(lockFD, LOCK_UN); Darwin.close(lockFD) } }
+    func applicationWillTerminate(_ notification: Notification) { animation?.invalidate(); polling?.invalidate(); savePosition(); if let hotKey { UnregisterEventHotKey(hotKey) }; if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }; if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }; if lockFD >= 0 {
+            if ownsLock && (!testing || CommandLine.arguments.contains("--lifecycle-test")) { HelperLifetime.removeUninstalledBundle(Bundle.main.bundleURL) }
+            flock(lockFD, LOCK_UN); Darwin.close(lockFD)
+        } }
 }
 
 let args = CommandLine.arguments
