@@ -70,6 +70,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-İlk Marketplace paketi `merttalhayener.agent-pet` kimliğiyle hazırlandı; yayımlama için publisher hesabının kurulması bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+İlk Marketplace paketi `merttalhayener.agent-pet` kimliğiyle yüklendi; Microsoft doğrulaması bekleniyor. Onaylandığında [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
 Özgün kaynak kod ve yerleşik vektör robot [MIT lisanslıdır](LICENSE). Dışarıdan yüklenen Codex çizimleri pakete dahil değildir ve bu lisans kapsamında değildir.

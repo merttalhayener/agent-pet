@@ -46,7 +46,7 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-The first Marketplace release is prepared as **`merttalhayener.agent-pet`**; publication is pending publisher account setup. Until then, use the [GitHub releases](https://github.com/merttalhayener/agent-pet/releases).
+The first Marketplace release, **`merttalhayener.agent-pet`**, has been uploaded and is awaiting Microsoft verification. Once approved, install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). Until then, use the [GitHub releases](https://github.com/merttalhayener/agent-pet/releases).
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Download the **darwin-arm64 VSIX**, then use **Extensions → ⋯ → Install from VSIX…**.

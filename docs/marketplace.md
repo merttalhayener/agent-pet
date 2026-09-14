@@ -2,7 +2,7 @@
 
 Publisher: **merttalhayener** · Extension: **agent-pet** · ID: **merttalhayener.agent-pet**
 
-The initial release is pending Microsoft account / publisher setup.
+Publisher setup is complete. Version 0.11.0 has been uploaded with Public visibility and is awaiting Microsoft verification. The listing will be available at https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet after approval.
 
 ## Build and verify
 
