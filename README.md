@@ -46,7 +46,7 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-Install the prerelease from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). **The visibility fix described above is included in 0.11.3, currently available on [GitHub](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.3) and awaiting Marketplace upload.**
+Install the prerelease from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). **The visibility fix described above is included in 0.11.4, currently available on [GitHub](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.4) and awaiting Marketplace upload.**
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install the prerelease.
@@ -54,7 +54,7 @@ Install the prerelease from the [VS Code Marketplace](https://marketplace.visual
 
 **Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.
 
-Subsequent Marketplace updates use VS Code’s update settings. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
+Subsequent Marketplace updates use VS Code’s update settings. From 0.11.4, the running desktop panel switches to the newly installed helper within a few seconds, keeping visibility preferences and active chats. The first upgrade from an older version needs a window reload to enable this mechanism. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
 
 ## Quick controls
 

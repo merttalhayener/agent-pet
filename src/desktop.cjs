@@ -5,8 +5,10 @@ const execFileAsync = require('node:util').promisify(execFile);
 const crypto = require('node:crypto');
 
 class DesktopBridge {
-  constructor(directory, executable, getSnapshot, reportError, extensionId = 'local.codex-pet-panel') {
+  constructor(directory, executable, getSnapshot, reportError, extensionId = 'local.codex-pet-panel', resolveExecutable) {
     this.extensionId = extensionId;
+    this.resolveExecutable = resolveExecutable;
+    this.lifecycle = Promise.resolve();
     this.directory = directory; this.executable = executable; this.getSnapshot = getSnapshot; this.reportError = reportError;
     this.file = path.join(directory, `client-${process.pid}-${crypto.randomBytes(5).toString('hex')}.json`);
     this.disposed = false;
@@ -62,23 +64,51 @@ class DesktopBridge {
       throw new Error('The previous pet is still closing. Try Show Desktop Pet again.');
     }
   }
+  // Each window can detect an installed update before its extension host reloads.
+  // Serialize local starts; the native state lock arbitrates between windows.
+  reconcile(show = false, background = false) {
+    this.lifecycle = this.lifecycle.catch(() => {}).then(async () => {
+      if (this.disposed) return;
+      const running = await this.hasRunningHelper();
+      if (background && !running && !this.restartPending) return; // Do not reopen a deliberately quit app.
+      if (running) this.restartPending = false;
+      const executable = this.resolveExecutable ? await this.resolveExecutable() : this.executable;
+      // Validate the replacement exists before closing the working helper.
+      await fs.access(executable, fs.constants.X_OK);
+      if (this.disposed) return;
+      this.executable = executable;
+      if (show) {
+        await fs.unlink(path.join(this.directory, 'desktop-hidden')).catch(() => {});
+        await fs.writeFile(path.join(this.directory, 'desktop-show-request'), '');
+      } else if (!running && !this.restartPending && await fs.stat(path.join(this.directory, 'desktop-hidden')).catch(() => null)) return;
+      await this.upgradeRunningHelper();
+      if (this.disposed || await this.hasRunningHelper()) return;
+      this.restartPending = true; // Retry a failed launch after the old helper has exited.
+      const child = spawn(this.executable, ['--state-dir', this.directory], { detached: true, stdio: 'ignore' });
+      child.on('error', this.reportError); child.unref();
+    });
+    return this.lifecycle;
+  }
   async start(show = false) {
-    if (process.platform !== 'darwin') return;
+    if (process.platform !== 'darwin' || this.disposed) return;
     await fs.mkdir(this.directory, { recursive: true });
-    if (!this.timer) this.timer = setInterval(() => this.write().catch(() => {}), 3000);
-    await this.write();
-    if (show) {
-      await fs.unlink(path.join(this.directory, 'desktop-hidden')).catch(() => {});
-      await fs.writeFile(path.join(this.directory, 'desktop-show-request'), '');
+    if (!this.timer) {
+      this.timer = setInterval(() => this.write().catch(() => {}), 3000);
+      this.updateTimer = setInterval(() => {
+        if (this.checkingUpdate) return;
+        this.checkingUpdate = true;
+        void this.reconcile(false, true).catch(error => {
+          // Retry a failed handover, without repeating the same error every poll.
+          if (this.updateError !== error.message) { this.updateError = error.message; this.reportError(error); }
+        }).finally(() => { this.checkingUpdate = false; });
+      }, 5000);
+      this.updateTimer.unref?.();
     }
-    else if (await fs.stat(path.join(this.directory, 'desktop-hidden')).catch(() => null)) return;
-    await fs.chmod(this.executable, 0o755);
-    await this.upgradeRunningHelper();
-    const child = spawn(this.executable, ['--state-dir', this.directory], { detached: true, stdio: 'ignore' });
-    child.on('error', this.reportError); child.unref();
+    await this.write();
+    await this.reconcile(show);
   }
   dispose() {
-    this.disposed = true; clearInterval(this.timer);
+    this.disposed = true; clearInterval(this.timer); clearInterval(this.updateTimer);
     void this.pending.catch(() => {}).then(() => fs.unlink(this.file)).catch(() => {});
   }
 }

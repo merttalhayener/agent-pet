@@ -50,7 +50,7 @@ Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür
 2. [darwin-arm64 VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases), **Extensions → ⋯ → Install from VSIX…** ile kur.
 3. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
-Güncellemeler artık takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **GitHub önizlemesinden geçiyorsan**, **Replace preview** seçeneğini kullan; aktif işler bitince her pencerede bir kez **Developer: Reload Window** çalıştır.
+0.11.4 itibarıyla çalışan masaüstü paneli, yeni sürüm kurulduktan birkaç saniye sonra eski süreci kapatıp yeni sürüme geçer; görünürlük tercihleri ve aktif sohbetler korunur. Eski sürümden ilk geçişte bu mekanizmanın başlaması için bir kez pencere yenilenmesi gerekir. Güncellemeler takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **GitHub önizlemesinden geçiyorsan**, **Replace preview** seçeneğini kullan; aktif işler bitince her pencerede bir kez **Developer: Reload Window** çalıştır.
 
 ## Hızlı kullanım
 
@@ -71,6 +71,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. Yukarıdaki görünürlük düzeltmesi 0.11.3 sürümündedir; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.3) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. Yukarıdaki görünürlük düzeltmesi 0.11.4 sürümündedir; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.4) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
 Özgün kaynak kod ve yerleşik vektör robot [MIT lisanslıdır](LICENSE). Dışarıdan yüklenen Codex çizimleri pakete dahil değildir ve bu lisans kapsamında değildir.

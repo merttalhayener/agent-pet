@@ -5,7 +5,7 @@ const os = require('node:os');
 const { AgentActivityMonitor } = require('./agent-activity.cjs');
 const { createUpdateReload } = require('./update-reload.cjs');
 const { prepareMarketplaceMigration } = require('./marketplace-migration.cjs');
-const { createMarketplaceUpdater, installedMarketplaceVersion } = require('./marketplace-updater.cjs');
+const { createMarketplaceUpdater, installedMarketplaceVersion, installedMarketplacePackage } = require('./marketplace-updater.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
@@ -56,7 +56,7 @@ async function activate(context) {
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'),
       () => ({ protocolVersion: 9, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
-      error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); }, extensionId);
+      error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); }, extensionId, async () => path.join((await installedMarketplacePackage(context)).extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'));
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
   }

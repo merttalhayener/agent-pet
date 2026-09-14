@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.4 — Replace the running pet after updates
+
+- Detect a newly installed Marketplace package every five seconds while the desktop helper is running.
+- Close the older helper and launch the installed version without interrupting active chats or waiting for a VS Code window reload.
+- Keep panel visibility, pet preferences, workspace groups and live window snapshots.
+- Serialize concurrent starts, reuse an existing helper, and prevent older windows from downgrading it.
+- Validate the replacement executable before stopping the old helper; leave deliberately quit apps closed.
+- The first upgrade from 0.11.3 or earlier still needs a window reload to activate this mechanism. Extension-host updates retain the existing safe idle reload.
+
 ## 0.11.3 — Hide the panel independently
 
 - **Hide panel** now hides only the chat list, keeping the pet visible.

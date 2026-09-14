@@ -4,7 +4,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
 const vm=require('node:vm');
-const {installedMarketplaceVersion,createMarketplaceUpdater}=require('../src/marketplace-updater.cjs');
+const {installedMarketplaceVersion,installedMarketplacePackage,createMarketplaceUpdater}=require('../src/marketplace-updater.cjs');
 const ID='merttalhayener.agent-pet';
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'pet-market-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
@@ -49,3 +49,11 @@ test('migration preserves tracked IDs without copying routes or overwriting newe
  await fs.writeFile(path.join(next,'tracked-threads.json'),'["new"]');await f.run();assert.equal(await fs.readFile(path.join(next,'tracked-threads.json'),'utf8'),'["new"]');
 });
 test('a surviving preview helper blocks new helper activation',async t=>{const f=await migrationFixture(t,{alive:true});await assert.rejects(f.run(),/still running/);});
+
+test('helper handover resolves the exact indexed extension folder, with or without a platform suffix',async t=>{
+ const f=await fixture(t);await f.write([f.entry]);
+ assert.deepEqual(await installedMarketplacePackage(f.context),{version:'0.11.1',extensionPath:path.join(f.root,f.entry.relativeLocation)});
+ const plain=f.entry.relativeLocation.replace('-darwin-arm64','');await fs.rename(path.join(f.root,f.entry.relativeLocation),path.join(f.root,plain));
+ await f.write([{...f.entry,relativeLocation:plain}]);assert.equal((await installedMarketplacePackage(f.context)).extensionPath,path.join(f.root,plain));
+ await f.write([]);assert.equal((await installedMarketplacePackage(f.context)).extensionPath,f.context.extensionPath);
+});

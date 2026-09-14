@@ -1,13 +1,15 @@
-# Agent Pet v0.11.3 — Hide the panel, keep the pet
+# Agent Pet v0.11.4 — Replace the running panel after updates
 
-**Hide panel** now hides only the chat list. The pet remains visible, movable and resizable. **Show panel** restores the same chats and workspace groups.
+Once this version is active, the desktop panel checks for an installed Marketplace update every five seconds. It closes the older helper and opens the new version without interrupting chats. Visibility preferences, workspace groups and the live window snapshots are preserved. A deliberately quit helper stays closed.
 
-**Hide pet / Show pet** controls the character independently. **Hide all / Show all** or **Ctrl + Option + Cmd + P** controls the whole window. The individual visibility preferences are saved. If both parts are hidden individually, Show all or VS Code’s show command restores them.
+Repeated starts reuse the existing helper. Older VS Code windows cannot downgrade a newer running helper, and a missing replacement executable leaves the working helper running.
 
-The VS Code **Agent Pet: Hide Panel** command follows the same panel-only behavior. English and Turkish menus and usage docs are updated.
+**First upgrade:** Users on 0.11.3 or earlier still need a window reload to activate this mechanism. The extension host continues to use the safe idle reload with a 15-second countdown; active chats are not forcibly reloaded.
+
+Includes the independent Hide pet / Hide panel / Hide all controls and menu label fixes from 0.11.1–0.11.3.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Prerelease.
 
-This VSIX can be installed locally for testing. Marketplace publication of 0.11.3 is pending publisher upload.
+Validation: Node regression tests and a real macOS process/lock handover test, including background detection during active chat snapshots, hidden state preservation, old-process termination, and a stale second window.
 
-Validation: Node tests passed, including the VS Code panel-only hide request. Native dashboard checks passed for independent visibility, repeated menu toggles in both languages, pet-only drawing/movement/resizing, workspace preservation, and recovery after both parts are hidden.
+Marketplace upload is pending. Use `agent-pet-marketplace-0.11.4-darwin-arm64.vsix` instead of the previous package.

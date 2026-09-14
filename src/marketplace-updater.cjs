@@ -2,21 +2,24 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { newer } = require('./updater.cjs');
 
-async function installedMarketplaceVersion(context) {
+async function installedMarketplacePackage(context) {
   const current = context.extension.packageJSON.version, id = context.extension.id;
   const root = path.dirname(context.extensionPath);
+  let installed = { version: current, extensionPath: context.extensionPath };
   try {
     const entries = JSON.parse(await fs.readFile(path.join(root, 'extensions.json'), 'utf8'));
-    let version = current;
     for (const entry of entries) {
-      if (entry.identifier?.id?.toLowerCase() !== id.toLowerCase() || !newer(entry.version, version)) continue;
+      if (entry.identifier?.id?.toLowerCase() !== id.toLowerCase() || !newer(entry.version, installed.version)) continue;
       const folder = entry.relativeLocation;
       if (typeof folder !== 'string' || path.basename(folder) !== folder || !folder.startsWith(id + '-')) continue;
       const pkg = JSON.parse(await fs.readFile(path.join(root, folder, 'package.json'), 'utf8'));
-      if (`${pkg.publisher}.${pkg.name}` === id && pkg.version === entry.version) version = pkg.version;
+      if (`${pkg.publisher}.${pkg.name}` === id && pkg.version === entry.version) installed = { version: pkg.version, extensionPath: path.join(root, folder) };
     }
-    return version;
-  } catch { return current; }
+  } catch { /* A partial installation cannot replace the active package. */ }
+  return installed;
+}
+async function installedMarketplaceVersion(context) {
+  return (await installedMarketplacePackage(context)).version;
 }
 function createMarketplaceUpdater(vscode, context) {
   let timer, disposed = false, busy = false;
@@ -36,4 +39,4 @@ function createMarketplaceUpdater(vscode, context) {
     timer.unref?.();
   }, dispose() { disposed = true; clearInterval(timer); } };
 }
-module.exports = { createMarketplaceUpdater, installedMarketplaceVersion };
+module.exports = { createMarketplaceUpdater, installedMarketplaceVersion, installedMarketplacePackage };
