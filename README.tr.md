@@ -11,9 +11,9 @@ Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni
 
 [**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
-<a href="docs/media/demo.mp4"><img src="docs/images/workspaces.png" alt="Codex ve Claude sohbetleri çalışma alanlarına göre gruplanmış. 12 saniyelik tanıtım için tıkla." width="480"></a>
+<img src="docs/media/demo.gif" alt="Petli liste, çalışma alanları ve yalnızca panel: 12 saniyelik animasyonlu önizleme" width="640">
 
-[▶ 12 saniyelik tanıtım](docs/media/demo.mp4) · Örnek sohbetlerle üç görünüm.
+12 saniyelik animasyonlu önizleme · [MP4 indir](https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/demo.mp4)
 
 </div>
 

@@ -11,9 +11,9 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 [**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
-<a href="docs/media/demo.mp4"><img src="docs/images/workspaces.png" alt="Agent Pet grouping Codex and Claude chats by workspace. Click for the 12-second feature tour." width="480"></a>
+<img src="docs/media/demo.gif" alt="12-second animated preview: pet view, workspace groups, and panel-only mode" width="640">
 
-[▶ 12-second feature tour](docs/media/demo.mp4) · Three views, using sample conversations.
+12-second animated preview · [Download MP4](https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/demo.mp4)
 
 </div>
 
