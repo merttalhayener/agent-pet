@@ -1,9 +1,14 @@
-Agent Pet 0.9.1 fixes **grouping across overlapping workspaces**.
+# Agent Pet v0.10.0 — Focus controls and updates
 
-If a project belongs to a multi-root workspace and is also open in its own VS Code window, its chats now prefer the more specific workspace. Previously retained group assignments update automatically. Panel-only mode continues to affect appearance only.
+- Add status and workspace filters without affecting notification tracking or totals.
+- Add persistent per-chat workspace overrides for grouping and window navigation.
+- Add optional status labels, including Stopped, and a menu bar running/waiting counter.
+- Add opt-in native macOS waiting notifications with per-chat mute and click-to-chat routing.
+- Add daily GitHub beta update checks and one-click checksum-verified VSIX installation.
+- Package the native helper as an application bundle and preserve upgrades from older helpers.
 
-The rule uses the chat’s working directory: deepest matching folder first, then fewer workspace folders. Removing a folder also stops that window from claiming its old chats.
+After installation, finish active chats and run **Developer: Reload Window** in each open VS Code window. Windows are never reloaded automatically.
 
-After installing, wait for active turns to finish and run **Developer: Reload Window in every open VS Code window**. This update needs the new working-directory and workspace-root metadata from each extension host.
+Enable waiting notifications under **Notifications → Notify when waiting for me**, then grant macOS permission. Background checks contact GitHub once daily; disable them with `codexPet.checkForUpdates`. Chat records remain local.
 
-English and Turkish. Apple Silicon, macOS 26+.
+Apple Silicon · macOS 26+ · English / Türkçe · Beta. No Developer ID signing/notarization yet.

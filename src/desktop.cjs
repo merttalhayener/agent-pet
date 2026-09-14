@@ -33,10 +33,15 @@ class DesktopBridge {
         old = (await execFileAsync('/bin/ps', ['-p', id, '-o', 'comm='], { timeout: 1000 })).stdout.trim();
         args = (await execFileAsync('/bin/ps', ['-p', id, '-o', 'args='], { timeout: 1000 })).stdout.trim();
       } catch { continue; }
-      const extensionDir = path.dirname(path.dirname(old));
-      if (old === this.executable || path.basename(old) !== 'codex-desktop-pet' || !/^local\.codex-pet-panel-/.test(path.basename(extensionDir)) || path.dirname(extensionDir) !== path.dirname(path.dirname(path.dirname(this.executable))) || args !== `${old} --state-dir ${this.directory}`) continue;
+      function extensionRoot(executable) {
+        const suffix = executable.endsWith('/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet') ? '/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet' : '/bin/codex-desktop-pet';
+        return executable.endsWith(suffix) ? executable.slice(0, -suffix.length) : '';
+      }
+      const extensionDir = extensionRoot(old), newRoot = extensionRoot(this.executable);
+      const ownArguments = args === `${old} --state-dir ${this.directory}` || (old.endsWith('/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet') && args === old);
+      if (old === this.executable || path.basename(old) !== 'codex-desktop-pet' || !/^local\.codex-pet-panel-/.test(path.basename(extensionDir)) || path.dirname(extensionDir) !== path.dirname(newRoot) || !ownArguments) continue;
       const oldVersion = path.basename(extensionDir).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
-      const newVersion = path.basename(path.dirname(path.dirname(this.executable))).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+      const newVersion = path.basename(newRoot).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
       if (!oldVersion || !newVersion) continue;
       const differing = newVersion.findIndex((value, i) => value !== oldVersion[i]);
       if (differing < 0 || newVersion[differing] < oldVersion[differing]) continue;

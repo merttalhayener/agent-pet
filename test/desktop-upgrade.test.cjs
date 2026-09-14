@@ -19,3 +19,20 @@ test('upgrade ignores same/newer versions, other roots, and different state',asy
 test('upgrade reports a helper that fails to exit instead of launching a duplicate',async()=>{
  const f=fixture('/extensions/local.codex-pet-panel-0.7.0/bin/codex-desktop-pet',undefined,true);await assert.rejects(f.bridge.upgradeRunningHelper(),/still closing/);
 });
+
+test('bundle upgrades accept legacy and bundled helpers but never a newer bundle',async()=>{
+ for (const suffix of ['bin/codex-desktop-pet','bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet']) {
+  const f=fixture('/extensions/local.codex-pet-panel-0.9.1/'+suffix);
+  f.bridge.executable='/extensions/local.codex-pet-panel-0.10.0/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet';
+  await f.bridge.upgradeRunningHelper();assert.equal(f.signals[0][1],'SIGTERM');
+ }
+ const f=fixture('/extensions/local.codex-pet-panel-0.10.1/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet');
+ f.bridge.executable='/extensions/local.codex-pet-panel-0.10.0/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet';
+ await f.bridge.upgradeRunningHelper();assert.equal(f.signals.length,0);
+});
+
+test('bundle relaunched by Notification Center can upgrade using its held state lock',async()=>{
+ const old='/extensions/local.codex-pet-panel-0.9.1/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet';
+ const f=fixture(old,old);f.bridge.executable='/extensions/local.codex-pet-panel-0.10.0/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet';
+ await f.bridge.upgradeRunningHelper();assert.equal(f.signals[0][1],'SIGTERM');
+});

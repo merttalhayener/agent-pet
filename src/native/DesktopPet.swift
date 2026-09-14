@@ -1,12 +1,31 @@
 import AppKit
 import Darwin
 import Carbon
+import UserNotifications
+import CoreServices
 
 enum PetLanguage: String, CaseIterable {
     case english = "en", turkish = "tr"
     init(preference: String?) { self = PetLanguage(rawValue: preference ?? "") ?? .english }
     func text(_ key: String) -> String { self == .turkish ? Self.translations[key] ?? key : key }
     private static let translations: [String: String] = [
+        "Stopped": "Durduruldu",
+        "No chats match these filters": "Bu filtrelere uyan sohbet yok",
+        "Filtered": "Filtreli",
+        "Assign workspace": "Çalışma alanı ata",
+        "Automatic": "Otomatik",
+        "Mute waiting notifications": "Yanıt bildirimlerini sessize al",
+        "Filters": "Filtreler",
+        "All chats": "Tüm sohbetler",
+        "Waiting for me": "Yanıtımı bekleyenler",
+        "All workspaces": "Tüm çalışma alanları",
+        "Status labels": "Durum yazıları",
+        "Menu bar counter": "Menü çubuğu sayacı",
+        "Notify when waiting for me": "Yanıtım beklendiğinde bildir",
+        "macOS notification settings": "macOS bildirim ayarları",
+        "Allow Agent Pet in macOS notification settings": "macOS bildirim ayarlarında Agent Pet’e izin ver",
+        "Check macOS notification settings": "macOS bildirim ayarlarını kontrol et",
+        "Check for updates…": "Güncellemeleri denetle…",
         "Chats": "Sohbetler",
         "Workspaces": "Çalışma alanları",
         "No workspace": "Çalışma alanı yok",
@@ -240,7 +259,7 @@ final class DashboardView: NSView {
         let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
         let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
         let navigationNotice = (owner?.navigationNoticeUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : text(owner?.grouped == true ? "Workspaces" : "Chats") + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+        label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : (owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? text("Filtered") : text(owner?.grouped == true ? "Workspaces" : "Chats")) + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
         label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
         label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
         clampScroll()
@@ -261,11 +280,11 @@ final class DashboardView: NSView {
             let size = owner?.textSize ?? 11.5
             let pinned = owner?.pinned.contains(thread.id) ?? false
             label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 118, height: size + 5), size: size, color: .white)
-            label(thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 118, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
+            label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 118, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
             label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
             if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
         }
-        if rows.isEmpty && !collapsed { label(text("No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
+        if rows.isEmpty && !collapsed { label(text(owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? "No chats match these filters" : "No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
         if entries.count > visibleCount && !collapsed {
             let track = cardHeight - 22, thumb = max(18, track * CGFloat(visibleCount) / CGFloat(entries.count))
             let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(entries.count - visibleCount))
@@ -358,7 +377,7 @@ final class DashboardView: NSView {
     }
 }
 
-final class DesktopPet: NSObject, NSApplicationDelegate {
+final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     let directory: URL
     let testing: Bool
     let defaults = UserDefaults(suiteName: "local.codex-pet-desktop")!
@@ -369,6 +388,29 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var selectedAt: Double = 0, sleepAt: Double = 0
     var retained: [String: ThreadActivity] = [:], dismissed: [String: Double] = [:]
     var displayThreads: [ThreadActivity] = []
+    var allThreads: [ThreadActivity] = []
+    var workspaceOverrides: [String: WorkspaceInfo] = [:]
+    var statusLabels = true, menuCounter = true, waitingNotifications = false
+    var statusFilter = "all", workspaceFilter = ""
+    var mutedChats = Set<String>()
+    var waitingSeen: [String: Double] = [:]
+    var waitingObserved = false
+    var testWaitingNotifications: [String] = []
+    var notificationError = ""
+    var availableWorkspaces: [WorkspaceInfo] {
+        var byID: [String: WorkspaceInfo] = [:]
+        for w in allThreads.compactMap({ $0.workspace }) + snapshots().compactMap({ $0.workspace }) { byID[w.id] = w }
+        return byID.values.sorted { $0.name == $1.name ? $0.id < $1.id : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+    var counterText: String { String(format: text("%d running · %d waiting"), allThreads.filter { $0.status == "running" }.count, allThreads.filter { $0.status == "waiting" }.count) }
+    func rowSubtitle(_ thread: ThreadActivity) -> String {
+        guard statusLabels else { return thread.agentName }
+        let status = thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread.status, language: language)
+        return thread.agentName + " · " + status
+    }
+    func applyFilters(_ threads: [ThreadActivity]) -> [ThreadActivity] {
+        threads.filter { (statusFilter == "all" || $0.status == statusFilter) && (workspaceFilter.isEmpty || $0.workspace?.id == workspaceFilter) }
+    }
     var lastObserved: [String: Date] = [:]
     var order: [String] = []
     var reactionUntil: Double = 0, lookUntil: Double = 0
@@ -392,7 +434,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     var hotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?
     var animation: Timer?, polling: Timer?
-    var overallStatus: String { displayThreads.contains { $0.status == "waiting" } ? "waiting" : displayThreads.contains { $0.status == "running" } ? "running" : displayThreads.contains { $0.status == "failed" } ? "failed" : !displayThreads.isEmpty && displayThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
+    var overallStatus: String { allThreads.contains { $0.status == "waiting" } ? "waiting" : allThreads.contains { $0.status == "running" } ? "running" : allThreads.contains { $0.status == "failed" } ? "failed" : !allThreads.isEmpty && allThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
     static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "idle": "Idle"][status] ?? "Idle") }
     static func durationText(_ thread: ThreadActivity, language: PetLanguage = .english, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
         guard let start = thread.startedAt, start > 0 else { return "–" }
@@ -407,6 +449,16 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         lockFD = Darwin.open(directory.appendingPathComponent("desktop.lock").path, O_CREAT | O_RDWR, 0o600)
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
         if !testing {
+            LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+            statusLabels = defaults.object(forKey: "statusLabels") == nil || defaults.bool(forKey: "statusLabels")
+            menuCounter = defaults.object(forKey: "menuCounter") == nil || defaults.bool(forKey: "menuCounter")
+            waitingNotifications = defaults.bool(forKey: "waitingNotifications")
+            statusFilter = defaults.string(forKey: "statusFilter") ?? "all"
+            if !["all", "running", "waiting"].contains(statusFilter) { statusFilter = "all" }
+            workspaceFilter = defaults.string(forKey: "workspaceFilter") ?? ""
+            mutedChats = Set(defaults.stringArray(forKey: "mutedChats") ?? [])
+            if let data = defaults.data(forKey: "workspaceOverrides"), let saved = try? JSONDecoder().decode([String: WorkspaceInfo].self, from: data) { workspaceOverrides = saved }
+            UNUserNotificationCenter.current().delegate = self
             language = PetLanguage(preference: defaults.string(forKey: "language"))
             panelOnly = defaults.bool(forKey: "panelOnly")
             grouped = defaults.bool(forKey: "grouped")
@@ -506,7 +558,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         let trackedFile = directory.appendingPathComponent("tracked-threads.json")
         if let data = try? JSONEncoder().encode(threads.map { $0.id }.sorted()), (try? Data(contentsOf: trackedFile)) != data { try? data.write(to: trackedFile, options: .atomic) }
         for thread in threads where !order.contains(thread.id) { order.append(thread.id) }
-        displayThreads = threads.compactMap { thread in
+        allThreads = threads.compactMap { thread in
             let hiddenAt = dismissed[thread.id] ?? (testing ? 0 : defaults.double(forKey: "dismissed.\(thread.id)"))
             if hiddenAt > 0 {
                 guard (thread.status == "running" || thread.status == "waiting") && (thread.startedAt ?? thread.changedAt) > hiddenAt else { return nil }
@@ -521,7 +573,22 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
             return ap == bp ? (order.firstIndex(of: a.id) ?? 0) < (order.firstIndex(of: b.id) ?? 0) : ap < bp
         }
-        observeCompletions(displayThreads)
+        allThreads = allThreads.map { thread in
+            var row = thread
+            if let workspace = workspaceOverrides[row.id] { row.workspace = workspace }
+            return row
+        }
+        let routes = workspaceOverrides.reduce(into: [String: [String: String]]()) { result, pair in
+            if let thread = retained[pair.key] { result[pair.key] = ["workspaceID": pair.value.id, "title": thread.title] }
+        }
+        if let data = try? JSONEncoder().encode(routes) {
+            let file = directory.appendingPathComponent("workspace-routes.json")
+            if (try? Data(contentsOf: file)) != data { try? data.write(to: file, options: .atomic) }
+        }
+        displayThreads = applyFilters(allThreads)
+        observeCompletions(allThreads)
+        observeWaiting(allThreads)
+        updateStatusMenu()
         if selected == "agent-pet" || (!assets.contains { $0.id == selected } && assets.first?.id == "agent-pet") { view.sheet = nil; imagePath = "builtin" }
         else if let asset = assets.first(where: { $0.id == selected }) ?? assets.first, asset.file != imagePath, let image = NSImage(contentsOfFile: asset.file) {
             image.size = NSSize(width: 1536, height: 2288); view.sheet = image; imagePath = asset.file
@@ -652,7 +719,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         updateStatusMenu()
     }
     func updateStatusMenu() {
-        statusItem?.menu = petMenu(thread: nil)
+        // Do not replace an open NSMenu while AppKit is tracking a selection.
+        if statusItem?.menu?.highlightedItem == nil { statusItem?.menu = petMenu(thread: nil) }
+        statusItem?.button?.imagePosition = .imageLeading
+        statusItem?.button?.title = menuCounter ? " " + counterText : ""
         statusItem?.button?.toolTip = "Agent Pet · " + text(hotKey == nil ? "Shortcut in use; hide/show from this menu." : "Hide/show with ⌃⌥⌘P")
     }
     @objc func chooseLanguage(_ item: NSMenuItem) {
@@ -670,7 +740,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func threadURL(_ id: String, live: [Snapshot]) -> URL? {
         let claude = id.hasPrefix("claude:"), session = claude ? String(id.dropFirst(7)) : id
         guard UUID(uuidString: session) != nil else { return nil }
-        let thread = displayThreads.first { $0.id == id } ?? retained[id]
+        var thread = displayThreads.first { $0.id == id } ?? allThreads.first { $0.id == id } ?? retained[id]
+        if let workspace = workspaceOverrides[id] { thread?.workspace = workspace }
         let candidates = live.filter { snapshot in
             guard snapshot.navigation != nil else { return false }
             if let workspace = thread?.workspace { return snapshot.workspace?.id == workspace.id }
@@ -731,6 +802,17 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
             let heading = NSMenuItem(title: thread.title, action: nil, keyEquivalent: "")
             heading.isEnabled = false; menu.addItem(heading)
             action(pinned.contains(thread.id) ? text("Unpin chat") : text("Pin chat"), #selector(togglePinned(_:)), in: menu, value: thread.id)
+            let assignment = NSMenuItem(title: text("Assign workspace"), action: nil, keyEquivalent: "")
+            let choices = NSMenu(); assignment.submenu = choices; menu.addItem(assignment)
+            let automatic = action(text("Automatic"), #selector(assignWorkspace(_:)), in: choices, value: [thread.id, ""])
+            automatic.state = workspaceOverrides[thread.id] == nil ? .on : .off
+            for workspace in availableWorkspaces {
+                let choice = action(workspace.name, #selector(assignWorkspace(_:)), in: choices, value: [thread.id, workspace.id])
+                choice.state = workspaceOverrides[thread.id]?.id == workspace.id ? .on : .off
+                choice.toolTip = workspace.roots?.joined(separator: "\n")
+            }
+            let mute = action(text("Mute waiting notifications"), #selector(toggleMuted(_:)), in: menu, value: thread.id)
+            mute.state = mutedChats.contains(thread.id) ? .on : .off
             action(text("Remove from list"), #selector(dismissMenuRow(_:)), in: menu, value: thread.id)
             menu.addItem(.separator())
         }
@@ -749,7 +831,24 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         petsMenu.addItem(.separator())
         action(sleeping ? text("Wake up") : text("Sleep"), #selector(toggleSleep), in: petsMenu)
 
+        let filters = group(text("Filters"))
+        for (title, value) in [("All chats", "all"), ("Running", "running"), ("Waiting for me", "waiting")] {
+            let choice = action(text(title), #selector(selectFilter(_:)), in: filters, value: ["status", value])
+            choice.state = statusFilter == value ? .on : .off
+        }
+        filters.addItem(.separator())
+        let all = action(text("All workspaces"), #selector(selectFilter(_:)), in: filters, value: ["workspace", ""])
+        all.state = workspaceFilter.isEmpty ? .on : .off
+        for workspace in availableWorkspaces {
+            let choice = action(workspace.name, #selector(selectFilter(_:)), in: filters, value: ["workspace", workspace.id])
+            choice.state = workspaceFilter == workspace.id ? .on : .off
+            choice.toolTip = workspace.roots?.joined(separator: "\n")
+        }
         let appearanceMenu = group(text("Appearance"))
+        for (title, key, enabled) in [("Status labels", "labels", statusLabels), ("Menu bar counter", "counter", menuCounter)] {
+            let choice = action(text(title), #selector(toggleDashboardSetting(_:)), in: appearanceMenu, value: key)
+            choice.state = enabled ? .on : .off
+        }
         let panelChoice = action(text("Panel only"), #selector(togglePanelOnly), in: appearanceMenu)
         panelChoice.state = panelOnly ? .on : .off
         appearanceMenu.addItem(.separator())
@@ -772,6 +871,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         snap.state = snapEnabled ? .on : .off
 
         let notifications = group(text("Notifications"))
+        let waiting = action(text("Notify when waiting for me"), #selector(toggleWaitingNotifications), in: notifications)
+        waiting.state = waitingNotifications ? .on : .off
+        if !notificationError.isEmpty { let error = NSMenuItem(title: notificationError, action: nil, keyEquivalent: ""); error.isEnabled = false; notifications.addItem(error) }
+        action(text("macOS notification settings"), #selector(openNotificationSettings), in: notifications)
         for (title, key, enabled) in [(text("Completion animation"), "animation", completionAnimation), (text("Completion sound"), "sound", soundEnabled)] {
             let item = action(title, #selector(toggleSetting(_:)), in: notifications, value: key)
             item.state = enabled ? .on : .off
@@ -782,12 +885,84 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         action(text("Clear completed chats"), #selector(clearCompleted), in: chats)
         action(text("Restore dismissed chats"), #selector(restoreDismissed), in: chats)
         menu.addItem(.separator())
+        action(text("Check for updates…"), #selector(checkForUpdates), in: menu)
         let languages = group(text("Language"))
         for choice in PetLanguage.allCases {
             let item = action(choice == .english ? "English" : "Türkçe", #selector(chooseLanguage(_:)), in: languages, value: choice.rawValue)
             item.state = choice == language ? .on : .off
         }
         return menu
+    }
+    @objc func selectFilter(_ item: NSMenuItem) {
+        guard let choice = item.representedObject as? [String], choice.count == 2 else { return }
+        if choice[0] == "status" { statusFilter = choice[1] } else { workspaceFilter = choice[1] }
+        view.scrollOffset = 0; refresh()
+    }
+    @objc func assignWorkspace(_ item: NSMenuItem) {
+        guard let choice = item.representedObject as? [String], choice.count == 2 else { return }
+        workspaceOverrides[choice[0]] = availableWorkspaces.first { $0.id == choice[1] }
+        refresh()
+    }
+    @objc func toggleDashboardSetting(_ item: NSMenuItem) {
+        if item.representedObject as? String == "labels" { statusLabels.toggle() } else { menuCounter.toggle() }
+        refresh()
+    }
+    @objc func toggleMuted(_ item: NSMenuItem) {
+        guard let id = item.representedObject as? String else { return }
+        if mutedChats.contains(id) { mutedChats.remove(id) } else {
+            mutedChats.insert(id)
+            if !testing { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id]) }
+        }
+        savePreferences(); updateStatusMenu()
+    }
+    @objc func checkForUpdates() {
+        try? Data().write(to: directory.appendingPathComponent("check-update-request"), options: .atomic)
+    }
+    @objc func openNotificationSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!)
+    }
+    @objc func toggleWaitingNotifications() {
+        if waitingNotifications { waitingNotifications = false; savePreferences(); updateStatusMenu(); return }
+        guard !testing else { waitingNotifications = true; return }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { allowed, error in
+            DispatchQueue.main.async {
+                self.waitingNotifications = allowed
+                self.notificationError = allowed ? "" : self.text("Allow Agent Pet in macOS notification settings")
+                self.savePreferences(); self.updateStatusMenu()
+            }
+        }
+    }
+    func observeWaiting(_ threads: [ThreadActivity]) {
+        var resolved: [String] = []
+        for thread in threads {
+            guard thread.status == "waiting" else { if thread.status != "unknown", waitingSeen.removeValue(forKey: thread.id) != nil { resolved.append(thread.id) }; continue }
+            // A silent startup baseline avoids replaying historical requests.
+            let newRequest = waitingSeen[thread.id] != thread.changedAt
+            waitingSeen[thread.id] = thread.changedAt
+            guard waitingObserved, newRequest, waitingNotifications, !presentationHidden, !mutedChats.contains(thread.id) else { continue }
+            if testing { testWaitingNotifications.append(thread.id); continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Agent Pet · " + text("Waiting for your reply")
+            content.body = thread.title + " · " + thread.agentName
+            content.userInfo = ["threadID": thread.id]; content.sound = .default
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: thread.id, content: content, trigger: nil)) { error in
+                if error != nil { DispatchQueue.main.async { self.notificationError = self.text("Check macOS notification settings"); self.updateStatusMenu() } }
+            }
+        }
+        waitingObserved = true
+        if !testing && !resolved.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: resolved) }
+    }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        DispatchQueue.main.async {
+            let id = notification.request.content.userInfo["threadID"] as? String ?? ""
+            completionHandler(self.waitingNotifications && !self.presentationHidden && !self.mutedChats.contains(id) ? [.banner, .sound] : [])
+        }
+    }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            if response.actionIdentifier == UNNotificationDefaultActionIdentifier, let id = response.notification.request.content.userInfo["threadID"] as? String { self.openThread(id) }
+            completionHandler()
+        }
     }
     func restorePosition() {
         let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
@@ -801,6 +976,11 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
     func savePosition() { if !testing, let panel { defaults.set(panel.frame.minX, forKey: "dashboardX"); defaults.set(panel.frame.minY, forKey: "dashboardY") } }
     func savePreferences() { if !testing {
         defaults.set(language.rawValue, forKey: "language")
+        defaults.set(statusLabels, forKey: "statusLabels"); defaults.set(menuCounter, forKey: "menuCounter")
+        defaults.set(waitingNotifications, forKey: "waitingNotifications")
+        defaults.set(statusFilter, forKey: "statusFilter"); defaults.set(workspaceFilter, forKey: "workspaceFilter")
+        defaults.set(Array(mutedChats).sorted(), forKey: "mutedChats")
+        if let data = try? JSONEncoder().encode(workspaceOverrides) { defaults.set(data, forKey: "workspaceOverrides") }
         for (key, value) in ["panelOnly": panelOnly, "grouped": grouped, "collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
         for (key, value) in ["textSize": textSize, "petScale": petScale, "listOpacity": listOpacity, "dashboardScale": dashboardScale] { defaults.set(value, forKey: key) }
         defaults.set(Array(pinned).sorted(), forKey: "pinned")
@@ -917,7 +1097,62 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         valid = valid && view.petVisible && displayThreads.map { $0.id } == ids
         return valid
     }
+    func dashboardControlTests() -> Bool {
+        let savedAll = allThreads, savedDisplay = displayThreads, savedOverrides = workspaceOverrides
+        let savedLanguage = language, savedStatus = statusFilter, savedWorkspace = workspaceFilter
+        let savedSeen = waitingSeen, savedObserved = waitingObserved, savedNotifications = waitingNotifications
+        let savedHidden = presentationHidden, savedMuted = mutedChats, savedLabels = statusLabels
+        defer {
+            allThreads = savedAll; displayThreads = savedDisplay; workspaceOverrides = savedOverrides
+            language = savedLanguage; statusFilter = savedStatus; workspaceFilter = savedWorkspace
+            waitingSeen = savedSeen; waitingObserved = savedObserved; waitingNotifications = savedNotifications
+            presentationHidden = savedHidden; mutedChats = savedMuted; statusLabels = savedLabels
+            testWaitingNotifications = []; resizeToList()
+        }
+        language = .english; statusLabels = true
+        let a = WorkspaceInfo(id: "workspace-a", name: "Website"), b = WorkspaceInfo(id: "workspace-b", name: "Mobile App")
+        let now = Date().timeIntervalSince1970 * 1000
+        let running = ThreadActivity(id: "11111111-1111-4111-8111-111111111111", title: "Build the landing page", status: "running", changedAt: now, lastEventAt: now, workspace: a)
+        let waiting = ThreadActivity(id: "claude:22222222-2222-4222-8222-222222222222", title: "Choose a layout", status: "waiting", changedAt: now, lastEventAt: now, workspace: b)
+        let stopped = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Review changes", status: "idle", changedAt: now, lastEventAt: now, finishedAt: now, workspace: a)
+        allThreads = [running, waiting, stopped]; statusFilter = "waiting"; workspaceFilter = ""
+        displayThreads = applyFilters(allThreads)
+        var valid = displayThreads == [waiting] && counterText == "1 running · 1 waiting" && overallStatus == "waiting"
+        workspaceFilter = a.id; valid = valid && applyFilters(allThreads).isEmpty
+        statusFilter = "all"; valid = valid && applyFilters(allThreads) == [running, stopped]
+        valid = valid && rowSubtitle(stopped) == "Codex · Stopped"
+        language = .turkish; valid = valid && rowSubtitle(stopped) == "Codex · Durduruldu"
+        language = .english; statusLabels = false; valid = valid && rowSubtitle(stopped) == "Codex"
+        statusLabels = true; displayThreads = allThreads
+        workspaceOverrides[running.id] = b
+        let encoded = try? JSONEncoder().encode(workspaceOverrides)
+        let restored = encoded.flatMap { try? JSONDecoder().decode([String: WorkspaceInfo].self, from: $0) }
+        valid = valid && restored?[running.id] == b
+        let routes = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=99", claude: "vscode://local.codex-pet-panel/claude?windowId=99")
+        let snapshot = Snapshot(navigation: routes, workspace: b, updatedAt: now, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "waiting", active: 0, threads: [waiting], trackingDisabled: false), pets: [])
+        valid = valid && threadURL(running.id, live: [snapshot])?.query == "windowId=99"
+        workspaceOverrides.removeValue(forKey: running.id)
+        valid = valid && threadURL(running.id, live: [snapshot]) == nil
+        waitingSeen = [:]; waitingObserved = false; waitingNotifications = true; presentationHidden = false; mutedChats = []; testWaitingNotifications = []
+        observeWaiting([waiting]); valid = valid && testWaitingNotifications.isEmpty
+        observeWaiting([ThreadActivity(id: waiting.id, title: waiting.title, status: "running", changedAt: now, lastEventAt: now)]); observeWaiting([waiting]); observeWaiting([waiting])
+        valid = valid && testWaitingNotifications == [waiting.id]
+        let unknown = ThreadActivity(id: waiting.id, title: waiting.title, status: "unknown", changedAt: now, lastEventAt: now)
+        observeWaiting([unknown]); observeWaiting([waiting]); valid = valid && testWaitingNotifications.count == 1
+        let ended = ThreadActivity(id: waiting.id, title: waiting.title, status: "ready", changedAt: now + 1, lastEventAt: now + 1)
+        observeWaiting([ended]); mutedChats.insert(waiting.id); observeWaiting([waiting])
+        valid = valid && testWaitingNotifications.count == 1
+        observeWaiting([ended]); mutedChats.removeAll(); presentationHidden = true; observeWaiting([waiting])
+        valid = valid && testWaitingNotifications.count == 1
+        observeWaiting([ended]); presentationHidden = false; observeWaiting([waiting])
+        valid = valid && testWaitingNotifications.count == 2
+        // Active filters do not suppress a waiting event or redirect a notification.
+        statusFilter = "running"; workspaceFilter = a.id; displayThreads = applyFilters(allThreads)
+        valid = valid && !displayThreads.contains { $0.id == waiting.id } && threadURL(waiting.id, live: [snapshot])?.query == "windowId=99&session=22222222-2222-4222-8222-222222222222"
+        return valid
+    }
     func featureTests() -> [String: Any] {
+        let dashboardControlsWork = dashboardControlTests()
         celebrationUntil = 0
         let original = displayThreads
         let workspaceOwnershipWorks = testWorkspaceOwnership()
@@ -973,10 +1208,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         panel.setFrameOrigin(near); snapEnabled = false; snapToEdge()
         let snapOffWorks = panel.frame.origin == near; snapEnabled = true
         let sample = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Waiting for your reply", status: "waiting", changedAt: 1000, lastEventAt: 1000, startedAt: Date().timeIntervalSince1970 * 1000 - 120000)
+        let savedAll = allThreads
+        allThreads = [sample] + original
         displayThreads = [sample] + original
         resizeToList(); capture("dashboard-waiting-test.png")
         let waitingWorks = overallStatus == "waiting"
-        displayThreads = original; resizeToList()
+        allThreads = savedAll; displayThreads = original; resizeToList()
         var running = sample; running = ThreadActivity(id: sample.id, title: sample.title, status: "running", changedAt: 1000, lastEventAt: 1000, startedAt: 1000)
         let completed = ThreadActivity(id: sample.id, title: sample.title, status: "ready", changedAt: 121000, lastEventAt: 121000, startedAt: 1000, finishedAt: 121000)
         let durationWorks = Self.durationText(running, now: 121000) == "2 min" && Self.durationText(completed, now: 900000) == "2 min" && Self.durationText(completed, language: .turkish, now: 900000) == "2 dk"
@@ -997,7 +1234,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")
@@ -1091,7 +1328,17 @@ final class DesktopPet: NSObject, NSApplicationDelegate {
 }
 
 let args = CommandLine.arguments
-guard let index = args.firstIndex(of: "--state-dir"), args.count > index + 1 else { fputs("Usage: codex-desktop-pet --state-dir DIRECTORY [--self-test]\n", stderr); exit(1) }
+let savedDirectory = UserDefaults(suiteName: "local.codex-pet-desktop")!.string(forKey: "stateDirectory")
+let stateDirectory = args.firstIndex(of: "--state-dir").flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil } ?? savedDirectory ?? (args.contains("--notification-probe") ? NSTemporaryDirectory() : nil)
+ guard let stateDirectory else { exit(1) }
+if !args.contains("--self-test") && !args.contains("--notification-probe") { UserDefaults(suiteName: "local.codex-pet-desktop")!.set(stateDirectory, forKey: "stateDirectory") }
+if args.contains("--notification-probe") {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+        print("bundle=\(Bundle.main.bundleIdentifier ?? "missing") authorization=\(settings.authorizationStatus.rawValue)")
+        exit(0)
+    }
+    RunLoop.main.run(); exit(1)
+}
 let app = NSApplication.shared; app.setActivationPolicy(.accessory)
-let delegate = DesktopPet(directory: URL(fileURLWithPath: args[index + 1]), testing: args.contains("--self-test"))
+let delegate = DesktopPet(directory: URL(fileURLWithPath: stateDirectory), testing: args.contains("--self-test"))
 app.delegate = delegate; app.run()

@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const { AgentActivityMonitor } = require('./agent-activity.cjs');
+const { createUpdater } = require('./updater.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
@@ -17,6 +18,9 @@ const PETS = [
 ];
 
 async function activate(context) {
+  const updater = createUpdater(vscode, context);
+  context.subscriptions.push(updater, vscode.commands.registerCommand('codexPet.checkForUpdates', () => updater.check(true)));
+  updater.start();
   let selected = context.globalState.get('pet', 'codex');
   const sleeping = context.globalState.get('sleeping', false);
   let selectedAt = context.globalState.get('petSelectedAt', 0);
@@ -46,7 +50,7 @@ async function activate(context) {
     await desktop.start(true).catch(error => desktop.reportError(error));
   }
   if (process.platform === 'darwin') {
-    desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'codex-desktop-pet'),
+    desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'),
       () => ({ protocolVersion: 8, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
     context.subscriptions.push(desktop);
@@ -80,7 +84,13 @@ async function activate(context) {
   await monitor.tick(); monitor.start(); context.subscriptions.push(monitor);
   const navigation = createClaudeNavigation(vscode, async id => {
     await monitor.tick();
-    return activity.threads?.find(thread => thread.id === id);
+    const local = activity.threads?.find(thread => thread.id === id);
+    if (local) return local;
+    // Explicit native workspace assignments may target a window outside the
+    // session's original roots. Only accept an assignment to this workspace.
+    const routes = JSON.parse(await fs.readFile(path.join(context.globalStorageUri.fsPath, 'desktop', 'workspace-routes.json'), 'utf8').catch(() => '{}'));
+    const route = routes[id];
+    return route?.workspaceID === describeWorkspace(vscode.workspace).id && typeof route.title === 'string' ? { id, title: route.title, status: 'unknown' } : undefined;
   });
   context.subscriptions.push(vscode.window.registerUriHandler(navigation));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {

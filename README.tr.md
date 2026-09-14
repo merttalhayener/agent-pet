@@ -9,7 +9,7 @@ Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni
 
 **macOS 26+ · Apple Silicon · English / Türkçe · Beta**
 
-[**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+[**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.0) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 </div>
 
@@ -35,10 +35,19 @@ Daha az dikkat dağınıklığı için **Görünüm → Yalnızca panel** seç. 
 
 **Yerel VS Code oturumları** desteklenir. Yalnızca CLI veya bulut oturumları desteklenmez. Canlı güncellemeler için VS Code açık kalmalıdır. API anahtarı veya hook ayarı gerekmez.
 
+## Odağını koru
+
+- **Filtreler:** tüm sohbetleri, çalışanları veya yanıtını bekleyenleri göster; tek çalışma alanına daralt.
+- **Çalışma alanı ataması:** sohbete sağ tıkla → **Çalışma alanı ata**. Hem grubu hem açılacak pencereyi seç.
+- **Açık durum yazıları:** simgelerin yanında **Durduruldu**, **Güncelleme yok** gibi açıklamalar göster.
+- **Yanıt bildirimleri:** **Bildirimler** menüsünden aç; macOS bildirimine tıklayarak sohbete dön. Sohbetleri ayrı ayrı sessize al.
+- **Menü çubuğu sayacı:** panel gizliyken de çalışan ve bekleyen sohbet sayılarını gör.
+- **Güncellemeler:** pati menüsündeki **Güncellemeleri denetle…** ile yeni betayı bul, **Güncellemeyi kur** seçeneğiyle yükle.
+
 ## Kurulum
 
 1. VS Code’a **Codex**, **Claude Code** veya ikisini birden kur ve giriş yap.
-2. [VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.9.1/agent-pet-0.9.1.vsix), **Extensions → ⋯ → Install from VSIX…** ile kur.
+2. [VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.0/agent-pet-0.10.0.vsix), **Extensions → ⋯ → Install from VSIX…** ile kur.
 3. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
 Güncellerken aktif işler bittikten sonra her açık VS Code penceresinde **Developer: Reload Window** çalıştır.
@@ -55,6 +64,6 @@ Güncellerken aktif işler bittikten sonra her açık VS Code penceresinde **Dev
 
 Ayarlar için pete veya panele sağ tıkla. Tercihlerin kaydedilir.
 
-Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır.
+Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır. Güncelleme denetimi günde bir GitHub’a bağlanır; VS Code ayarlarından kapatılabilir. Yanıt bildirimleri macOS izni gerektirir.
 
 [Kullanım ve sorun giderme (EN)](docs/usage.md) · [Derleme ve teknik ayrıntılar (EN)](docs/development.md) · [Sorun bildir](https://github.com/merttalhayener/agent-pet/issues)

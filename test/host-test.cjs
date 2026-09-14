@@ -22,6 +22,7 @@ exports.run = async function () {
     assert.ok(commands.includes('codexPet.open'));
     assert.ok(commands.includes('codexPet.showDesktop'));
     assert.ok(commands.includes('codexPet.choose'));
+    assert.ok(commands.includes('codexPet.checkForUpdates'));
     assert.ok(commands.includes('codexPet.togglePresentation'));
     await fs.writeFile(report, JSON.stringify({ success: true, pets: api.availablePets, ...api.getDiagnostics() }, null, 2));
     console.log('PASS: actual VS Code activation, desktop commands, local asset discovery and no sidebar contributions.');

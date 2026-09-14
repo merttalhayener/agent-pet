@@ -26,12 +26,12 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.9.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.10.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
 ```sh
-node --test test/activity.test.cjs test/claude-activity.test.cjs test/extension.test.cjs
+node --test test/*.test.cjs
 ```
 
 Run the native UI tests in a logged-in macOS desktop session with Codex installed:
@@ -80,7 +80,7 @@ Closing the native panel hides it while retaining the menu bar entry and global 
 
 ## Interface languages
 
-The native helper defaults to English independently of the macOS locale. `PetLanguage` contains the English/Turkish strings for menus, dashboard labels, durations, tooltips, and accessibility descriptions. The Language menu persists an `en` or `tr` preference in the existing native UserDefaults suite. Missing or invalid preferences fall back to English. Chat titles and character names are not translated. VS Code command labels and extension messages are English.
+The native helper defaults to English independently of the macOS locale. `PetLanguage` contains the English/Turkish strings for menus, dashboard labels, durations, tooltips, and accessibility descriptions. The Language menu persists an `en` or `tr` preference in the existing native UserDefaults suite. Missing or invalid preferences fall back to English. Chat titles and character names are not translated. VS Code command labels are English. Update prompts follow the VS Code English/Turkish UI locale.
 
 ## Claude Code integration (0.8.0)
 
@@ -111,3 +111,11 @@ Claude’s URI handler accepts VS Code’s numeric windowId parameter while stil
 Protocol 8 adds local folder roots to workspace descriptors and the transcript cwd to chat records. When multiple live workspaces report the same chat, ownership prefers the deepest matching root, then fewer workspace roots; existing ownership breaks only equally specific ties. This repairs a previously retained broad-workspace assignment when a dedicated project window appears. It is a folder-based preference, not proof of which window originally created a session. Event freshness still selects status independently. Panel-only mode is unrelated to this selection.
 
 Monitors also re-filter previously seen chats against their current roots so removing a folder from a workspace stops that window from claiming those chats. Upgrade all open extension hosts to publish the new metadata.
+
+## Dashboard controls and updates (0.10.0)
+
+The native helper keeps `allThreads` separate from the filtered `displayThreads`. Notifications and menu bar totals use the full non-dismissed activity list. Manual workspace overrides persist separately from automatically inferred ownership; navigation uses the override only with a fresh window route. `workspace-routes.json` passes explicit Claude assignments to the selected extension host without exposing stale status as proof a tab is safe to close.
+
+The helper is now an ad-hoc-signed `Agent Pet.app` bundle with stable ID `local.agent-pet.desktop`, enabling macOS UserNotifications. The build is still not Developer ID signed or notarized. Notification authorization is requested only when enabled from the menu. Requests are deduplicated, muted per chat, and suppressed in presentation mode. Native tests exercise request transitions and click routing without requesting OS permission; actual banner presentation depends on user authorization and macOS Focus settings.
+
+`src/updater.cjs` reads public GitHub releases (including prereleases), limits downloads, validates release asset URLs and SHA-256 checksums, and invokes VS Code’s [installExtension command](https://github.com/microsoft/vscode-docs/blob/main/api/references/commands.md) with a local VSIX URI. A shared process lock prevents concurrent prompts/installations across windows. Package installation never invokes Reload Window. Background checks, including failed requests, back off for 24 hours; manual checks remain available.

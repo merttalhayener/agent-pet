@@ -9,7 +9,7 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 **macOS 26+ · Apple Silicon · English / Türkçe · Beta**
 
-[**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
+[**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.0) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
 
 </div>
 
@@ -35,10 +35,19 @@ Choose **Appearance → Panel only** for fewer distractions. Your chats stay vis
 
 Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not supported. VS Code must stay open for live updates. No API keys or hooks to configure.
 
+## Stay focused
+
+- **Filters:** show all chats, running chats, or those waiting for you; narrow to one workspace.
+- **Workspace overrides:** right-click a chat → **Assign workspace** to choose its group and destination window.
+- **Clear statuses:** optional text explains the icons, including **Stopped** and **No update**.
+- **Waiting notifications:** opt in under **Notifications**; click a macOS banner to return to the chat. Mute individual chats.
+- **Menu bar counter:** see running and waiting totals even with the panel hidden.
+- **Updates:** **Check for updates…** in the paw menu installs new beta releases after you click **Install update**.
+
 ## Install
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
-2. [Download the VSIX](https://github.com/merttalhayener/agent-pet/releases/download/v0.9.1/agent-pet-0.9.1.vsix), then use **Extensions → ⋯ → Install from VSIX…**.
+2. [Download the VSIX](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.0/agent-pet-0.10.0.vsix), then use **Extensions → ⋯ → Install from VSIX…**.
 3. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 Upgrading? After active turns finish, run **Developer: Reload Window** in each open VS Code window.
@@ -55,6 +64,6 @@ Upgrading? After active turns finish, run **Developer: Reload Window** in each o
 
 Right-click the pet or panel for settings. Your preferences are remembered.
 
-Independent community project. No added telemetry; chat records stay local.
+Independent community project. No added telemetry; chat records stay local. Update checks contact GitHub once daily and can be disabled in VS Code settings. Waiting notifications require macOS permission.
 
 [Usage & troubleshooting](https://github.com/merttalhayener/agent-pet/blob/main/docs/usage.md) · [Build & technical details](https://github.com/merttalhayener/agent-pet/blob/main/docs/development.md) · [Report an issue](https://github.com/merttalhayener/agent-pet/issues)

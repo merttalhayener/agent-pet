@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0
+
+- Add status and workspace filters without affecting notification tracking or totals.
+- Add persistent per-chat workspace overrides for grouping and window navigation.
+- Add optional status labels, including Stopped, and a menu bar running/waiting counter.
+- Add opt-in native macOS waiting notifications with per-chat mute and click-to-chat routing.
+- Add daily GitHub beta update checks and one-click checksum-verified VSIX installation.
+- Package the native helper as an application bundle and preserve upgrades from older helpers.
+
 ## 0.9.1
 
 - Fix chats remaining under a broad multi-root workspace when the project is also open in a dedicated window.

@@ -7,7 +7,7 @@ src = root / 'src'
 p = json.loads((src / 'package.json').read_text())
 target = root / 'artifacts' / f"agent-pet-{p['version']}.vsix"
 target.parent.mkdir(parents=True, exist_ok=True)
-if not (src / 'bin' / 'codex-desktop-pet').is_file():
+if not (src / 'bin' / 'Agent Pet.app' / 'Contents' / 'MacOS' / 'codex-desktop-pet').is_file():
     raise SystemExit('Build the native helper first: python3 scripts/build-native.py')
 manifest = f'''<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">

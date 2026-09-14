@@ -23,7 +23,7 @@ async function main() {
   await fs.writeFile(path.join(dir, 'client-one.json'), JSON.stringify({ ...base, updatedAt: now - 100, activity: { status: 'running', active: 1, threads: [a, b, ...extra] } }));
   // More recent heartbeat but older chat events must not override chat state.
   await fs.writeFile(path.join(dir, 'client-two.json'), JSON.stringify({ ...base, updatedAt: now, activity: { status: 'running', active: 1, threads: [{ ...a, status: 'ready', changedAt: now - 5000, lastEventAt: now - 4000 }, { ...b, status: 'running', startedAt: now - 180000, changedAt: now - 6000, lastEventAt: now - 5000 }] } }));
-  const { stdout } = await run(path.join(root, 'src', 'bin', 'codex-desktop-pet'), ['--state-dir', dir, '--self-test', ...(process.argv.includes('--hotkey') ? ['--hotkey-self-test'] : [])], { timeout: 15000 });
+  const { stdout } = await run(path.join(root, 'src', 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'), ['--state-dir', dir, '--self-test', ...(process.argv.includes('--hotkey') ? ['--hotkey-self-test'] : [])], { timeout: 15000 });
   const result = JSON.parse(await fs.readFile(path.join(dir, 'dashboard-test.json'), 'utf8'));
   assert.equal(result.windowCount, 1);
   assert.equal(result.rows.find(w => w.id === '11111111-1111-4111-8111-111111111111').indicator, 'spinner');
@@ -32,7 +32,7 @@ async function main() {
   assert.ok(result.sleepWorks); assert.ok(result.removeKeepsOther); assert.equal(result.restoredCount, 2 + extra.length); assert.equal(result.visibleRows, Math.min(8, 2 + extra.length)); assert.ok(result.scrollReachesLast);
   assert.equal(result.appActive, false);
   if (process.argv.includes('--builtin')) assert.ok(result.builtinPet);
-  for (const key of ['workspaceOwnershipWorks','panelOnlyWorks','windowRoutingWorks','workspaceViewWorks','claudeLinkWorks','invalidLinkRejected','languageWorks','reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
+  for (const key of ['dashboardControlsWork','workspaceOwnershipWorks','panelOnlyWorks','windowRoutingWorks','workspaceViewWorks','claudeLinkWorks','invalidLinkRejected','languageWorks','reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
   if (process.argv.includes('--hotkey')) assert.ok(result.hotKeyRegistered);
   assert.ok(result.reopenedChatStaysAfterCompletion); assert.ok(result.dismissedSameTurnStaysHidden);
   assert.ok(result.bottomCornersStay); assert.ok(result.listChangeKeepsCorner); assert.ok(result.refreshDoesNotMoveDrag);

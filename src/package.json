@@ -2,7 +2,7 @@
   "name": "codex-pet-panel",
   "displayName": "Agent Pet",
   "description": "A floating desktop pet for Codex and Claude Code in VS Code.",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {
@@ -48,6 +48,11 @@
         "command": "codexPet.togglePresentation",
         "title": "Toggle Presentation Mode",
         "category": "Agent Pet"
+      },
+      {
+        "command": "codexPet.checkForUpdates",
+        "title": "Check for Updates",
+        "category": "Agent Pet"
       }
     ],
     "configuration": {
@@ -62,6 +67,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show the floating desktop pet when this extension starts on macOS. Right-click the desktop pet to tuck it away."
+        },
+        "codexPet.checkForUpdates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check GitHub for Agent Pet updates once daily (including beta releases). Download and installation require clicking Install update. No chat data is sent."
         }
       }
     }
