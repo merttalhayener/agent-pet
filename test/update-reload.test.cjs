@@ -64,3 +64,10 @@ test('windows sharing an update marker reload independently when their own chats
  await f.controller.tick();await other.tick();f.advance(15000);time=15000;await f.controller.tick();await other.tick();assert.equal(f.calls.length,1);assert.equal(otherCalls.length,0);
  otherActivity=idle();await other.tick();time=30000;await other.tick();assert.deepEqual(otherCalls,['workbench.action.reloadWindow']);
 });
+
+test('Marketplace version source overrides obsolete preview markers',async t=>{
+ const f=await fixture(t);f.controller.dispose();let installed='0.10.2',now=0;
+ const controller=createUpdateReload(f.vscode,f.context,f.getActivity,{now:()=>now,getInstalledVersion:async()=>installed});t.after(()=>controller.dispose());
+ await controller.tick();now=20000;await controller.tick();assert.equal(f.calls.length,0);
+ installed='0.11.0';await controller.tick();now+=15000;await controller.tick();assert.deepEqual(f.calls,['workbench.action.reloadWindow']);
+});

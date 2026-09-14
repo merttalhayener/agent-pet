@@ -1,0 +1,11 @@
+{
+  "name": "agent-pet-build",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.cjs",
+    "package": "python3 build.py"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "3.9.2"
+  }
+}

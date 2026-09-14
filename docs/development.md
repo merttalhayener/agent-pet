@@ -22,11 +22,12 @@ An original vector robot is drawn directly by the native helper and works withou
 On an Apple Silicon Mac, install Python 3, Node.js, and Xcode Command Line Tools with a macOS 26 SDK. Clone this repository, then run:
 
 ```sh
+npm ci
 python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.10.2.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.11.0-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -46,7 +47,7 @@ Set `CODEX_PET_ASSET_DIR` if Codex's `webview/assets` directory is in a nonstand
 
 ## Upgrade compatibility
 
-Agent Pet was previously called Codex Pet Panel. The internal VS Code extension ID (`local.codex-pet-panel`), command IDs, and preference keys are retained so existing installations update in place and keep their settings. New download packages use the `agent-pet` name.
+The Marketplace identity is `merttalhayener.agent-pet`. Earlier GitHub previews used `local.codex-pet-panel`. The new extension waits for explicit **Replace preview** before activating alongside an enabled preview. After removal and window reload, it transfers tracked IDs and upgrades the old helper. Native preferences and command IDs stay stable. Live window routes and preview update markers are never copied. Marketplace VSIX filenames intentionally differ from the preview updater pattern, preventing a silent cross-identity install.
 
 ## Project layout
 
@@ -66,7 +67,7 @@ Agent Pet was previously called Codex Pet Panel. The internal VS Code extension 
 
 Please open an issue with your macOS, VS Code, and Codex extension versions, the expected behavior, and steps to reproduce. Use sample conversation names in screenshots and avoid posting session transcripts or credentials.
 
-The package currently declares `UNLICENSED`; no open-source license has been selected. Publishing the source does not grant a general license to reuse the code. The external pet artwork is not licensed by this repository.
+Original source and the built-in vector robot use the [MIT license](../LICENSE). External pet artwork is not bundled or licensed by this repository; see [third-party notices](../src/THIRD-PARTY-NOTICES.md).
 
 ## Desktop-only extension
 
@@ -86,7 +87,7 @@ The native helper defaults to English independently of the macOS locale. `PetLan
 
 The adapter reads top-level UUID `.jsonl` files in `$CLAUDE_CONFIG_DIR/projects` (default `~/.claude/projects`). It includes `entrypoint: claude-vscode` records inside the open workspace, excludes sidechains and nested subagent logs, and uses explicit `end_turn` / `stop_sequence` records for completion. `AskUserQuestion` and `ExitPlanMode` tool calls remain waiting until their matching results arrive. A missing stop reason never means completion. No Claude hooks are installed. Clicking a Claude row sets `claudeCode.preferredLocation` to `sidebar`.
 
-Claude thread IDs use a `claude:` namespace. Rows open `vscode://local.codex-pet-panel/claude?session=<uuid>`; Codex links are unchanged. The registered URI handler validates the session against tracked workspace chats and calls `claude-vscode.editor.open` with `programmatic: honor-preferred-location`. Claude prioritizes existing editor tabs: only a uniquely matched, settled, clean tab is closed after the session command confirms its identity. Running, unknown, dirty, or ambiguous tabs stay open; the user can close them after completion and click again. URI activation requires an extension-host reload after upgrading. The link handler and transcript shape were inspected in Claude Code VS Code **2.1.268**. This is an internal integration and may require updates if the extension changes. CLI-only and cloud-only sessions are excluded in this release. See [Claude Code's VS Code documentation](https://code.claude.com/docs/en/vs-code) for its session UI.
+Claude thread IDs use a `claude:` namespace. Rows open `vscode://merttalhayener.agent-pet/claude?session=<uuid>`; Codex links are unchanged. The registered URI handler validates the session against tracked workspace chats and calls `claude-vscode.editor.open` with `programmatic: honor-preferred-location`. Claude prioritizes existing editor tabs: only a uniquely matched, settled, clean tab is closed after the session command confirms its identity. Running, unknown, dirty, or ambiguous tabs stay open; the user can close them after completion and click again. URI activation requires an extension-host reload after upgrading. The link handler and transcript shape were inspected in Claude Code VS Code **2.1.268**. This is an internal integration and may require updates if the extension changes. CLI-only and cloud-only sessions are excluded in this release. See [Claude Code's VS Code documentation](https://code.claude.com/docs/en/vs-code) for its session UI.
 
 Protocol 4 adds the built-in pet and combined agent snapshots. The helper writes a small `tracked-threads.json` ID list so both monitors can recover older terminal records after restart, without adding unrelated historical chats. Candidate discovery is bounded to 128 recent files per provider. Missing or inaccessible records still remain unknown.
 
@@ -131,3 +132,9 @@ Native reconciliation compares lifecycle timestamps before heartbeat/protocol fr
 `src/update-reload.cjs` observes the shared successful-install marker, comparing it with the version loaded in each extension host. Every window independently refreshes its local activity monitor before starting and finishing a 15-second countdown. Only explicitly settled statuses (`ready`, `idle`, `failed`) permit reload; uncertain/quiet activity and disabled tracking postpone it. Dirty text or notebook documents, active VS Code tasks, and active debugging also postpone reload. This follows supported local session records, not cloud/CLI work or every possible editor operation.
 
 The countdown offers Later, persisted for that workspace and version, and can be disabled globally with `codexPet.autoReloadAfterUpdate`. New activity resets the countdown. Installing a newer package does not replace already running JavaScript, so upgrading from <=0.10.1 needs a one-time manual reload before this controller can manage subsequent updates. Tests cover independent windows, fresh activity on the last check, uncertain statuses, editor/task protection, deferral and malformed markers.
+
+## Marketplace distribution (0.11.0)
+
+Official `@vscode/vsce` packaging targets `darwin-arm64` and marks the release as a prerelease. `npm ci` installs the pinned build tool. See [publishing instructions](marketplace.md). Protocol 9 carries the current extension ID for Claude links.
+
+Marketplace installations no longer use the GitHub updater. VS Code downloads updates according to its settings. The reload controller checks the local installation index and confirms the new package identity/version before counting down; an unreadable index leaves reload manual. The existing idle, unsaved-work, task/debug and Later protections still apply.

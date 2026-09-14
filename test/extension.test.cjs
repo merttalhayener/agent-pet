@@ -8,7 +8,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   const commands = new Map(), starts = [], state = new Map();
   const entry = { show() { this.visible = true; }, dispose() {} };
   const context = {
-    extensionPath: '/test/extension', globalStorageUri: { fsPath: '/test/storage' }, subscriptions: [],
+    extension: { id: 'merttalhayener.agent-pet' }, extensionPath: '/test/extension', globalStorageUri: { fsPath: '/test/storage' }, subscriptions: [],
     globalState: { get: (k, fallback) => state.has(k) ? state.get(k) : fallback, update: async (k, v) => state.set(k, v) }
   };
   const vscode = {
@@ -25,7 +25,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
     async write() {}
   }
   class AgentActivityMonitor { start() {} async tick() {} }
-  const dependencies = { vscode, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './updater.cjs': { createUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
+  const dependencies = { vscode, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   const api = await sandbox.module.exports.activate(context);

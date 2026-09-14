@@ -9,7 +9,7 @@ Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni
 
 **macOS 26+ · Apple Silicon · English / Türkçe · Beta**
 
-[**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.2) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+[**İndir**](https://github.com/merttalhayener/agent-pet/releases) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
 </div>
 
@@ -42,15 +42,15 @@ Daha az dikkat dağınıklığı için **Görünüm → Yalnızca panel** seç. 
 - **Açık durum yazıları:** simgelerin yanında **Durduruldu**, **Güncelleme yok** gibi açıklamalar göster.
 - **Yanıt bildirimleri:** **Bildirimler** menüsünden aç; macOS bildirimine tıklayarak sohbete dön. Sohbetleri ayrı ayrı sessize al.
 - **Menü çubuğu sayacı:** panel gizliyken de çalışan ve bekleyen sohbet sayılarını gör.
-- **Güncellemeler:** pati menüsündeki **Güncellemeleri denetle…** ile yeni betayı bul, **Güncellemeyi kur** seçeneğiyle yükle.
+- **Güncellemeler:** Marketplace kurulumlarını VS Code günceller. **Güncellemeleri denetle…** mağaza kaydını açar.
 
 ## Kurulum
 
 1. VS Code’a **Codex**, **Claude Code** veya ikisini birden kur ve giriş yap.
-2. [VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.2/agent-pet-0.10.2.vsix), **Extensions → ⋯ → Install from VSIX…** ile kur.
+2. [darwin-arm64 VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases), **Extensions → ⋯ → Install from VSIX…** ile kur.
 3. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
 
-Güncellemeler artık takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **0.10.1 veya öncesinden geçiyorsan**, bu davranışı etkinleştirmek için aktif işler bittikten sonra bir kez **Developer: Reload Window** çalıştır.
+Güncellemeler artık takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **GitHub önizlemesinden geçiyorsan**, **Replace preview** seçeneğini kullan; aktif işler bitince her pencerede bir kez **Developer: Reload Window** çalıştır.
 
 ## Hızlı kullanım
 
@@ -64,6 +64,12 @@ Güncellemeler artık takip edilen sohbetler bitip değişiklikler kaydedilince 
 
 Ayarlar için pete veya panele sağ tıkla. Tercihlerin kaydedilir.
 
-Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır. Güncelleme denetimi günde bir GitHub’a bağlanır; VS Code ayarlarından kapatılabilir. Yanıt bildirimleri macOS izni gerektirir.
+Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır. Marketplace güncellemelerini VS Code yönetir. Yanıt bildirimleri macOS izni gerektirir.
 
 [Kullanım ve sorun giderme (EN)](docs/usage.md) · [Derleme ve teknik ayrıntılar (EN)](docs/development.md) · [Sorun bildir](https://github.com/merttalhayener/agent-pet/issues)
+
+## Marketplace geçişi ve lisans
+
+İlk Marketplace paketi `merttalhayener.agent-pet` kimliğiyle hazırlandı; yayımlama için publisher hesabının kurulması bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+
+Özgün kaynak kod ve yerleşik vektör robot [MIT lisanslıdır](LICENSE). Dışarıdan yüklenen Codex çizimleri pakete dahil değildir ve bu lisans kapsamında değildir.

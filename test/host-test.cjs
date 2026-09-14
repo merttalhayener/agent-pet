@@ -6,7 +6,7 @@ exports.run = async function () {
   const vscode = require('vscode');
   await fs.mkdir(path.dirname(report), { recursive: true });
   try {
-    const extension = vscode.extensions.getExtension('local.codex-pet-panel');
+    const extension = vscode.extensions.getExtension('merttalhayener.agent-pet');
     assert.ok(extension, 'Pet extension discovered');
     const api = await extension.activate();
     assert.ok(api.availablePets.includes('agent-pet'));

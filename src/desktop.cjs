@@ -5,7 +5,8 @@ const execFileAsync = require('node:util').promisify(execFile);
 const crypto = require('node:crypto');
 
 class DesktopBridge {
-  constructor(directory, executable, getSnapshot, reportError) {
+  constructor(directory, executable, getSnapshot, reportError, extensionId = 'local.codex-pet-panel') {
+    this.extensionId = extensionId;
     this.directory = directory; this.executable = executable; this.getSnapshot = getSnapshot; this.reportError = reportError;
     this.file = path.join(directory, `client-${process.pid}-${crypto.randomBytes(5).toString('hex')}.json`);
     this.disposed = false;
@@ -19,6 +20,10 @@ class DesktopBridge {
       await fs.rename(tmp, this.file);
     });
     return this.pending;
+  }
+  async hasRunningHelper() {
+    try { return /^\d+(?:\s+\d+)*$/.test((await execFileAsync('/usr/sbin/lsof', ['-t', '--', path.join(this.directory, 'desktop.lock')], { timeout: 1500 })).stdout.trim()); }
+    catch { return false; }
   }
   async upgradeRunningHelper() {
     // Reloading an extension leaves its detached helper alive. Identify only the
@@ -39,9 +44,12 @@ class DesktopBridge {
       }
       const extensionDir = extensionRoot(old), newRoot = extensionRoot(this.executable);
       const ownArguments = args === `${old} --state-dir ${this.directory}` || (old.endsWith('/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet') && args === old);
-      if (old === this.executable || path.basename(old) !== 'codex-desktop-pet' || !/^local\.codex-pet-panel-/.test(path.basename(extensionDir)) || path.dirname(extensionDir) !== path.dirname(newRoot) || !ownArguments) continue;
-      const oldVersion = path.basename(extensionDir).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
-      const newVersion = path.basename(newRoot).match(/^local\.codex-pet-panel-(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+      const parse = root => path.basename(root).match(/^(.+)-(\d+)\.(\d+)\.(\d+)(?:-darwin-arm64)?$/);
+      const oldPackage = parse(extensionDir), newPackage = parse(newRoot);
+      if (old === this.executable || path.basename(old) !== 'codex-desktop-pet' || !oldPackage || !newPackage ||
+          !['local.codex-pet-panel', this.extensionId].includes(oldPackage[1]) || newPackage[1] !== this.extensionId ||
+          path.dirname(extensionDir) !== path.dirname(newRoot) || !ownArguments) continue;
+      const oldVersion = oldPackage.slice(2).map(Number), newVersion = newPackage.slice(2).map(Number);
       if (!oldVersion || !newVersion) continue;
       const differing = newVersion.findIndex((value, i) => value !== oldVersion[i]);
       if (differing < 0 || newVersion[differing] < oldVersion[differing]) continue;

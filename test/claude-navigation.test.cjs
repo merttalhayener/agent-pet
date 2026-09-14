@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { createClaudeNavigation } = require('../src/claude-navigation.cjs');
 const ID = '44444444-4444-4444-8444-444444444444';
 const uri = query => ({ authority: 'local.codex-pet-panel', path: '/claude', query: query || `session=${ID}` });
-function fixture({ status = 'ready', existing = false, dirty = false } = {}) {
+function fixture({ status = 'ready', existing = false, dirty = false, extensionId = 'local.codex-pet-panel' } = {}) {
   const calls = [], notifications = []; let location = 'panel';
   const tab = { label: 'Sample Claude chat', input: { viewType: 'mainThreadWebview-anthropic.claude-code-claudeVSCodePanel' }, isDirty: dirty };
   const group = { tabs: existing ? [tab] : [], activeTab: undefined };
@@ -20,7 +20,7 @@ function fixture({ status = 'ready', existing = false, dirty = false } = {}) {
       }
     } }
   };
-  return { calls, notifications, nav: createClaudeNavigation(api, async id => id === `claude:${ID}` ? { id, title: tab.label, status } : undefined) };
+  return { calls, notifications, nav: createClaudeNavigation(api, async id => id === `claude:${ID}` ? { id, title: tab.label, status } : undefined, extensionId) };
 }
 test('Claude row uses the sidebar-aware command without creating an editor', async () => {
  const f = fixture(); await f.nav.handleUri(uri()); assert.deepEqual(f.calls, ['claude-vscode.editor.open', 'sidebar']);
@@ -45,4 +45,9 @@ test('VS Code window routing parameter is accepted, malformed routing is rejecte
  const bad = fixture();
  for (const query of [`session=${ID}&windowId=abc`, `session=${ID}&windowId=42&windowId=99`]) await bad.nav.handleUri(uri(query));
  assert.deepEqual(bad.calls, []);
+});
+
+test('Marketplace Claude handler accepts only its own URI authority',async()=>{
+ const f=fixture({extensionId:'merttalhayener.agent-pet'});await f.nav.handleUri(uri());assert.deepEqual(f.calls,[]);
+ await f.nav.handleUri({...uri(),authority:'merttalhayener.agent-pet'});assert.equal(f.calls.at(-1),'sidebar');
 });

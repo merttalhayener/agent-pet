@@ -126,6 +126,7 @@ struct Activity: Codable {
 }
 struct WindowNavigation: Codable { let codex: String; let claude: String }
 struct Snapshot: Codable {
+    var extensionId: String? = nil
     var navigation: WindowNavigation? = nil
     var protocolVersion: Int? = nil
     var workspace: WorkspaceInfo? = nil
@@ -778,7 +779,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             guard let routes = snapshot.navigation,
                   var parts = URLComponents(string: claude ? routes.claude : routes.codex),
                   ["vscode", "vscode-insiders"].contains(parts.scheme ?? ""),
-                  parts.host == (claude ? "local.codex-pet-panel" : "openai.chatgpt"),
+                  parts.host == (claude ? snapshot.extensionId ?? "local.codex-pet-panel" : "openai.chatgpt"),
                   parts.path == (claude ? "/claude" : "/local/"),
                   parts.user == nil, parts.password == nil, parts.port == nil, parts.fragment == nil else { continue }
             let query = parts.queryItems ?? []
@@ -1214,6 +1215,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let routeSample = ThreadActivity(id: claudeID, title: "Sample", status: "ready", changedAt: 1, lastEventAt: 1)
         let fixture = Snapshot(navigation: routes, workspace: WorkspaceInfo(id: "test-workspace", name: "Website"), updatedAt: 1, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "ready", active: 0, threads: [routeSample], trackingDisabled: false), pets: [])
         let claudeLinkWorks = threadURL(claudeID, live: [fixture])?.absoluteString == "vscode://local.codex-pet-panel/claude?windowId=42&session=22222222-2222-4222-8222-222222222222"
+        var marketplace = fixture
+        marketplace.extensionId = "merttalhayener.agent-pet"
+        marketplace.navigation = WindowNavigation(codex: routes.codex, claude: "vscode://merttalhayener.agent-pet/claude?windowId=42")
+        let marketplaceLink = threadURL(claudeID, live: [marketplace])?.absoluteString == "vscode://merttalhayener.agent-pet/claude?windowId=42&session=22222222-2222-4222-8222-222222222222"
+        marketplace.navigation = routes
+        let marketplaceRoutingWorks = marketplaceLink && threadURL(claudeID, live: [marketplace]) == nil
         var otherWindow = fixture
         otherWindow.workspace = WorkspaceInfo(id: "different-workspace", name: "Website")
         otherWindow.navigation = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=99", claude: "vscode://local.codex-pet-panel/claude?windowId=99")
@@ -1284,7 +1291,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

@@ -8,3 +8,8 @@ test('each window gets its own platform-generated provider routes', async () => 
  assert.equal(b.claude, 'vscode://local.codex-pet-panel/claude?windowId=99');
  assert.notEqual(a.codex, b.codex);
 });
+
+test('public Claude routes preserve owning window and Marketplace authority',async()=>{
+ const api={env:{uriScheme:'vscode',asExternalUri:async uri=>({toString:()=>uri+'?windowId=17'})},Uri:{parse:s=>s}};
+ const routes=await resolveWindowNavigation(api,'merttalhayener.agent-pet');assert.equal(routes.claude,'vscode://merttalhayener.agent-pet/claude?windowId=17');
+});

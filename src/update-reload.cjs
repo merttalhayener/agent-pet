@@ -12,7 +12,7 @@ function canReload(vscode, activity) {
   return true;
 }
 
-function createUpdateReload(vscode, context, getActivity, { now = Date.now, delay = 15000 } = {}) {
+function createUpdateReload(vscode, context, getActivity, { now = Date.now, delay = 15000, getInstalledVersion } = {}) {
   const stateFile = path.join(context.globalStorageUri.fsPath, 'updates', 'state.json');
   const current = context.extension.packageJSON.version;
   const tr = (en, tr) => vscode.env.language?.startsWith('tr') ? tr : en;
@@ -24,8 +24,7 @@ function createUpdateReload(vscode, context, getActivity, { now = Date.now, dela
     if (busy || disposed || reloaded) return;
     busy = true;
     try {
-      const state = JSON.parse(await fs.readFile(stateFile, 'utf8').catch(() => '{}'));
-      const version = state.installed;
+      const version = getInstalledVersion ? await getInstalledVersion() : JSON.parse(await fs.readFile(stateFile, 'utf8').catch(() => '{}')).installed;
       if (!newer(version, current) || deferred === version) { resetCountdown(); return; }
       if (pendingVersion !== version) { pendingVersion = version; announced = undefined; resetCountdown(); }
       if (!vscode.workspace.getConfiguration('codexPet').get('autoReloadAfterUpdate', true)) { resetCountdown(); return; }

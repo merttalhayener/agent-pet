@@ -4,7 +4,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { AgentActivityMonitor } = require('./agent-activity.cjs');
 const { createUpdateReload } = require('./update-reload.cjs');
-const { createUpdater } = require('./updater.cjs');
+const { prepareMarketplaceMigration } = require('./marketplace-migration.cjs');
+const { createMarketplaceUpdater, installedMarketplaceVersion } = require('./marketplace-updater.cjs');
 const { DesktopBridge } = require('./desktop.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
 
@@ -19,7 +20,9 @@ const PETS = [
 ];
 
 async function activate(context) {
-  const updater = createUpdater(vscode, context);
+  if (!await prepareMarketplaceMigration(vscode, context)) return { migrationRequired: true };
+  const extensionId = context.extension.id;
+  const updater = createMarketplaceUpdater(vscode, context);
   context.subscriptions.push(updater, vscode.commands.registerCommand('codexPet.checkForUpdates', () => updater.check(true)));
   updater.start();
   let selected = context.globalState.get('pet', 'codex');
@@ -27,7 +30,7 @@ async function activate(context) {
   let selectedAt = context.globalState.get('petSelectedAt', 0);
   const sleepAt = context.globalState.get('petSleepAt', 0);
   let desktop;
-  const navigationLinks = await resolveWindowNavigation(vscode).catch(() => undefined);
+  const navigationLinks = await resolveWindowNavigation(vscode, extensionId).catch(() => undefined);
   let activity = { status: 'idle', active: 0 };
   const codex = vscode.extensions.getExtension('openai.chatgpt');
   const assetDir = codex && path.join(codex.extensionPath, 'webview', 'assets');
@@ -52,8 +55,8 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 8, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
-      error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); });
+      () => ({ protocolVersion: 9, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); }, extensionId);
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
   }
@@ -88,7 +91,7 @@ async function activate(context) {
     if (monitor.busy || monitor.disposed || monitor.monitors.some(m => !m.enabled || m.busy || m.disposed)) return undefined;
     await monitor.tick();
     return activity;
-  });
+  }, { getInstalledVersion: () => installedMarketplaceVersion(context) });
   reload.start(); context.subscriptions.push(reload);
   const navigation = createClaudeNavigation(vscode, async id => {
     await monitor.tick();
@@ -99,7 +102,7 @@ async function activate(context) {
     const routes = JSON.parse(await fs.readFile(path.join(context.globalStorageUri.fsPath, 'desktop', 'workspace-routes.json'), 'utf8').catch(() => '{}'));
     const route = routes[id];
     return route?.workspaceID === describeWorkspace(vscode.workspace).id && typeof route.title === 'string' ? { id, title: route.title, status: 'unknown' } : undefined;
-  });
+  }, extensionId);
   context.subscriptions.push(vscode.window.registerUriHandler(navigation));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('codexPet.followActivity')) { monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true); void monitor.tick(); }

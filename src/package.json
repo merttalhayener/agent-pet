@@ -1,10 +1,10 @@
 {
-  "name": "codex-pet-panel",
+  "name": "agent-pet",
   "displayName": "Agent Pet",
-  "description": "A floating desktop pet for Codex and Claude Code in VS Code.",
-  "version": "0.10.2",
-  "publisher": "local",
-  "license": "UNLICENSED",
+  "description": "Track Codex and Claude Code chats across VS Code workspaces with a floating macOS panel and optional pet.",
+  "version": "0.11.0",
+  "publisher": "merttalhayener",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.96.2"
   },
@@ -68,15 +68,10 @@
           "default": true,
           "description": "Show the floating desktop pet when this extension starts on macOS. Right-click the desktop pet to tuck it away."
         },
-        "codexPet.checkForUpdates": {
-          "type": "boolean",
-          "default": true,
-          "description": "Check GitHub for Agent Pet updates once daily (including beta releases). Download and installation require clicking Install update. No chat data is sent."
-        },
         "codexPet.autoReloadAfterUpdate": {
           "type": "boolean",
           "default": true,
-          "description": "After an Agent Pet in-app update, reload each window when tracked chats have finished, changes are saved and no VS Code task or debug session is active. Includes a 15-second countdown with Later. Unknown/quiet chats and disabled activity tracking postpone reload."
+          "description": "After VS Code installs an Agent Pet update, reload each window when tracked chats have finished, changes are saved and no VS Code task or debug session is active. Includes a 15-second countdown with Later. Unknown/quiet chats and disabled activity tracking postpone reload."
         }
       }
     }
@@ -88,5 +83,30 @@
   "homepage": "https://github.com/merttalhayener/agent-pet#readme",
   "bugs": {
     "url": "https://github.com/merttalhayener/agent-pet/issues"
+  },
+  "icon": "media/icon.png",
+  "keywords": [
+    "codex",
+    "claude",
+    "claude-code",
+    "ai",
+    "agent",
+    "pet",
+    "workspace",
+    "macos",
+    "notifications"
+  ],
+  "galleryBanner": {
+    "color": "#171923",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "qna": "https://github.com/merttalhayener/agent-pet/issues",
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Agent Pet reads local agent session files for this workspace."
+    }
   }
 }

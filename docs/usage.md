@@ -26,11 +26,9 @@ Notifications follow newly detected requests for input, not every log update. Ex
 
 ## Updates
 
-Use **Check for updates…** in the paw menu or **Agent Pet: Check for Updates** in the Command Palette. Agent Pet also checks GitHub once daily, including beta releases. Click **Install update** to download a package, verify its SHA-256 checksum, and install it through VS Code. From 0.10.2 onward, each window waits for its tracked chats to finish and then reloads automatically after a 15-second countdown. **Later** postpones that version in that workspace. New chat activity cancels the countdown. Unknown/quiet/waiting chats, disabled activity tracking, dirty text/notebook editors, active VS Code tasks, and debugging postpone reload. No elapsed timeout is treated as proof that a chat finished.
+Use **Check for updates…** in the paw menu or **Agent Pet: Check for Updates** in the Command Palette to open the Marketplace entry. VS Code manages downloads according to its extension update settings. Each window waits for its tracked chats to finish and then reloads after a 15-second countdown. **Later** postpones that version in that workspace. New activity, unknown/quiet/waiting chats, disabled tracking, unsaved editors, active tasks and debugging postpone reload. Disable `codexPet.autoReloadAfterUpdate` for manual reloads.
 
-Turn off `codexPet.autoReloadAfterUpdate` to keep manual reloads. **Bootstrap:** upgrading from 0.10.1 or earlier still requires one manual **Developer: Reload Window** after active chats finish; the old running extension cannot execute the newly installed reload code. Older open windows need the same one-time reload. Automatic reload applies to subsequent in-app updates.
-
-Disable background checks with `codexPet.checkForUpdates` in VS Code settings. Manual checks still work. An internet connection to GitHub is required; no chat data is included in update requests.
+**Moving from the GitHub preview?** Install the Marketplace version, choose **Replace preview**, and reload each window after active work finishes. Pet preferences are retained. The former preview's GitHub update settings do not control Marketplace downloads.
 
 ## Opening chats
 

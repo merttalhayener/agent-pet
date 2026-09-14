@@ -1,7 +1,7 @@
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const isClaudeTab = tab => typeof tab?.input?.viewType === 'string' && tab.input.viewType.endsWith('claudeVSCodePanel');
 
-function createClaudeNavigation(vscode, getThread) {
+function createClaudeNavigation(vscode, getThread, extensionId = 'local.codex-pet-panel') {
   let pending = Promise.resolve();
   async function open(session) {
     const thread = await getThread(`claude:${session}`);
@@ -32,7 +32,7 @@ function createClaudeNavigation(vscode, getThread) {
   }
   return {
     handleUri(uri) {
-      if (uri.authority !== 'local.codex-pet-panel' || uri.path !== '/claude') return Promise.resolve();
+      if (uri.authority !== extensionId || uri.path !== '/claude') return Promise.resolve();
       const params = new URLSearchParams(uri.query);
       const session = params.get('session');
       if (params.getAll('windowId').length > 1 || (params.has('windowId') && !/^\d+$/.test(params.get('windowId')))) return Promise.resolve();

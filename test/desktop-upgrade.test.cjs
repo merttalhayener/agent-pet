@@ -36,3 +36,11 @@ test('bundle relaunched by Notification Center can upgrade using its held state 
  const f=fixture(old,old);f.bridge.executable='/extensions/local.codex-pet-panel-0.10.0/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet';
  await f.bridge.upgradeRunningHelper();assert.equal(f.signals[0][1],'SIGTERM');
 });
+
+test('Marketplace helpers accept the platform suffix and legacy migration, rejecting foreign publishers',async()=>{
+ for(const identity of ['local.codex-pet-panel-0.10.2','merttalhayener.agent-pet-0.10.3-darwin-arm64','other.agent-pet-0.10.3-darwin-arm64']){
+  const f=fixture('/extensions/'+identity+'/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet');
+  f.bridge.extensionId='merttalhayener.agent-pet';f.bridge.executable='/extensions/merttalhayener.agent-pet-0.11.0-darwin-arm64/bin/Agent Pet.app/Contents/MacOS/codex-desktop-pet';
+  await f.bridge.upgradeRunningHelper();assert.equal(f.signals.some(s=>s[1]==='SIGTERM'),!identity.startsWith('other.'));
+ }
+});

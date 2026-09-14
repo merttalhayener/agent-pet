@@ -9,7 +9,7 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 **macOS 26+ · Apple Silicon · English / Türkçe · Beta**
 
-[**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.10.2) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+[**Download**](https://github.com/merttalhayener/agent-pet/releases) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
 </div>
 
@@ -42,15 +42,19 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 - **Clear statuses:** optional text explains the icons, including **Stopped** and **No update**.
 - **Waiting notifications:** opt in under **Notifications**; click a macOS banner to return to the chat. Mute individual chats.
 - **Menu bar counter:** see running and waiting totals even with the panel hidden.
-- **Updates:** **Check for updates…** in the paw menu installs new beta releases after you click **Install update**.
+- **Updates:** Marketplace installations use VS Code’s extension updates. **Check for updates…** opens the extension’s store entry.
 
 ## Install
 
+The first Marketplace release is prepared as **`merttalhayener.agent-pet`**; publication is pending publisher account setup. Until then, use the [GitHub releases](https://github.com/merttalhayener/agent-pet/releases).
+
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
-2. [Download the VSIX](https://github.com/merttalhayener/agent-pet/releases/download/v0.10.2/agent-pet-0.10.2.vsix), then use **Extensions → ⋯ → Install from VSIX…**.
+2. Download the **darwin-arm64 VSIX**, then use **Extensions → ⋯ → Install from VSIX…**.
 3. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
-Updates now reload each window automatically after tracked chats finish and changes are saved, with a 15-second **Later** option. **Upgrading from 0.10.1 or earlier?** Run **Developer: Reload Window** once after active turns finish to enable this behavior.
+**Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.
+
+Subsequent Marketplace updates use VS Code’s update settings. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
 
 ## Quick controls
 
@@ -64,6 +68,10 @@ Updates now reload each window automatically after tracked chats finish and chan
 
 Right-click the pet or panel for settings. Your preferences are remembered.
 
-Independent community project. No added telemetry; chat records stay local. Update checks contact GitHub once daily and can be disabled in VS Code settings. Waiting notifications require macOS permission.
+Independent community project. No added telemetry; chat records stay local. Marketplace downloads and update checks are managed by VS Code. Waiting notifications require macOS permission.
 
 [Usage & troubleshooting](docs/usage.md) · [Build & technical details](docs/development.md) · [Report an issue](https://github.com/merttalhayener/agent-pet/issues)
+
+## License
+
+Original source code and the built-in vector robot are [MIT licensed](LICENSE). Optional artwork loaded from an installed Codex extension is not bundled or relicensed; see [third-party notices](src/THIRD-PARTY-NOTICES.md).
