@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.1 — Open the setup guide automatically
+
+- Open Get Started directly once in the first focused VS Code window, without requiring a notification click.
+- Include users who missed the previous welcome notification and have not completed setup.
+- Prevent duplicate guides across windows and later launches; skip completed setups.
+- Retry failed guide initialization without consuming the first-run marker.
+
 ## 0.16.0 — Setup, connections and diagnostics
 
 - Add a one-time, dismissible setup guide with agent checks, companion controls and optional waiting notifications.

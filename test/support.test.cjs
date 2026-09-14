@@ -4,7 +4,7 @@ const {createSupportCenter,readConnections,diagnosticReport,recent}=require('../
 async function fixture() {
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'pet-support-')),directory=path.join(root,'desktop');await fs.mkdir(directory);
  const state=new Map(),calls=[],messages=[],context={extensionPath:root,extension:{id:'merttalhayener.agent-pet',packageJSON:{version:'0.16.0'}},globalStorageUri:{fsPath:root},subscriptions:[],globalState:{get:(k,d)=>state.has(k)?state.get(k):d,update:async(k,v)=>state.set(k,v)}};
- const vscode={version:'1.110.0',ViewColumn:{Active:1},extensions:{getExtension:id=>id==='openai.chatgpt'?{packageJSON:{version:'1.0.0'}}:undefined},workspace:{workspaceFolders:[{}]},commands:{executeCommand:async(...a)=>calls.push(a)},env:{clipboard:{writeText:async text=>calls.push(['clipboard',text])},openExternal:async uri=>calls.push(['external',uri])},Uri:{parse:x=>x},window:{state:{focused:true},showInformationMessage:async()=>{calls.push(['welcome']);return 'Later';},createWebviewPanel:()=>({visible:true,reveal(){},dispose(){},onDidDispose(){},webview:{postMessage:async m=>messages.push(m),onDidReceiveMessage(){}}})}};
+ const vscode={version:'1.110.0',ViewColumn:{Active:1},extensions:{getExtension:id=>id==='openai.chatgpt'?{packageJSON:{version:'1.0.0'}}:undefined},workspace:{workspaceFolders:[{}]},commands:{executeCommand:async(...a)=>calls.push(a)},env:{clipboard:{writeText:async text=>calls.push(['clipboard',text])},openExternal:async uri=>calls.push(['external',uri])},Uri:{parse:x=>x},window:{state:{focused:true},showInformationMessage:async()=>{calls.push(['welcome']);return 'Later';},createWebviewPanel:()=>{calls.push(['guide']);return {visible:true,reveal(){},dispose(){},onDidDispose(){},webview:{postMessage:async m=>messages.push(m),onDidReceiveMessage(){}}};}}};
  const desktop={directory,clientId:'client-1-abc.json',timer:1,errors:[{at:123,code:'/private/user-secret'}]};
  const support=createSupportCenter(vscode,context,desktop,()=>({trackingDisabled:false}),async()=>calls.push(['open']));
  const snapshot=(at,extra={})=>({updatedAt:at,extensionVersion:'0.16.0',workspace:{name:'Sensitive project',roots:['/Users/private/project']},activity:{threads:[{title:'Secret chat',text:'Never export'}]},...extra});
@@ -46,11 +46,34 @@ test('support actions whitelist commands, completion persists, and disposal prev
   f.support.dispose();const before=f.calls.length;await f.support.action({action:'showPet'});assert.equal(f.calls.length,before);
  }finally{await f.cleanup();}
 });
-test('first-run prompt is offered once across windows and can be deferred',async()=>{
+const settle=()=>new Promise(r=>setTimeout(r,60));
+test('guide opens directly once across windows, including users who missed the old notification',async()=>{
  const f=await fixture();let other;try{
+  f.state.set('setupWelcomeSeen',true);await fs.writeFile(path.join(f.directory,'setup-welcome-seen'),'');
   other=createSupportCenter(f.vscode,f.context,f.desktop,()=>({}),async()=>{});
-  f.support.start();other.start();await new Promise(r=>setTimeout(r,50));assert.equal(f.calls.filter(c=>c[0]==='welcome').length,1);assert.equal(f.state.get('setupWelcomeSeen'),true);assert.equal(f.state.get('setupCompleted'),undefined);
+  f.support.start();other.start();await settle();assert.equal(f.calls.filter(c=>c[0]==='guide').length,1);assert.equal(f.calls.filter(c=>c[0]==='welcome').length,0);assert.equal(f.state.get('setupAutoOpened'),true);assert.equal(f.state.get('setupCompleted'),undefined);
+  f.support.dispose();other.dispose();f.state.delete('setupAutoOpened');
+  other=createSupportCenter(f.vscode,f.context,f.desktop,()=>({}),async()=>{});other.start();await settle();assert.equal(f.calls.filter(c=>c[0]==='guide').length,1,'shared marker survives reinstall/reload');
  }finally{other?.dispose();await f.cleanup();}
+});
+test('completed setup never auto-opens; a background window waits for focus',async()=>{
+ const f=await fixture();let focus;try{
+  f.state.set('setupCompleted',true);f.support.start();await settle();assert.equal(f.calls.length,0);f.support.dispose();
+  f.state.delete('setupCompleted');f.vscode.window.state.focused=false;
+  f.vscode.window.onDidChangeWindowState=fn=>{focus=fn;return {dispose(){}};};
+  f.support=createSupportCenter(f.vscode,f.context,f.desktop,()=>({}),async()=>{});f.support.start();await settle();assert.equal(f.calls.length,0);
+  f.vscode.window.state.focused=true;focus();await settle();assert.equal(f.calls.filter(c=>c[0]==='guide').length,1);
+  focus();await settle();assert.equal(f.calls.filter(c=>c[0]==='guide').length,1);f.support.dispose();
+ }finally{f.support.dispose();await f.cleanup();}
+});
+test('failed guide opening releases its claim and retries on focus',async()=>{
+ const f=await fixture();let focus;try{
+  const create=f.vscode.window.createWebviewPanel;
+  f.vscode.window.createWebviewPanel=()=>{throw Error('webview unavailable');};
+  f.vscode.window.onDidChangeWindowState=fn=>{focus=fn;return {dispose(){}};};
+  f.support.start();await settle();assert.equal(f.state.get('setupAutoOpened'),undefined);await assert.rejects(fs.stat(path.join(f.directory,'setup-auto-opened')),{code:'ENOENT'});
+  f.vscode.window.createWebviewPanel=create;focus();await settle();assert.equal(f.state.get('setupAutoOpened'),true);assert.equal(f.calls.filter(c=>c[0]==='guide').length,1);
+ }finally{await f.cleanup();}
 });
 
 test('closing a webview during its initial file read prevents a late write to the disposed panel',async()=>{

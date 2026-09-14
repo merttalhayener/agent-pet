@@ -107,16 +107,24 @@ function createSupportCenter(vscode, context, desktop, getActivity, open) {
   async function show(tab = 'setup') {
     if (disposed) return;
     currentTab = TABS.has(tab) ? tab : 'setup';
-    if (panel) { panel.reveal(undefined, false); return update(); }
+    if (panel) { panel.reveal(undefined, false); await update(); return true; }
     const created = vscode.window.createWebviewPanel('agentPet.support', 'Agent Pet', vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [], retainContextWhenHidden: true });
     panel = created;
     created.onDidDispose(() => { if (panel === created) panel = undefined; });
-    const nonce = crypto.randomBytes(18).toString('hex');
-    const [template, script] = await Promise.all([fs.readFile(path.join(__dirname, 'support.html'), 'utf8'), fs.readFile(path.join(__dirname, 'support-ui.js'), 'utf8')]);
-    if (disposed || panel !== created) return;
-    created.webview.onDidReceiveMessage(action, null, context.subscriptions);
-    created.webview.html = template.replaceAll('__NONCE__', nonce).replace('__SCRIPT__', script);
+    try {
+      const nonce = crypto.randomBytes(18).toString('hex');
+      const [template, script] = await Promise.all([fs.readFile(path.join(__dirname, 'support.html'), 'utf8'), fs.readFile(path.join(__dirname, 'support-ui.js'), 'utf8')]);
+      if (disposed || panel !== created) return false;
+      created.webview.onDidReceiveMessage(action, null, context.subscriptions);
+      created.webview.html = template.replaceAll('__NONCE__', nonce).replace('__SCRIPT__', script);
+      return true;
+    } catch (error) {
+      if (panel === created) panel = undefined;
+      created.dispose();
+      throw error;
+    }
   }
+
   async function poll() {
     if (disposed || busy) return; busy = true;
     try {
@@ -125,23 +133,33 @@ function createSupportCenter(vscode, context, desktop, getActivity, open) {
       if (request && request.clientId === desktop?.clientId && recent(request.createdAt, Date.now(), 15000) && TABS.has(request.tab)) {
         await fs.unlink(requestFile); await show(request.tab);
       }
+      await welcome();
       if (panel?.visible) await update();
     } catch (error) { record(error); } finally { busy = false; }
   }
   async function welcome() {
-    if (disposed || onboarding || vscode.window.state?.focused !== true || context.globalState.get('setupWelcomeSeen', false)) return;
+    if (disposed || onboarding || vscode.window.state?.focused !== true ||
+        context.globalState.get('setupCompleted', false) || context.globalState.get('setupAutoOpened', false)) return;
     onboarding = true;
+    const marker = path.join(directory, 'setup-auto-opened');
+    let claimed = false, shown = false;
     try {
-      // A shared exclusive marker prevents duplicate prompts in multiple windows.
+      // Separate from the old notification marker: seeing a toast is not seeing
+      // the guide. Claim one window; roll back if the guide cannot be displayed.
       await fs.mkdir(directory, { recursive: true });
-      try { await fs.writeFile(path.join(directory, 'setup-welcome-seen'), '', { flag: 'wx', mode: 0o600 }); }
-      catch (error) { if (error.code === 'EEXIST') return; throw error; }
-      await context.globalState.update('setupWelcomeSeen', true);
-      const health = await readJSON(path.join(directory, 'helper-health.json')).catch(() => null);
-      const tr = health?.language === 'tr', start = tr ? 'Başlangıç' : 'Get started';
-      const choice = await vscode.window.showInformationMessage(tr ? 'Agent Pet: masaüstü arkadaşını kur ve bağlı pencereleri kontrol et.' : 'Agent Pet: set up your companion and check connected windows.', start, tr ? 'Daha sonra' : 'Later');
-      if (choice === start && !disposed) await show('setup');
-    } catch (error) { record(error); } finally { onboarding = false; }
+      try { await fs.writeFile(marker, '', { flag: 'wx', mode: 0o600 }); claimed = true; }
+      catch (error) {
+        if (error.code === 'EEXIST') return;
+        throw error;
+      }
+      if (disposed || vscode.window.state?.focused !== true) return;
+      shown = await show('setup') === true;
+      if (shown) await context.globalState.update('setupAutoOpened', true);
+    } catch (error) { record(error); }
+    finally {
+      if (claimed && !shown) await fs.unlink(marker).catch(() => {});
+      onboarding = false;
+    }
   }
   return { show, collect, action, start() {
     timer = setInterval(() => void poll(), 2000); timer.unref?.();

@@ -43,7 +43,7 @@ Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür
 
 ## Kurulumu tamamla, bağlantılarını gör
 
-**Agent Pet: Get Started** komutu kısa bir rehber açar: agent eklentilerini kontrol et, peti göster ve istersen bekleyen sohbet bildirimlerini aç.
+İlk odaklanan VS Code penceresinde kısa kurulum rehberi otomatik açılır. İstediğinde kapatabilir, **Agent Pet: Get Started** komutuyla yeniden açabilirsin: agent eklentilerini kontrol et, peti göster ve istersen bekleyen sohbet bildirimlerini aç.
 
 **Bağlantılar**, hangi VS Code pencerelerinin veri gönderdiğini, çalışma alanlarını ve son bağlantı zamanını gösterir. **Tanılama**, pencerede yüklü eklenti, diskte kurulu eklenti ve çalışan pet sürümlerini karşılaştırır. Sorun yaşarsan raporu kopyalayabilirsin; sohbet metinleri, proje adları ve dosya yolları rapora girmez.
 
@@ -89,6 +89,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.16.0** kurulum, bağlantı ve tanılama ekranlarını ekler; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.16.0) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.16.1** kurulum rehberini otomatik açar; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.16.1) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
 Özgün kaynak kod, Byte, Miso, Fern ve uygulama ikonu [MIT lisanslıdır](LICENSE). Harici karakter görseli yüklenmez veya dağıtılmaz. Codex ve Claude Code adları desteklenen entegrasyonları belirtir; Agent Pet bağımsız bir topluluk projesidir.

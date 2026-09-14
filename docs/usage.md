@@ -2,7 +2,7 @@
 
 ## Setup, connections and diagnostics
 
-Run **Agent Pet: Get Started** from the Command Palette. A one-time welcome prompt offers the guide when a window is focused; **Later** dismisses it without blocking your work. You can return to it at any time. The guide checks installed Codex / Claude Code extensions, opens the desktop companion, and optionally requests waiting-notification permission. Sign in within each agent’s own UI; installed does not mean authenticated.
+The **Get Started** guide opens automatically once in the first focused VS Code window. You can close the tab and return with **Agent Pet: Get Started**. Completed setups are skipped; closing the guide prevents automatic reopening on later launches. Version 0.16.1 also opens it for users who missed the old notification and have not completed setup. The guide checks installed Codex / Claude Code extensions, opens the desktop companion, and optionally requests waiting-notification permission. Sign in within each agent’s own UI; installed does not mean authenticated.
 
 Run **Agent Pet: Connections** or use **Connections & diagnostics** in the paw menu. Each row is a VS Code extension-host connection, with its workspace, version, tracking setting, chat count and last heartbeat. A heartbeat under 15 seconds is connected. Recently disconnected windows remain visible for up to ten minutes while the support screen is open. This is separate from a conversation’s running, waiting or completed status. Multiple windows require Agent Pet to be installed and enabled in each applicable profile.
 

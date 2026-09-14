@@ -66,7 +66,7 @@ Install **Agent Pet** by **merttalhayener** from VS Code’s Extensions view. Av
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
-3. Choose **Get started** in the welcome prompt, or run **Agent Pet: Get Started** from the Command Palette.
+3. The **Get Started** guide opens automatically in the first focused VS Code window. Close it whenever you want; reopen it with **Agent Pet: Get Started**.
 
 **Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.
 
