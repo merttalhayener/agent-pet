@@ -11,18 +11,27 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 [**Download**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
 
-<img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/demo.gif" alt="12-second animated preview: pet view, workspace groups, and panel-only mode" width="640">
-
-12-second animated preview · [Download MP4](https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/demo.mp4)
-
 </div>
 
-## What you can do
+## See when a chat needs you
 
-- **Follow multiple chats:** running, completed, and waiting indicators with elapsed time.
-- **Group by workspace:** keep projects together and click a chat to open its VS Code window.
-- **Use just the panel:** hide the character without hiding your chats.
-- **Make it yours:** resize, pin chats, adjust opacity, and choose a character.
+Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time.
+
+<img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/status.gif" alt="A Codex chat changes from a spinning progress indicator to waiting, then a completion checkmark" width="600">
+
+## Keep projects separate
+
+Click **▤** to group chats by workspace. Fold a group to make room; click a chat to return to its VS Code window.
+
+<img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/workspaces.gif" alt="A flat chat list becomes workspace groups, then the Mobile App group collapses" width="600">
+
+## Keep the panel, hide the pet
+
+Choose **Appearance → Panel only** for fewer distractions. Your chats stay visible, and the same option brings the character back.
+
+<img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/panel-only.gif" alt="The pet disappears while its chat panel stays visible, then the pet returns" width="600">
+
+*Animations use sample conversations rendered by the app.*
 
 Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not supported. VS Code must stay open for live updates. No API keys or hooks to configure.
 

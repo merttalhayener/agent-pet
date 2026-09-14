@@ -11,18 +11,27 @@ Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni
 
 [**İndir**](https://github.com/merttalhayener/agent-pet/releases/tag/v0.9.1) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
-<img src="docs/media/demo.gif" alt="Petli liste, çalışma alanları ve yalnızca panel: 12 saniyelik animasyonlu önizleme" width="640">
-
-12 saniyelik animasyonlu önizleme · [MP4 indir](https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/demo.mp4)
-
 </div>
 
-## Neler yapabilirsin?
+## Sohbetin ne zaman seni beklediğini gör
 
-- **Sohbetleri takip et:** çalışıyor, tamamlandı ve yanıt bekliyor durumları; geçen süre.
-- **Çalışma alanına göre grupla:** projeleri ayır, sohbeti kendi VS Code penceresinde aç.
-- **Yalnızca paneli kullan:** sohbetleri gizlemeden pet görselini kaldır.
-- **Kendine göre ayarla:** boyut, saydamlık, karakter seçimi ve sohbet sabitleme.
+Sohbet **çalışıyor → yanıt bekliyor → tamamlandı** durumlarından geçer. Her sohbetin durumu ve geçen süresi ayrı takip edilir.
+
+<img src="docs/media/status.gif" alt="Sohbetin dönen halkası önce yanıt bekleme simgesine, ardından tamamlandı tikine dönüşüyor" width="600">
+
+## Projeleri ayrı tut
+
+**▤** ile sohbetleri çalışma alanına göre grupla. Yer açmak için grubu daralt; sohbete tıklayarak kendi VS Code penceresine dön.
+
+<img src="docs/media/workspaces.gif" alt="Düz sohbet listesi çalışma alanlarına ayrılıyor ve Mobile App grubu daraltılıyor" width="600">
+
+## Panel kalsın, pet gizlensin
+
+Daha az dikkat dağınıklığı için **Görünüm → Yalnızca panel** seç. Sohbetler görünür kalır; aynı seçenekle peti geri getirebilirsin.
+
+<img src="docs/media/panel-only.gif" alt="Pet gizlenirken sohbet paneli açık kalıyor; ardından pet geri geliyor" width="600">
+
+*Animasyonlar, uygulamada oluşturulmuş örnek sohbetleri gösterir.*
 
 **Yerel VS Code oturumları** desteklenir. Yalnızca CLI veya bulut oturumları desteklenmez. Canlı güncellemeler için VS Code açık kalmalıdır. API anahtarı veya hook ayarı gerekmez.
 
