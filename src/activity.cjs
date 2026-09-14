@@ -246,7 +246,7 @@ class ActivityMonitor {
     }
     const threads = [...this.seenThreads.values()].filter(t => inWorkspace(t.cwd, this.getRoots())).map(t => ({
       ...t, title: this.titles.get(t.id) || t.title,
-      status: t.status === 'running' && now - t.lastEventAt >= LIVE_TIMEOUT ? 'unknown' : t.status
+      status: t.status === 'running' && now - t.lastEventAt >= LIVE_TIMEOUT ? 'quiet' : t.status
     })).sort((a, b) => a.id.localeCompare(b.id));
     const activeCount = threads.filter(t => t.status === 'running').length;
     if (threads.some(t => t.status === 'waiting')) return { status: 'waiting', active: activeCount, threads };

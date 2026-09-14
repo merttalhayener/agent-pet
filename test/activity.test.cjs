@@ -127,7 +127,7 @@ test('reload requires fresh progress; silence, settings and user records never p
     await m.tick(); assert.equal(s.threads[0].status, 'unknown');
     await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(s.active, 1);
     const last = s.threads[0].lastEventAt;
-    s = m.snapshot(last + 60001); assert.equal(s.active, 0); assert.equal(s.threads[0].status, 'unknown');
+    s = m.snapshot(last + 60001); assert.equal(s.active, 0); assert.equal(s.threads[0].status, 'quiet');
     const reload = new ActivityMonitor(root, () => ['/work/app'], value => { s = value; });
     try { await reload.tick(); assert.equal(s.threads[0].status, 'unknown'); } finally { reload.dispose(); }
     await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(s.active, 1);
@@ -144,4 +144,14 @@ test('workspace changes exclude previously seen chats outside the new roots', ()
  roots = ['/work/server']; assert.equal(m.snapshot().threads.length, 0);
  roots = ['/work/ios']; assert.equal(m.snapshot().threads.length, 1);
  m.dispose();
+});
+
+test('quiet confirmed turns recover on progress, while completed turns never expire', () => {
+ const m = new ActivityMonitor('', () => ['/work/app'], () => {}), now = Date.now();
+ const state = {id:'quiet-chat',cwd:'/work/app',source:'vscode',status:'running',changedAt:now,startedAt:now,lastEventAt:now,liveConfirmed:true};
+ m.files.set('a',state); assert.equal(m.snapshot(now).threads[0].status,'running');
+ assert.equal(m.snapshot(now+85000).threads[0].status,'quiet');
+ state.lastEventAt=now+86000;assert.equal(m.snapshot(now+86000).threads[0].status,'running');
+ state.status='ready';state.changedAt=state.finishedAt=state.lastEventAt=now+87000;
+ assert.equal(m.snapshot(now+3600000).threads[0].status,'ready');m.dispose();
 });

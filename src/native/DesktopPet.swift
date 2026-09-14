@@ -46,6 +46,7 @@ enum PetLanguage: String, CaseIterable {
         "Waiting for your reply": "Yanıtın bekleniyor",
         "Something went wrong": "Bir sorun oluştu",
         "No update": "Güncelleme yok",
+        "No recent activity": "Yeni etkinlik bekleniyor",
         "Idle": "Bekliyor",
         "Hide/show with ⌃⌥⌘P": "⌃⌥⌘P ile gizle/göster",
         "Shortcut in use; hide/show from this menu.": "Kısayol başka uygulamada kullanımda; bu menüden gizle/göster.",
@@ -220,6 +221,11 @@ final class DashboardView: NSView {
             let angle: CGFloat = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 90 : CGFloat(Date.timeIntervalSinceReferenceDate * -300).truncatingRemainder(dividingBy: 360)
             NSColor(calibratedRed: 0.60, green: 0.76, blue: 1, alpha: 1).setStroke()
             path.appendArc(withCenter: center, radius: 6, startAngle: angle, endAngle: angle - 245, clockwise: true); path.stroke()
+        } else if status == "quiet" {
+            NSColor.white.withAlphaComponent(0.55).setStroke()
+            NSBezierPath(ovalIn: NSRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)).stroke()
+            path.move(to: NSPoint(x: center.x, y: center.y + 3.5)); path.line(to: center)
+            path.line(to: NSPoint(x: center.x + 3, y: center.y - 1.5)); path.stroke()
         } else if status == "ready" {
             NSColor(calibratedRed: 0.51, green: 0.85, blue: 0.66, alpha: 1).setStroke()
             path.move(to: NSPoint(x: center.x - 4.5, y: center.y)); path.line(to: NSPoint(x: center.x - 1, y: center.y - 3.5)); path.line(to: NSPoint(x: center.x + 5, y: center.y + 4)); path.stroke()
@@ -435,10 +441,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var hotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?
     var animation: Timer?, polling: Timer?
     var overallStatus: String { allThreads.contains { $0.status == "waiting" } ? "waiting" : allThreads.contains { $0.status == "running" } ? "running" : allThreads.contains { $0.status == "failed" } ? "failed" : !allThreads.isEmpty && allThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
-    static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "idle": "Idle"][status] ?? "Idle") }
+    static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "quiet": "No recent activity", "idle": "Idle"][status] ?? "Idle") }
+    static func displayStatus(_ thread: ThreadActivity, now: Double, connected: Bool) -> String {
+        if ["running", "quiet", "waiting"].contains(thread.status) && !connected { return "unknown" }
+        if thread.status == "running" && now - thread.lastEventAt >= 60000 { return "quiet" }
+        return thread.status
+    }
     static func durationText(_ thread: ThreadActivity, language: PetLanguage = .english, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
         guard let start = thread.startedAt, start > 0 else { return "–" }
-        let end = thread.finishedAt ?? (thread.status == "unknown" ? thread.lastEventAt : now)
+        let end = thread.finishedAt ?? (["unknown", "quiet"].contains(thread.status) ? thread.lastEventAt : now)
         let seconds = max(0, Int((end - start) / 1000))
         let value = seconds < 60 ? seconds : seconds < 3600 ? seconds / 60 : seconds / 3600
         return "\(value) " + language.text(seconds < 60 ? "s" : seconds < 3600 ? "min" : "h")
@@ -507,7 +518,21 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         var protocolByID: [String: Int] = [:]
         for snapshot in live.sorted(by: { ($0.protocolVersion ?? 0) == ($1.protocolVersion ?? 0) ? $0.updatedAt < $1.updatedAt : ($0.protocolVersion ?? 0) < ($1.protocolVersion ?? 0) }) {
             for thread in snapshot.activity.threads ?? [] {
-                if (protocolByID[thread.id] ?? 0) >= (snapshot.protocolVersion ?? 0), let previous = byID[thread.id], max(previous.lastEventAt, previous.changedAt) > max(thread.lastEventAt, thread.changedAt) { continue }
+                if let previous = byID[thread.id] {
+                    // A newer heartbeat or helper protocol is not a newer turn.
+                    // Keep an explicit terminal event until there is newer lifecycle evidence.
+                    let terminalAt = previous.finishedAt ?? previous.changedAt
+                    if ["ready", "idle", "failed"].contains(previous.status), ["unknown", "quiet", "running"].contains(thread.status),
+                       max(thread.changedAt, thread.startedAt ?? 0, thread.finishedAt ?? 0) <= terminalAt { continue }
+                    let previousLifecycle = max(previous.changedAt, previous.startedAt ?? 0, previous.finishedAt ?? 0)
+                    let nextLifecycle = max(thread.changedAt, thread.startedAt ?? 0, thread.finishedAt ?? 0)
+                    if previousLifecycle > nextLifecycle { continue }
+                    if previousLifecycle == nextLifecycle, !["ready", "idle", "failed"].contains(thread.status),
+                       max(previous.lastEventAt, previous.changedAt) > max(thread.lastEventAt, thread.changedAt) { continue }
+                    // Another live window can still confirm activity while one reconnects.
+                    if protocolByID[thread.id] != nil, ["running", "quiet", "waiting"].contains(previous.status), thread.status == "unknown",
+                       max(previous.lastEventAt, previous.changedAt) == max(thread.lastEventAt, thread.changedAt) { continue }
+                }
                 var tagged = thread
                 tagged.workspace = thread.workspace ?? snapshot.workspace ?? byID[thread.id]?.workspace
                 tagged.cwd = thread.cwd ?? byID[thread.id]?.cwd
@@ -566,8 +591,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                 dismissed.removeValue(forKey: thread.id)
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
-            let stale = (thread.status != "waiting" && now.timeIntervalSince1970 * 1000 - thread.lastEventAt > 60 * 1000) || now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) > 15
-            return ThreadActivity(id: thread.id, title: thread.title, status: (thread.status == "running" || thread.status == "waiting") && stale ? "unknown" : thread.status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd)
+            let status = Self.displayStatus(thread, now: now.timeIntervalSince1970 * 1000, connected: now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) <= 15)
+            return ThreadActivity(id: thread.id, title: thread.title, status: status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
@@ -644,7 +669,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     func observeCompletions(_ threads: [ThreadActivity]) {
         let completed = threads.filter { thread in
             guard didObserve, thread.status == "ready", let previous = observedThreads[thread.id] else { return false }
-            return ["running", "waiting", "unknown"].contains(previous.status) && thread.changedAt >= previous.changedAt
+            return ["running", "waiting", "quiet", "unknown"].contains(previous.status) && thread.changedAt >= previous.changedAt
         }
         observedThreads = Dictionary(uniqueKeysWithValues: threads.map { ($0.id, $0) }); didObserve = true
         guard !completed.isEmpty, !presentationHidden else { return }
@@ -935,7 +960,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     func observeWaiting(_ threads: [ThreadActivity]) {
         var resolved: [String] = []
         for thread in threads {
-            guard thread.status == "waiting" else { if thread.status != "unknown", waitingSeen.removeValue(forKey: thread.id) != nil { resolved.append(thread.id) }; continue }
+            guard thread.status == "waiting" else { if !["unknown", "quiet"].contains(thread.status), waitingSeen.removeValue(forKey: thread.id) != nil { resolved.append(thread.id) }; continue }
             // A silent startup baseline avoids replaying historical requests.
             let newRequest = waitingSeen[thread.id] != thread.changedAt
             waitingSeen[thread.id] = thread.changedAt
@@ -1151,7 +1176,32 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && !displayThreads.contains { $0.id == waiting.id } && threadURL(waiting.id, live: [snapshot])?.query == "windowId=99&session=22222222-2222-4222-8222-222222222222"
         return valid
     }
+    func testQuietAndTerminalStates() -> Bool {
+        let saved = retained
+        defer { retained = saved }
+        let done = ThreadActivity(id: "status-fixture", title: "Sample", status: "ready", changedAt: 200, lastEventAt: 200, startedAt: 100, finishedAt: 200)
+        let old = ThreadActivity(id: done.id, title: done.title, status: "unknown", changedAt: 100, lastEventAt: 210, startedAt: 100)
+        let next = ThreadActivity(id: done.id, title: done.title, status: "running", changedAt: 300, lastEventAt: 310, startedAt: 300)
+        func snapshot(_ thread: ThreadActivity, protocolVersion: Int) -> Snapshot {
+            Snapshot(protocolVersion: protocolVersion, updatedAt: 500, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: thread.status, active: 0, threads: [thread], trackingDisabled: false), pets: [])
+        }
+        retained = [done.id: done]
+        var valid = mergeThreads([snapshot(old, protocolVersion: 99)]).first?.status == "ready"
+        valid = valid && mergeThreads([snapshot(next, protocolVersion: 8)]).first?.status == "running"
+        retained = [:]
+        valid = valid && mergeThreads([snapshot(done, protocolVersion: 8), snapshot(old, protocolVersion: 99)]).first?.status == "ready"
+        valid = valid && mergeThreads([snapshot(old, protocolVersion: 8), snapshot(done, protocolVersion: 99)]).first?.status == "ready"
+        let reconnect = ThreadActivity(id: next.id, title: next.title, status: "unknown", changedAt: next.changedAt, lastEventAt: next.lastEventAt, startedAt: next.startedAt)
+        valid = valid && mergeThreads([snapshot(next, protocolVersion: 8), snapshot(reconnect, protocolVersion: 99)]).first?.status == "running"
+        valid = valid && Self.displayStatus(next, now: 85000, connected: true) == "quiet"
+        valid = valid && Self.displayStatus(next, now: 85000, connected: false) == "unknown"
+        valid = valid && Self.displayStatus(next, now: 320, connected: true) == "running"
+        valid = valid && Self.displayStatus(done, now: 3600000, connected: false) == "ready"
+        valid = valid && Self.statusText("quiet", language: .turkish) == "Yeni etkinlik bekleniyor"
+        return valid
+    }
     func featureTests() -> [String: Any] {
+        let quietAndTerminalStatesWork = testQuietAndTerminalStates()
         let dashboardControlsWork = dashboardControlTests()
         celebrationUntil = 0
         let original = displayThreads
@@ -1234,7 +1284,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

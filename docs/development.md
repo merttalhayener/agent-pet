@@ -26,7 +26,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-0.10.0.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-0.10.1.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -119,3 +119,9 @@ The native helper keeps `allThreads` separate from the filtered `displayThreads`
 The helper is now an ad-hoc-signed `Agent Pet.app` bundle with stable ID `local.agent-pet.desktop`, enabling macOS UserNotifications. The build is still not Developer ID signed or notarized. Notification authorization is requested only when enabled from the menu. Requests are deduplicated, muted per chat, and suppressed in presentation mode. Native tests exercise request transitions and click routing without requesting OS permission; actual banner presentation depends on user authorization and macOS Focus settings.
 
 `src/updater.cjs` reads public GitHub releases (including prereleases), limits downloads, validates release asset URLs and SHA-256 checksums, and invokes VS Code’s [installExtension command](https://github.com/microsoft/vscode-docs/blob/main/api/references/commands.md) with a local VSIX URI. A shared process lock prevents concurrent prompts/installations across windows. Package installation never invokes Reload Window. Background checks, including failed requests, back off for 24 hours; manual checks remain available.
+
+## Quiet activity and terminal-state reconciliation (0.10.1)
+
+After 60 seconds without recorded progress, a confirmed running turn becomes `quiet` (clock / No recent activity). It remains tracked and resumes running on new progress. Reloads still require fresh progress; disconnected or unconfirmed sessions remain unknown. Quiet sessions do not count as currently running, and their duration freezes at the last activity until progress resumes.
+
+Native reconciliation compares lifecycle timestamps before heartbeat/protocol freshness. Older running/unknown reports cannot overwrite a recorded terminal event. A new task start can replace completion normally. This avoids losing completion when different VS Code windows report the same chat while reconnecting.

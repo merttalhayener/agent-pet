@@ -2,7 +2,7 @@
   "name": "codex-pet-panel",
   "displayName": "Agent Pet",
   "description": "A floating desktop pet for Codex and Claude Code in VS Code.",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "publisher": "local",
   "license": "UNLICENSED",
   "engines": {

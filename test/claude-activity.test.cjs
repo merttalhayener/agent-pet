@@ -27,7 +27,7 @@ test('Claude tracks prompt, tool call, answer, explicit completion and a new tur
     await fs.appendFile(file, record('user', { message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'ask', content: 'Answer' }] } }));
     await m.tick(); assert.equal(s.active, 1);
     await fs.appendFile(file, assistant(null)); await m.tick(); assert.equal(s.active, 1, 'A missing stop reason is not completion');
-    assert.equal(m.snapshot(Date.now() + 61000).threads[0].status, 'unknown');
+    assert.equal(m.snapshot(Date.now() + 61000).threads[0].status, 'quiet');
     const done = assistant('end_turn'); await fs.appendFile(file, done.slice(0, 45)); await m.tick(); assert.equal(s.active, 1);
     await fs.appendFile(file, done.slice(45) + record('custom-title', { customTitle: 'Named Claude chat' })); await m.tick();
     assert.equal(s.threads[0].status, 'ready'); assert.equal(s.threads[0].title, 'Named Claude chat'); assert.ok(s.threads[0].finishedAt >= s.threads[0].startedAt);

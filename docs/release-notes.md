@@ -1,14 +1,12 @@
-# Agent Pet v0.10.0 — Focus controls and updates
+# Agent Pet v0.10.1 — Clearer quiet activity
 
-- Add status and workspace filters without affecting notification tracking or totals.
-- Add persistent per-chat workspace overrides for grouping and window navigation.
-- Add optional status labels, including Stopped, and a menu bar running/waiting counter.
-- Add opt-in native macOS waiting notifications with per-chat mute and click-to-chat routing.
-- Add daily GitHub beta update checks and one-click checksum-verified VSIX installation.
-- Package the native helper as an application bundle and preserve upgrades from older helpers.
+- Distinguish quiet ongoing turns from disconnected/unconfirmed sessions with a clock and No recent activity label.
+- Restore the spinner on new progress; keep the reload safeguards and explicit completion checks.
+- Preserve terminal states against older or uncertain reports from other VS Code windows.
+- Use this patch release to exercise the 0.10.0 in-app updater.
 
-After installation, finish active chats and run **Developer: Reload Window** in each open VS Code window. Windows are never reloaded automatically.
+From v0.10.0, choose **Check for updates… → Install update** in the paw menu. After active chats finish, run **Developer: Reload Window** in each open VS Code window. This release does not reload active windows automatically.
 
-Enable waiting notifications under **Notifications → Notify when waiting for me**, then grant macOS permission. Background checks contact GitHub once daily; disable them with `codexPet.checkForUpdates`. Chat records remain local.
+A clock means no recent activity has been recorded; a question mark means the connection or activity is unconfirmed. Neither means the task completed.
 
-Apple Silicon · macOS 26+ · English / Türkçe · Beta. No Developer ID signing/notarization yet.
+Apple Silicon · macOS 26+ · English / Türkçe · Beta.

@@ -42,9 +42,9 @@ Click **Agent Pet** in VS Code’s status bar or run **Agent Pet: Show Desktop P
 
 ## Status looks stuck
 
-After reconnecting, Agent Pet waits for new activity before showing a chat as running. After 60 seconds without progress, the spinner changes to **No update**. The row remains visible; new activity restores its status. Only an explicit completion record produces a checkmark.
+After reconnecting, Agent Pet waits for new activity before showing a chat as running. After 60 seconds without progress in a previously confirmed turn, the spinner becomes a clock labeled **No recent activity**. This is a quiet interval, not proof the task stopped. New activity restores the spinner. **No update** and a question mark remain for unconfirmed or disconnected sessions. Only an explicit completion record produces a checkmark, and older window snapshots cannot undo that completion.
 
-The app reads local agent activity; it cannot tell whether the chat UI is receiving messages. A quiet long-running tool can also show **No update**, and some permission dialogs are not detected.
+The app reads local agent activity; it cannot tell whether the chat UI is receiving messages. A quiet long-running tool can show **No recent activity**, and some permission dialogs are not detected.
 
 ## Languages and local data
 

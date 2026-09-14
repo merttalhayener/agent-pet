@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.1
+
+- Distinguish quiet ongoing turns from disconnected/unconfirmed sessions with a clock and No recent activity label.
+- Restore the spinner on new progress; keep the reload safeguards and explicit completion checks.
+- Preserve terminal states against older or uncertain reports from other VS Code windows.
+- Use this patch release to exercise the 0.10.0 in-app updater.
+
 ## 0.10.0
 
 - Add status and workspace filters without affecting notification tracking or totals.
