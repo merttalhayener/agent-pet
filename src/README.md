@@ -62,6 +62,8 @@ Install **Agent Pet** by **merttalhayener** from VS Code’s Extensions view. Av
 
 Subsequent Marketplace updates use VS Code’s update settings. The running desktop helper switches to newly installed versions without interrupting chats, preserving visibility preferences. Upgrading from 0.11.3 or earlier requires one window reload to enable this mechanism. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
 
+The macOS app is bundled inside the extension; there is no separate Applications-folder installation. From 0.14.1, removing the last installed copy closes its panel automatically. Closing all connected VS Code windows also closes the helper after a short reconnect grace period (about one minute). VS Code removes the bundled app files during extension cleanup, which may require restarting VS Code.
+
 ## Quick controls
 
 | Want to… | Do this |

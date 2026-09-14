@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.1 — Keep the macOS helper with its extension
+
+- Close a removed helper even when an older extension host is still publishing snapshots.
+- Keep the shared panel alive for other connected windows; allow reload reconnection before closing after the last window disconnects.
+- Add an exact-package uninstall hook that stops its own native process and unregisters its bundle without touching newer versions.
+- Withdraw removed clients and reject obsolete update candidates; preserve handover to a valid installed update.
+- Handle SIGTERM through normal AppKit shutdown to save position and release the shared lock.
+- Leave bundled app file deletion to VS Code; document the restart-dependent final cleanup.
+
 ## 0.14.0 — Original companions
 
 - Replace optional Codex artwork with three original MIT-licensed characters: Byte, Miso and Fern.

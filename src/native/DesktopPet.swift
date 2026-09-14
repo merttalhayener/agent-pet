@@ -376,9 +376,30 @@ final class DashboardView: NSView {
     }
 }
 
+struct HelperLifetime {
+    var disconnectedAt: TimeInterval? = nil
+    var removedAt: TimeInterval? = nil
+    mutating func shouldExit(connected: Bool, removed: Bool, now: TimeInterval) -> Bool {
+        if connected { disconnectedAt = nil } else if disconnectedAt == nil { disconnectedAt = now }
+        if !removed { removedAt = nil } else if removedAt == nil { removedAt = now }
+        // Allow normal extension-host reloads and brief installation handovers.
+        return disconnectedAt.map { now - $0 >= 60 } == true || removedAt.map { now - $0 >= 10 } == true
+    }
+    static func installationRemoved(bundle: URL) -> Bool {
+        let root = bundle.deletingLastPathComponent().deletingLastPathComponent()
+        guard root.lastPathComponent.range(of: #"^(merttalhayener\.agent-pet|local\.codex-pet-panel)-\d+\.\d+\.\d+(-darwin-arm64)?$"#, options: .regularExpression) != nil else { return false }
+        if !FileManager.default.fileExists(atPath: root.appendingPathComponent("package.json").path) { return true }
+        let file = root.deletingLastPathComponent().appendingPathComponent(".obsolete")
+        guard let data = try? Data(contentsOf: file), let removed = try? JSONSerialization.jsonObject(with: data) as? [String: Bool] else { return false }
+        return removed[root.lastPathComponent] == true
+    }
+}
+
 final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
     let directory: URL
     let testing: Bool
+    var lifetime = HelperLifetime()
+    var terminationSignal: DispatchSourceSignal?
     let defaults = UserDefaults(suiteName: "local.codex-pet-desktop")!
     var panel: PetPanel!
     var view: DashboardView!
@@ -454,6 +475,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         lockFD = Darwin.open(directory.appendingPathComponent("desktop.lock").path, O_CREAT | O_RDWR, 0o600)
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else { NSApp.terminate(nil); return }
+        // SIGTERM from an update/uninstall should flush preferences and release
+        // the shared lock through the normal AppKit shutdown path.
+        signal(SIGTERM, SIG_IGN)
+        terminationSignal = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        terminationSignal?.setEventHandler { NSApp.terminate(nil) }
+        terminationSignal?.resume()
         if !testing {
             LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
             statusLabels = defaults.object(forKey: "statusLabels") == nil || defaults.bool(forKey: "statusLabels")
@@ -500,12 +527,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         if !testing || CommandLine.arguments.contains("--hotkey-self-test") { setupMenuBarAndHotKey() }
         animation = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in self?.step() }
         polling = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() }
-        if testing { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.selfTest() } }
+        if testing && !CommandLine.arguments.contains("--lifecycle-test") { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.selfTest() } }
     }
     func snapshots() -> [Snapshot] {
         let now = Date().timeIntervalSince1970 * 1000
         return ((try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []).filter { $0.lastPathComponent.hasPrefix("client-") && $0.pathExtension == "json" }.compactMap { file in
-            guard let data = try? Data(contentsOf: file), let s = try? JSONDecoder().decode(Snapshot.self, from: data), now - s.updatedAt < 15000 else { return nil }
+            guard let data = try? Data(contentsOf: file), let s = try? JSONDecoder().decode(Snapshot.self, from: data), s.updatedAt.isFinite, now - s.updatedAt >= -5000, now - s.updatedAt < 15000 else { return nil }
             return s
         }
     }
@@ -574,6 +601,11 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let toggleRequest = directory.appendingPathComponent("desktop-presentation-request")
         if FileManager.default.fileExists(atPath: toggleRequest.path) { togglePresentation(); try? FileManager.default.removeItem(at: toggleRequest) }
         let live = snapshots(), now = Date()
+        if !testing || CommandLine.arguments.contains("--lifecycle-test") {
+            if lifetime.shouldExit(connected: !live.isEmpty, removed: HelperLifetime.installationRemoved(bundle: Bundle.main.bundleURL), now: ProcessInfo.processInfo.systemUptime) {
+                NSApp.terminate(nil); return
+            }
+        }
         if let choice = live.filter({ OriginalPets.contains($0.selected) }).max(by: { $0.selectedAt < $1.selectedAt }), choice.selectedAt > selectedAt { selected = choice.selected; selectedAt = choice.selectedAt }
         if let choice = live.max(by: { $0.sleepAt < $1.sleepAt }), choice.sleepAt > sleepAt { sleeping = choice.sleeping; sleepAt = choice.sleepAt }
         let threads = mergeThreads(live)
@@ -1450,7 +1482,21 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
         return ["statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
+    func testHelperLifetime() -> Bool {
+        var state = HelperLifetime()
+        let first = !state.shouldExit(connected: false, removed: false, now: 0)
+        let reloadGrace = !state.shouldExit(connected: false, removed: false, now: 59)
+        let otherWindow = !state.shouldExit(connected: true, removed: false, now: 60)
+        let reconnect = !state.shouldExit(connected: false, removed: false, now: 100)
+        let closed = state.shouldExit(connected: false, removed: false, now: 160)
+        let resumed = !state.shouldExit(connected: true, removed: false, now: 161)
+        let removalGrace = !state.shouldExit(connected: true, removed: true, now: 200)
+        let removed = state.shouldExit(connected: true, removed: true, now: 210)
+        let reinstall = !state.shouldExit(connected: true, removed: false, now: 211)
+        return first && reloadGrace && otherWindow && reconnect && closed && resumed && removalGrace && removed && reinstall
+    }
     func selfTest() {
+        precondition(testHelperLifetime(), "Helper lifetime grace, reload, multi-window or removal failed")
         capture("dashboard-test.png")
         let initial = displayThreads
         view.scrollOffset = initial.count; view.clampScroll()

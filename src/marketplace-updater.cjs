@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { newer } = require('./updater.cjs');
+const { BUNDLE_SUFFIX, markedForRemoval } = require('./helper-lifecycle.cjs');
 
 async function installedMarketplacePackage(context) {
   const current = context.extension.packageJSON.version, id = context.extension.id;
@@ -12,6 +13,7 @@ async function installedMarketplacePackage(context) {
       if (entry.identifier?.id?.toLowerCase() !== id.toLowerCase() || !newer(entry.version, installed.version)) continue;
       const folder = entry.relativeLocation;
       if (typeof folder !== 'string' || path.basename(folder) !== folder || !folder.startsWith(id + '-')) continue;
+      if (await markedForRemoval(path.join(root, folder) + BUNDLE_SUFFIX)) continue;
       const pkg = JSON.parse(await fs.readFile(path.join(root, folder, 'package.json'), 'utf8'));
       if (`${pkg.publisher}.${pkg.name}` === id && pkg.version === entry.version) installed = { version: pkg.version, extensionPath: path.join(root, folder) };
     }

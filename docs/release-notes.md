@@ -1,13 +1,13 @@
-# Agent Pet v0.14.0 — Original companions
+# Agent Pet v0.14.1 — Helper update and uninstall cleanup
 
-Meet **Byte** the robot, **Miso** the cat and **Fern** the sprout. All three are original geometric drawings included under MIT, with typing, waiting, sleeping and completion reactions.
+The macOS companion now follows its extension's lifecycle. An installed update replaces the older running helper; removing the extension from all profiles closes the removed helper even if an old window still sends snapshots.
 
-Agent Pet no longer reads pet artwork from Codex. Older windows cannot reintroduce external character catalogs or file paths; removed selections fall back to Byte. Codex and Claude Code chat tracking continues as before.
+Closing every connected VS Code window closes the helper after a reconnect grace period of about one minute. Other connected windows and normal window reloads keep the shared panel available. The uninstall hook stops and unregisters only its own package, preserving a newer installed app.
 
-Current README images, GIFs and the feature video have been re-rendered with these original characters. The repository also contains the media rendering tools.
+The app lives inside the extension, with no separate Applications-folder copy. VS Code handles final file deletion and can defer cleanup until restart. Pet preferences are retained by Agent Pet; no conversation files are deleted by this change.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-The native helper remains ad-hoc signed, without Developer ID signing or Apple notarization. Marketplace upload of `agent-pet-marketplace-0.14.0-darwin-arm64.vsix` is pending.
+Marketplace upload of `agent-pet-marketplace-0.14.1-darwin-arm64.vsix` is pending. Existing installations receive these protections after installing this version; native handover does not require interrupting active chats.
 
-Validation: 59 Node tests; native UI checks including original pet selection and legacy snapshot rejection; visual inspection of the characters and regenerated media.
+Validation: 64 Node tests; native UI checks; isolated native uninstall/disconnect tests; real macOS process handover; VSIX contents, matching native version and ad-hoc signature checked.
