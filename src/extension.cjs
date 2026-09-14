@@ -71,7 +71,7 @@ async function activate(context) {
     entry.show(); context.subscriptions.push(entry);
   }
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.hideDesktop', async () => {
-    if (desktop) { await fs.mkdir(desktop.directory, { recursive: true }); await fs.writeFile(path.join(desktop.directory, 'desktop-hidden'), ''); }
+    if (desktop) { await fs.mkdir(desktop.directory, { recursive: true }); await fs.writeFile(path.join(desktop.directory, 'desktop-hide-panel-request'), ''); }
   }));
   context.subscriptions.push(vscode.commands.registerCommand('codexPet.togglePresentation', async () => {
     if (!desktop) return;

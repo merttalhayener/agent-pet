@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.3 — Hide the panel independently
+
+- **Hide panel** now hides only the chat list, keeping the pet visible.
+- Add a compact pet-only layout with movement, resizing and a saved visibility preference.
+- Add **Hide all / Show all** for the whole window; retain the global shortcut.
+- Keep **Hide pet / Show pet** independent and restore both parts when everything was hidden individually.
+- Make the VS Code **Hide Panel** command hide only the chat list.
+
+
 ## 0.11.2 — Refresh menu labels after toggling
 
 - Fix the paw menu retaining **Show pet** after the character is shown.

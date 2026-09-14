@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 for (const withCodex of [true, false]) test(`Desktop activation and reopening with Codex installed: ${withCodex}`, async () => {
-  const commands = new Map(), starts = [], state = new Map();
+  const commands = new Map(), starts = [], writes = [], state = new Map();
   const entry = { show() { this.visible = true; }, dispose() {} };
   const context = {
     extension: { id: 'merttalhayener.agent-pet' }, extensionPath: '/test/extension', globalStorageUri: { fsPath: '/test/storage' }, subscriptions: [],
@@ -25,7 +25,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
     async write() {}
   }
   class AgentActivityMonitor { start() {} async tick() {} }
-  const dependencies = { vscode, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
+  const dependencies = { vscode, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { mkdir: async () => {}, writeFile: async file => writes.push(file), readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   const api = await sandbox.module.exports.activate(context);
@@ -37,6 +37,8 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   assert.deepEqual(starts, [], 'Disabled automatic opening is respected');
   await commands.get('codexPet.open')(); await commands.get('codexPet.showDesktop')();
   assert.deepEqual(starts, [true, true]);
+  await commands.get('codexPet.hideDesktop')();
+  assert.deepEqual(writes, ['/test/storage/desktop/desktop-hide-panel-request']);
   await commands.get('codexPet.choose')();
   assert.equal(snapshot().selected, withCodex ? 'bsod' : 'agent-pet');
   assert.equal(state.get('pet'), withCodex ? 'bsod' : 'agent-pet');

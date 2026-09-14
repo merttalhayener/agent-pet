@@ -2,7 +2,7 @@
 
 Publisher: **merttalhayener** · Extension: **agent-pet** · ID: **merttalhayener.agent-pet**
 
-Version 0.11.0 is live at https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet. Version 0.11.2 is ready for upload. For subsequent releases, use the existing extension’s **Update** action, not New extension.
+Version 0.11.0 is live at https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet. Version 0.11.3 is ready for upload. For subsequent releases, use the existing extension’s **Update** action, not New extension.
 
 ## Build and verify
 
@@ -14,13 +14,13 @@ node test/native-dashboard.cjs --builtin --mixed --overflow
 python3 build.py
 ```
 
-Upload `artifacts/agent-pet-marketplace-0.11.2-darwin-arm64.vsix`. It contains the native helper, MIT license, icon, README and changelog. It is marked as a prerelease and targets Apple Silicon macOS.
+Upload `artifacts/agent-pet-marketplace-0.11.3-darwin-arm64.vsix`. It contains the native helper, MIT license, icon, README and changelog. It is marked as a prerelease and targets Apple Silicon macOS.
 
 ## First publication
 
 Sign in with a Microsoft account at [Manage publishers](https://marketplace.visualstudio.com/manage/publishers/) and create publisher ID `merttalhayener`. In that publisher, choose **New extension → Visual Studio Code** and upload the prepared VSIX. Complete any account verification shown by Microsoft. Check the resulting listing and installation before announcing availability.
 
-For CLI publishing, authenticate locally with `npx vsce login merttalhayener`, then run `npx vsce publish --packagePath artifacts/agent-pet-marketplace-0.11.2-darwin-arm64.vsix`. Enter credentials only into the local authentication prompt, never into chat or repository files. Follow [Microsoft’s current publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) for authentication requirements.
+For CLI publishing, authenticate locally with `npx vsce login merttalhayener`, then run `npx vsce publish --packagePath artifacts/agent-pet-marketplace-0.11.3-darwin-arm64.vsix`. Enter credentials only into the local authentication prompt, never into chat or repository files. Follow [Microsoft’s current publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) for authentication requirements.
 
 ## Preview migration
 

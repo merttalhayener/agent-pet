@@ -27,7 +27,7 @@ Sohbet **çalışıyor → yanıt bekliyor → tamamlandı** durumlarından geç
 
 ## Panel kalsın, pet gizlensin
 
-Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür kalır; **Peti göster** karakteri geri getirir. **Paneli gizle** ise tüm pencereyi gizler. **Görünüm → Yalnızca panel** aynı karakter tercihini kontrol eder.
+Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür kalır; **Peti göster** karakteri geri getirir. **Paneli gizle** yalnızca sohbet listesini gizler, pet görünür kalır. **Tümünü gizle** ikisini birlikte gizler. **Görünüm → Yalnızca panel** aynı karakter tercihini kontrol eder.
 
 <img src="docs/media/panel-only.gif" alt="Pet gizlenirken sohbet paneli açık kalıyor; ardından pet geri geliyor" width="600">
 
@@ -59,7 +59,8 @@ Güncellemeler artık takip edilen sohbetler bitip değişiklikler kaydedilince 
 | Pet görselini gizle | **Peti gizle**; geri getirmek için **Peti göster** |
 | Sohbetleri grupla | **▤** veya **Görünüm → Genişletilmiş · Çalışma alanları** |
 | Taşı / boyutlandır | Peti veya panel başlığını / sağ üst tutamacı sürükle |
-| Tamamen gizle veya geri getir | **Paneli gizle / Paneli göster** ya da **Ctrl + Option + Cmd + P** |
+| Sohbet listesini gizle veya geri getir | **Paneli gizle / Paneli göster** |
+| Tamamen gizle veya geri getir | **Tümünü gizle / Tümünü göster** ya da **Ctrl + Option + Cmd + P** |
 | Yeniden aç / dili değiştir | VS Code’daki **Agent Pet** düğmesi / **Language → Türkçe** |
 
 Ayarlar için pete veya panele sağ tıkla. Tercihlerin kaydedilir.
@@ -70,6 +71,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. Yukarıdaki görünürlük düzeltmesi 0.11.2 sürümündedir; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.2) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. Yukarıdaki görünürlük düzeltmesi 0.11.3 sürümündedir; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.3) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
 Özgün kaynak kod ve yerleşik vektör robot [MIT lisanslıdır](LICENSE). Dışarıdan yüklenen Codex çizimleri pakete dahil değildir ve bu lisans kapsamında değildir.

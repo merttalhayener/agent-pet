@@ -57,6 +57,9 @@ enum PetLanguage: String, CaseIterable {
         "Hide pet": "Peti gizle",
         "Show panel": "Paneli göster",
         "Hide panel": "Paneli gizle",
+        "Show all": "Tümünü göster",
+        "Hide all": "Tümünü gizle",
+        "Keep the pet visible.": "Pet görünür kalır.",
         "Keep the chat panel visible.": "Sohbet paneli görünür kalır.",
         "Completion sound and animation are paused while hidden.": "Gizliyken bitiş sesi ve animasyonu da duraklatılır.",
         "Return to VS Code": "VS Code'a dön",
@@ -176,15 +179,16 @@ final class DashboardView: NSView {
             return [header] + ((owner?.foldedWorkspaces.contains(id) ?? false) ? [] : threads.map { DashboardEntry(thread: $0) })
         }
     }
+    var chatPanelVisible: Bool { owner?.panelHidden != true }
     var petVisible: Bool { owner?.panelOnly != true }
     var headerControlsWidth: CGFloat { petVisible ? 73 : 99 }
     var collapsed: Bool { owner?.collapsed ?? false }
-    var logicalWidth: CGFloat { collapsed ? (petVisible ? max(180, 112 * (owner?.petScale ?? 1) + 58) : 240) : (owner?.grouped == true ? 400 : 340) }
-    var visibleCount: Int { collapsed ? 0 : min(owner?.grouped == true ? 12 : 8, entries.count) }
-    var cardHeight: CGFloat { collapsed ? 32 : CGFloat(max(1, visibleCount)) * rowHeight + 40 }
-    var desiredHeight: CGFloat { cardHeight + (petVisible ? 121 * (owner?.petScale ?? 1) + 7 : 0) }
-    var collapseRect: NSRect { NSRect(x: bounds.maxX - (petVisible ? 29 : 55), y: cardHeight - 28, width: 24, height: 24) }
-    var groupingRect: NSRect { NSRect(x: bounds.maxX - (petVisible ? 55 : 81), y: cardHeight - 28, width: 24, height: 24) }
+    var logicalWidth: CGFloat { if !chatPanelVisible { return max(220, 112 * (owner?.petScale ?? 1) + 98) }; return collapsed ? (petVisible ? max(180, 112 * (owner?.petScale ?? 1) + 58) : 240) : (owner?.grouped == true ? 400 : 340) }
+    var visibleCount: Int { !chatPanelVisible || collapsed ? 0 : min(owner?.grouped == true ? 12 : 8, entries.count) }
+    var cardHeight: CGFloat { if !chatPanelVisible { return 0 }; return collapsed ? 32 : CGFloat(max(1, visibleCount)) * rowHeight + 40 }
+    var desiredHeight: CGFloat { max(1, cardHeight + (petVisible ? 121 * (owner?.petScale ?? 1) + 7 : 0)) }
+    var collapseRect: NSRect { guard chatPanelVisible else { return .zero }; return NSRect(x: bounds.maxX - (petVisible ? 29 : 55), y: cardHeight - 28, width: 24, height: 24) }
+    var groupingRect: NSRect { guard chatPanelVisible else { return .zero }; return NSRect(x: bounds.maxX - (petVisible ? 55 : 81), y: cardHeight - 28, width: 24, height: 24) }
     var resizeHandleRect: NSRect { NSRect(x: bounds.maxX - 28, y: bounds.maxY - 28, width: 26, height: 26) }
     var spriteRect: NSRect { guard petVisible else { return .zero }; let s = owner?.petScale ?? 1; return NSRect(x: (bounds.width - 112 * s) / 2, y: cardHeight + 5, width: 112 * s, height: 121 * s) }
     override var isOpaque: Bool { false }
@@ -262,43 +266,45 @@ final class DashboardView: NSView {
             sheet.draw(in: spriteRect, from: source, operation: .sourceOver, fraction: owner?.sleeping == true ? 0.62 : 1, respectFlipped: false, hints: [.interpolation: NSImageInterpolation.high])
         }
         if petVisible && sheet == nil { drawBuiltInPet() }
-        let card = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 0.5, width: bounds.width - 1, height: cardHeight - 1), xRadius: 13, yRadius: 13)
-        NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
-        NSColor.white.withAlphaComponent(0.12).setStroke(); card.lineWidth = 0.7; card.stroke()
-        let running = rows.filter { $0.status == "running" }.count, waiting = rows.filter { $0.status == "waiting" }.count
-        let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
-        let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        let navigationNotice = (owner?.navigationNoticeUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-        label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : (owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? text("Filtered") : text(owner?.grouped == true ? "Workspaces" : "Chats")) + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
-        label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
-        label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
-        clampScroll()
-        let items = entries
-        for i in 0..<visibleCount {
-            let item = items[i + scrollOffset], rect = rowRect(i)
-            if let workspace = item.workspace {
-                NSColor.white.withAlphaComponent(0.07).setFill(); NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 2), xRadius: 5, yRadius: 5).fill()
-                label(owner?.foldedWorkspaces.contains(workspace.id) == true ? "›" : "⌄", in: NSRect(x: 14, y: rect.midY - 8, width: 15, height: 18), size: 13, color: .systemTeal)
-                label(workspace.name == "No workspace" ? text("No workspace") : workspace.name, in: NSRect(x: 34, y: rect.midY - 7, width: bounds.width - 170, height: 17), size: 11, color: .systemTeal)
-                let summary = String(format: text(item.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), item.running, item.count)
-                label(summary, in: NSRect(x: bounds.width - 130, y: rect.midY - 6, width: 115, height: 15), size: 9, color: NSColor.white.withAlphaComponent(0.6))
-                continue
+        if chatPanelVisible {
+            let card = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 0.5, width: bounds.width - 1, height: cardHeight - 1), xRadius: 13, yRadius: 13)
+            NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
+            NSColor.white.withAlphaComponent(0.12).setStroke(); card.lineWidth = 0.7; card.stroke()
+            let running = rows.filter { $0.status == "running" }.count, waiting = rows.filter { $0.status == "waiting" }.count
+            let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
+            let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
+            let navigationNotice = (owner?.navigationNoticeUntil ?? 0) > Date.timeIntervalSinceReferenceDate
+            label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : (owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? text("Filtered") : text(owner?.grouped == true ? "Workspaces" : "Chats")) + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+            label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
+            label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
+            clampScroll()
+            let items = entries
+            for i in 0..<visibleCount {
+                let item = items[i + scrollOffset], rect = rowRect(i)
+                if let workspace = item.workspace {
+                    NSColor.white.withAlphaComponent(0.07).setFill(); NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 2), xRadius: 5, yRadius: 5).fill()
+                    label(owner?.foldedWorkspaces.contains(workspace.id) == true ? "›" : "⌄", in: NSRect(x: 14, y: rect.midY - 8, width: 15, height: 18), size: 13, color: .systemTeal)
+                    label(workspace.name == "No workspace" ? text("No workspace") : workspace.name, in: NSRect(x: 34, y: rect.midY - 7, width: bounds.width - 170, height: 17), size: 11, color: .systemTeal)
+                    let summary = String(format: text(item.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), item.running, item.count)
+                    label(summary, in: NSRect(x: bounds.width - 130, y: rect.midY - 6, width: 115, height: 15), size: 9, color: NSColor.white.withAlphaComponent(0.6))
+                    continue
+                }
+                guard let thread = item.thread else { continue }
+                if thread.id == hoveredRow { NSColor.white.withAlphaComponent(0.06).setFill(); NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill() }
+                indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
+                let size = owner?.textSize ?? 11.5
+                let pinned = owner?.pinned.contains(thread.id) ?? false
+                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 118, height: size + 5), size: size, color: .white)
+                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 118, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
+                label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
+                if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
             }
-            guard let thread = item.thread else { continue }
-            if thread.id == hoveredRow { NSColor.white.withAlphaComponent(0.06).setFill(); NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill() }
-            indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
-            let size = owner?.textSize ?? 11.5
-            let pinned = owner?.pinned.contains(thread.id) ?? false
-            label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 118, height: size + 5), size: size, color: .white)
-            label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 118, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
-            label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
-            if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
-        }
-        if rows.isEmpty && !collapsed { label(text(owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? "No chats match these filters" : "No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
-        if entries.count > visibleCount && !collapsed {
-            let track = cardHeight - 22, thumb = max(18, track * CGFloat(visibleCount) / CGFloat(entries.count))
-            let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(entries.count - visibleCount))
-            NSColor.white.withAlphaComponent(0.24).setFill(); NSBezierPath(roundedRect: NSRect(x: bounds.width - 4, y: y, width: 2, height: thumb), xRadius: 1, yRadius: 1).fill()
+            if rows.isEmpty && !collapsed { label(text(owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? "No chats match these filters" : "No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
+            if entries.count > visibleCount && !collapsed {
+                let track = cardHeight - 22, thumb = max(18, track * CGFloat(visibleCount) / CGFloat(entries.count))
+                let y = 11 + (track - thumb) * (1 - CGFloat(scrollOffset) / CGFloat(entries.count - visibleCount))
+                NSColor.white.withAlphaComponent(0.24).setFill(); NSBezierPath(roundedRect: NSRect(x: bounds.width - 4, y: y, width: 2, height: thumb), xRadius: 1, yRadius: 1).fill()
+            }
         }
         if hovered && petVisible {
             for x in [bounds.midX - 82, bounds.midX + 60] {
@@ -378,7 +384,7 @@ final class DashboardView: NSView {
         if petVisible && spriteRect.contains(p) { owner?.react() }
     }
     override func scrollWheel(with event: NSEvent) {
-        guard entries.count > visibleCount, event.scrollingDeltaY != 0 else { return }
+        guard chatPanelVisible, entries.count > visibleCount, event.scrollingDeltaY != 0 else { return }
         scrollOffset += event.scrollingDeltaY < 0 ? 1 : -1; clampScroll(); needsDisplay = true
     }
     override func rightMouseDown(with event: NSEvent) {
@@ -430,6 +436,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var navigationNoticeUntil: Double = 0
     var dashboardScale: CGFloat = 1
     var panelOnly = false
+    var panelHidden = false
+    var allHidden: Bool { presentationHidden || (panelOnly && panelHidden) }
     var grouped = false
     var foldedWorkspaces: Set<String> = []
     var collapsed = false, snapEnabled = true, completionAnimation = true, soundEnabled = false
@@ -477,6 +485,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             UNUserNotificationCenter.current().delegate = self
             language = PetLanguage(preference: defaults.string(forKey: "language"))
             panelOnly = defaults.bool(forKey: "panelOnly")
+            panelHidden = defaults.bool(forKey: "panelHidden")
             grouped = defaults.bool(forKey: "grouped")
             foldedWorkspaces = Set(defaults.stringArray(forKey: "foldedWorkspaces") ?? [])
             collapsed = defaults.bool(forKey: "collapsed"); soundEnabled = defaults.bool(forKey: "soundEnabled")
@@ -505,7 +514,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.acceptsMouseMovedEvents = true
         view = DashboardView(frame: NSRect(x: 0, y: 0, width: 340, height: 174)); view.owner = self
         view.setAccessibilityElement(true); view.setAccessibilityRole(.group); panel.contentView = view
-        restorePosition(); refresh(); step(); if !presentationHidden { panel.orderFrontRegardless() }
+        restorePosition(); refresh(); step(); if !allHidden { panel.orderFrontRegardless() }
         if !testing || CommandLine.arguments.contains("--hotkey-self-test") { setupMenuBarAndHotKey() }
         animation = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in self?.step() }
         polling = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() }
@@ -572,9 +581,14 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         return byID.values.sorted { $0.id < $1.id }
     }
     func refresh() {
-        if FileManager.default.fileExists(atPath: directory.appendingPathComponent("desktop-hidden").path) && !presentationHidden { togglePresentation() }
+        if FileManager.default.fileExists(atPath: directory.appendingPathComponent("desktop-hidden").path) && !presentationHidden { presentationHidden = true; applyVisibility() }
         let request = directory.appendingPathComponent("desktop-show-request")
-        if FileManager.default.fileExists(atPath: request.path) { if presentationHidden { togglePresentation() }; try? FileManager.default.removeItem(at: request) }
+        if FileManager.default.fileExists(atPath: request.path) { restoreWindow(); try? FileManager.default.removeItem(at: request) }
+        let hidePanelRequest = directory.appendingPathComponent("desktop-hide-panel-request")
+        if FileManager.default.fileExists(atPath: hidePanelRequest.path) {
+            if !panelHidden { toggleChatPanel() }
+            try? FileManager.default.removeItem(at: hidePanelRequest)
+        }
         let toggleRequest = directory.appendingPathComponent("desktop-presentation-request")
         if FileManager.default.fileExists(atPath: toggleRequest.path) { togglePresentation(); try? FileManager.default.removeItem(at: toggleRequest) }
         let live = snapshots(), now = Date()
@@ -660,7 +674,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         applyFrame(NSRect(origin: start.origin, size: NSSize(width: (w * dashboardScale).rounded(), height: (h * dashboardScale).rounded())))
     }
     func step() {
-        guard view != nil, !presentationHidden else { return }
+        guard view != nil, !allHidden else { return }
         let now = Date.timeIntervalSinceReferenceDate
         if sleeping { view.spriteRow = 0; view.spriteColumn = 5 }
         else if lookUntil <= now || reactionUntil > now {
@@ -677,16 +691,39 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             return ["running", "waiting", "quiet", "unknown"].contains(previous.status) && thread.changedAt >= previous.changedAt
         }
         observedThreads = Dictionary(uniqueKeysWithValues: threads.map { ($0.id, $0) }); didObserve = true
-        guard !completed.isEmpty, !presentationHidden else { return }
+        guard !completed.isEmpty, !allHidden else { return }
         if completionAnimation {
             notificationCount += 1; celebrationUntil = Date.timeIntervalSinceReferenceDate + 5
             completionText = completed.count == 1 ? "✓ " + completed[0].title : "✓ " + String(format: text("%d chats completed"), completed.count)
         }
         if soundEnabled && !testing { NSSound(named: "Glass")?.play() }
     }
+    func applyVisibility() {
+        resizeToList()
+        if allHidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
+        savePreferences(); updateStatusMenu()
+    }
+    func clearPresentationHide() {
+        presentationHidden = false
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent("desktop-hidden"))
+    }
+    func restoreWindow() {
+        clearPresentationHide()
+        if panelOnly && panelHidden { panelOnly = false; panelHidden = false }
+        applyVisibility()
+    }
     @objc func togglePanelOnly() {
         panelOnly.toggle(); reactionUntil = 0; lookUntil = 0
-        resizeToList(); savePreferences(); updateStatusMenu()
+        if !panelOnly { clearPresentationHide() }
+        applyVisibility()
+    }
+    @objc func togglePanelOnlyView() {
+        panelHidden = false; clearPresentationHide(); togglePanelOnly()
+    }
+    @objc func toggleChatPanel() {
+        panelHidden.toggle()
+        if !panelHidden { clearPresentationHide() }
+        applyVisibility()
     }
     @objc func toggleGrouped() { grouped.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
     func toggleWorkspace(_ id: String) {
@@ -699,12 +736,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     @objc func toggleCollapsed() { collapsed.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
     @objc func togglePresentation() {
-        presentationHidden.toggle(); celebrationUntil = 0; reactionUntil = 0
-        if presentationHidden { panel.orderOut(nil) } else {
-            try? FileManager.default.removeItem(at: directory.appendingPathComponent("desktop-hidden"))
-            panel.orderFrontRegardless()
-        }
-        savePreferences(); updateStatusMenu()
+        celebrationUntil = 0; reactionUntil = 0
+        if allHidden { restoreWindow() } else { presentationHidden = true; applyVisibility() }
     }
     @objc func toggleSetting(_ item: NSMenuItem) {
         switch item.representedObject as? String {
@@ -826,7 +859,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     @objc func closeAll() {
         try? Data().write(to: directory.appendingPathComponent("desktop-hidden"))
-        if !presentationHidden { togglePresentation() }
+        presentationHidden = true; applyVisibility()
     }
     @objc func dismissMenuRow(_ item: NSMenuItem) { if let id = item.representedObject as? String { dismiss(id) } }
     func dismiss(_ id: String) {
@@ -869,7 +902,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         }
         let characterVisibility = action(panelOnly ? text("Show pet") : text("Hide pet"), #selector(togglePanelOnly), in: menu)
         characterVisibility.toolTip = text("Keep the chat panel visible.")
-        let visibility = action(presentationHidden ? text("Show panel") : text("Hide panel"), #selector(togglePresentation), in: menu)
+        let panelVisibility = action(panelHidden ? text("Show panel") : text("Hide panel"), #selector(toggleChatPanel), in: menu)
+        panelVisibility.toolTip = text("Keep the pet visible.")
+        let visibility = action(allHidden ? text("Show all") : text("Hide all"), #selector(togglePresentation), in: menu)
         visibility.keyEquivalent = "p"; visibility.keyEquivalentModifierMask = [.control, .option, .command]
         visibility.toolTip = text("Completion sound and animation are paused while hidden.")
         action(text("Return to VS Code"), #selector(openCode), in: menu)
@@ -902,8 +937,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             let choice = action(text(title), #selector(toggleDashboardSetting(_:)), in: appearanceMenu, value: key)
             choice.state = enabled ? .on : .off
         }
-        let panelChoice = action(text("Panel only"), #selector(togglePanelOnly), in: appearanceMenu)
-        panelChoice.state = panelOnly ? .on : .off
+        let panelChoice = action(text("Panel only"), #selector(togglePanelOnlyView), in: appearanceMenu)
+        panelChoice.state = panelOnly && !panelHidden ? .on : .off
         appearanceMenu.addItem(.separator())
         for (label, value) in [("Compact list", false), ("Extended · Workspaces", true)] {
             let item = action(text(label), #selector(selectListView(_:)), in: appearanceMenu, value: value)
@@ -992,7 +1027,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             // A silent startup baseline avoids replaying historical requests.
             let newRequest = waitingSeen[thread.id] != thread.changedAt
             waitingSeen[thread.id] = thread.changedAt
-            guard waitingObserved, newRequest, waitingNotifications, !presentationHidden, !mutedChats.contains(thread.id) else { continue }
+            guard waitingObserved, newRequest, waitingNotifications, !allHidden, !mutedChats.contains(thread.id) else { continue }
             if testing { testWaitingNotifications.append(thread.id); continue }
             let content = UNMutableNotificationContent()
             content.title = "Agent Pet · " + text("Waiting for your reply")
@@ -1008,7 +1043,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         DispatchQueue.main.async {
             let id = notification.request.content.userInfo["threadID"] as? String ?? ""
-            completionHandler(self.waitingNotifications && !self.presentationHidden && !self.mutedChats.contains(id) ? [.banner, .sound] : [])
+            completionHandler(self.waitingNotifications && !self.allHidden && !self.mutedChats.contains(id) ? [.banner, .sound] : [])
         }
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
@@ -1034,7 +1069,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         defaults.set(statusFilter, forKey: "statusFilter"); defaults.set(workspaceFilter, forKey: "workspaceFilter")
         defaults.set(Array(mutedChats).sorted(), forKey: "mutedChats")
         if let data = try? JSONEncoder().encode(workspaceOverrides) { defaults.set(data, forKey: "workspaceOverrides") }
-        for (key, value) in ["panelOnly": panelOnly, "grouped": grouped, "collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
+        for (key, value) in ["panelOnly": panelOnly, "panelHidden": panelHidden, "grouped": grouped, "collapsed": collapsed, "snapEnabled": snapEnabled, "completionAnimation": completionAnimation, "soundEnabled": soundEnabled, "presentationHidden": presentationHidden] { defaults.set(value, forKey: key) }
         for (key, value) in ["textSize": textSize, "petScale": petScale, "listOpacity": listOpacity, "dashboardScale": dashboardScale] { defaults.set(value, forKey: key) }
         defaults.set(Array(pinned).sorted(), forKey: "pinned")
         defaults.set(Array(foldedWorkspaces).sorted(), forKey: "foldedWorkspaces")
@@ -1120,12 +1155,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     func testStatusMenuRefresh() -> Bool {
         let savedItem = statusItem, savedTracking = statusMenuTracking
-        let savedMode = panelOnly, savedHidden = presentationHidden, savedLanguage = language, savedFrame = panel.frame
+        let savedMode = panelOnly, savedPanelHidden = panelHidden, savedHidden = presentationHidden, savedLanguage = language, savedFrame = panel.frame
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.isVisible = false; statusItem = item; statusMenuTracking = false
         defer {
             NSStatusBar.system.removeStatusItem(item); statusItem = savedItem; statusMenuTracking = savedTracking
-            panelOnly = savedMode; presentationHidden = savedHidden; language = savedLanguage
+            panelOnly = savedMode; panelHidden = savedPanelHidden; presentationHidden = savedHidden; language = savedLanguage
             resizeToList(); panel.setFrameOrigin(savedFrame.origin)
             if savedHidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
             updateStatusMenu()
@@ -1134,9 +1169,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         guard let menu = item.menu, menu.delegate === self else { return false }
         var valid = true
         for choice in PetLanguage.allCases {
-            language = choice; panelOnly = true; presentationHidden = false; resizeToList(); panel.orderFrontRegardless()
+            language = choice; panelOnly = true; panelHidden = false; presentationHidden = false; resizeToList(); panel.orderFrontRegardless()
             for closeBeforeAction in [false, true] {
-                for title in ["Show pet", "Hide pet", "Show pet", "Hide pet", "Hide panel", "Show panel"] {
+                for title in ["Show pet", "Hide pet", "Show pet", "Hide pet", "Hide panel", "Show panel", "Hide all", "Show all"] {
                     menu.delegate?.menuNeedsUpdate?(menu)
                     guard let selected = menu.items.first(where: { $0.title == text(title) }), let selector = selected.action else { return false }
                     menu.delegate?.menuWillOpen?(menu)
@@ -1149,20 +1184,18 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                     menu.delegate?.menuNeedsUpdate?(menu)
                     valid = valid && item.menu === menu && !statusMenuTracking
                     valid = valid && menu.items.contains { $0.title == text(panelOnly ? "Show pet" : "Hide pet") }
-                    valid = valid && menu.items.contains { $0.title == text(presentationHidden ? "Show panel" : "Hide panel") }
+                    valid = valid && menu.items.contains { $0.title == text(panelHidden ? "Show panel" : "Hide panel") }
                 }
             }
         }
         return valid
     }
     func testVisibilityMenu() -> Bool {
-        let oldMode = panelOnly, oldHidden = presentationHidden, oldLanguage = language, oldFrame = panel.frame
+        let oldMode = panelOnly, oldPanelHidden = panelHidden, oldHidden = presentationHidden, oldLanguage = language, oldFrame = panel.frame, oldScale = dashboardScale
         let oldGrouped = grouped, oldFolded = foldedWorkspaces, ids = displayThreads.map { $0.id }
         defer {
-            panelOnly = oldMode; presentationHidden = oldHidden; language = oldLanguage
-            resizeToList(); panel.setFrameOrigin(oldFrame.origin)
-            if oldHidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
-            updateStatusMenu()
+            panelOnly = oldMode; panelHidden = oldPanelHidden; presentationHidden = oldHidden; language = oldLanguage; dashboardScale = oldScale
+            applyVisibility(); panel.setFrameOrigin(oldFrame.origin)
         }
         func click(_ title: String) -> Bool {
             guard let item = petMenu(thread: nil).items.first(where: { $0.title == text(title) }), let selector = item.action else { return false }
@@ -1170,18 +1203,48 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         }
         var valid = true
         for choice in PetLanguage.allCases {
-            language = choice; panelOnly = false; presentationHidden = false; resizeToList(); panel.orderFrontRegardless()
-            valid = click("Hide pet") && valid
-            valid = valid && panelOnly && !view.petVisible && panel.isVisible && !presentationHidden
-            valid = valid && grouped == oldGrouped && foldedWorkspaces == oldFolded && displayThreads.map { $0.id } == ids
-            // Hiding/restoring the window must retain panel-only mode.
+            language = choice; panelOnly = false; panelHidden = false; presentationHidden = false; applyVisibility()
+            let fullHeight = panel.frame.height
             valid = click("Hide panel") && valid
-            valid = valid && presentationHidden && !panel.isVisible && panelOnly
+            valid = valid && view.petVisible && !view.chatPanelVisible && panel.isVisible && !allHidden
+            valid = valid && view.cardHeight == 0 && view.visibleCount == 0 && view.collapseRect.isEmpty && view.groupingRect.isEmpty
+            valid = valid && panel.frame.height < fullHeight && view.spriteRect.minY == 5
+            valid = valid && view.rowAt(NSPoint(x: view.spriteRect.midX, y: view.spriteRect.midY)) == nil
+            capture("dashboard-pet-only-test.png")
+            // Leave room to grow: the earlier edge tests end at the screen boundary.
+            let screen = panel.screen?.frame ?? NSScreen.main!.frame
+            panel.setFrameOrigin(NSPoint(x: screen.midX - panel.frame.width / 2, y: screen.midY - panel.frame.height / 2))
+            // Movement and resize still work without a chat card.
+            let start = panel.frame
+            view.dragStart = NSEvent.mouseLocation; view.windowStart = start.origin; view.moving = true
+            view.drag(to: NSPoint(x: view.dragStart.x + 12, y: view.dragStart.y + 12)); view.moving = false
+            valid = valid && panel.frame.origin != start.origin
+            resizeFromCorner(start: panel.frame, delta: NSPoint(x: 10, y: 10))
+            valid = valid && panel.frame.width > start.width
+            valid = click("Hide all") && valid
+            valid = valid && !panel.isVisible && panelHidden && !panelOnly
+            valid = click("Show all") && valid
+            valid = valid && panel.isVisible && panelHidden && !panelOnly
             valid = click("Show panel") && valid
-            valid = valid && !presentationHidden && panel.isVisible && panelOnly
+            valid = valid && view.chatPanelVisible && view.petVisible && panel.isVisible
+            valid = click("Hide pet") && valid
+            valid = valid && !view.petVisible && view.chatPanelVisible && panel.isVisible
+            valid = click("Hide panel") && valid
+            valid = valid && panelOnly && panelHidden && !panel.isVisible && allHidden
             valid = click("Show pet") && valid
-            valid = valid && !panelOnly && view.petVisible && panel.isVisible
-            let item = petMenu(thread: nil).items.first { $0.title == text("Hide panel") }
+            valid = valid && panel.isVisible && view.petVisible && !view.chatPanelVisible
+            valid = click("Show panel") && valid
+            valid = valid && panel.isVisible && view.petVisible && view.chatPanelVisible
+            valid = valid && grouped == oldGrouped && foldedWorkspaces == oldFolded && displayThreads.map { $0.id } == ids
+            // Both hidden can be recovered through the existing VS Code show request.
+            valid = click("Hide pet") && valid; valid = click("Hide panel") && valid
+            closeAll(); refresh(); valid = valid && !panel.isVisible && allHidden
+            try? Data().write(to: directory.appendingPathComponent("desktop-show-request")); refresh()
+            valid = valid && !allHidden && view.petVisible && view.chatPanelVisible && panel.isVisible
+            try? Data().write(to: directory.appendingPathComponent("desktop-hide-panel-request")); refresh()
+            valid = valid && panelHidden && !panelOnly && panel.isVisible
+            valid = click("Show panel") && valid
+            let item = petMenu(thread: nil).items.first { $0.title == text("Hide all") }
             valid = valid && item?.keyEquivalent == "p" && item?.keyEquivalentModifierMask == [.control, .option, .command]
         }
         return valid

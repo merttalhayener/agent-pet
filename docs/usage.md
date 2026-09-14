@@ -56,4 +56,4 @@ This is a beta for Apple Silicon and macOS 26+. Developer ID signing/notarizatio
 
 ## Pet and panel visibility
 
-**Hide pet / Show pet** controls only the character, keeping chats, workspace groups and notifications available. **Hide panel / Show panel** controls the whole window and pauses alerts while hidden. The paw menu and **Ctrl + Option + Cmd + P** restore the window, preserving panel-only mode. The VS Code command is now **Agent Pet: Hide Panel**; its existing command ID is retained.
+**Hide pet / Show pet** controls only the character, keeping chats, workspace groups and notifications available. **Hide panel / Show panel** controls only the chat list; the pet can stay visible and can still be moved or resized. **Hide all / Show all** and **Ctrl + Option + Cmd + P** control the entire window while preserving the chosen layout. If both parts were hidden individually, **Show all** restores both. Notifications pause only when everything is hidden. The VS Code command is now **Agent Pet: Hide Panel**; its existing command ID is retained.

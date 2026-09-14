@@ -27,7 +27,7 @@ Click **▤** to group chats by workspace. Fold a group to make room; click a ch
 
 ## Keep the panel, hide the pet
 
-Choose **Hide pet** for fewer distractions. Your chats stay visible; **Show pet** brings the character back. **Hide panel** hides the whole window. **Appearance → Panel only** controls the same character preference.
+Choose **Hide pet** for fewer distractions. Your chats stay visible; **Show pet** brings the character back. **Hide panel** hides only the chat list, leaving the pet visible. **Hide all** hides both. **Appearance → Panel only** controls the same character preference.
 
 <img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/panel-only.gif" alt="The pet disappears while its chat panel stays visible, then the pet returns" width="600">
 
@@ -63,7 +63,8 @@ Subsequent Marketplace updates use VS Code’s update settings. Agent Pet can re
 | Hide the character | **Hide pet** (restore with **Show pet**) |
 | Group chats | Click **▤**, or **Appearance → Extended · Workspaces** |
 | Move / resize | Drag the pet or panel header / drag the top-right handle |
-| Hide or restore everything | **Hide panel / Show panel**, or **Ctrl + Option + Cmd + P** |
+| Hide or restore the chat list | **Hide panel / Show panel** |
+| Hide or restore everything | **Hide all / Show all**, or **Ctrl + Option + Cmd + P** |
 | Reopen / change language | VS Code’s **Agent Pet** button / **Language** menu |
 
 Right-click the pet or panel for settings. Your preferences are remembered.
