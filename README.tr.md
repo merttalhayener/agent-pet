@@ -13,6 +13,12 @@ Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni
 
 </div>
 
+## Yeni arkadaşlarınla tanış
+
+Robot **Byte**, kedi **Miso** ve filiz **Fern**. Agent Pet ile gelen üç özgün, animasyonlu karakter. **Petler** menüsünden seç; başka eklentilerden görsel yüklenmez.
+
+<img src="docs/images/characters.png" alt="Agent Pet’in özgün karakterleri: robot Byte, kedi Miso ve filiz Fern" width="720">
+
 ## Sohbetin ne zaman seni beklediğini gör
 
 Sohbet **çalışıyor → yanıt bekliyor → tamamlandı** durumlarından geçer. Her sohbetin durumu ve geçen süresi ayrı takip edilir.
@@ -71,6 +77,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.12.0** normal release kanalını kullanır; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.12.0) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.14.0** normal release kanalını kullanır; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.14.0) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
-Özgün kaynak kod ve yerleşik vektör robot [MIT lisanslıdır](LICENSE). Dışarıdan yüklenen Codex çizimleri pakete dahil değildir ve bu lisans kapsamında değildir.
+Özgün kaynak kod, Byte, Miso, Fern ve uygulama ikonu [MIT lisanslıdır](LICENSE). Harici karakter görseli yüklenmez veya dağıtılmaz. Codex ve Claude Code adları desteklenen entegrasyonları belirtir; Agent Pet bağımsız bir topluluk projesidir.

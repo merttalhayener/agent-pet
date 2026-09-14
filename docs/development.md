@@ -5,17 +5,17 @@
 ## Requirements and current limits
 
 - The release helper is built for **Apple Silicon and macOS 26 or later**. Windows, Linux, and Intel Mac desktop helpers are not included.
-- VS Code **1.96.2+** is declared by the extension manifest. The integration was tested with Codex extension **26.908.31748**; it relies on that extension's current sprite layout, conversation links, and local session format.
+- VS Code **1.96.2+** is declared by the extension manifest. The integration was tested with Codex extension **26.908.31748**; it relies on that extension's conversation links and local session format.
 - Chat discovery follows recent local Codex and Claude Code activity in the open VS Code workspace. It is not a complete list of open tabs or cloud-only conversations; subagents are excluded.
 - The yellow indicator follows recorded `request_user_input` and `request_user_input_async` calls and their replies. Some permission dialogs are not recorded, so this is **not a complete approval monitor**.
 - A missing update produces an unknown status, never a false completion. Older retained chats without a recoverable start time show a dash instead of a duration.
-- This beta has been tested on the development Mac. Broader device compatibility and Developer ID signing/notarization are not yet provided.
+- This application has been tested on the development Mac. Broader device compatibility and Developer ID signing/notarization are not yet provided.
 
 ## Local data and assets
 
 The extension reads local Codex and Claude Code session records and the local thread index, then exchanges chat IDs, titles, timestamps, and statuses with its helper. It does not send these records to a server. The project adds no telemetry or network-based tracking.
 
-An original vector robot is drawn directly by the native helper and works without other extensions. Additional pet artwork is loaded from the user's installed Codex extension. **Sprite sheets are not bundled in the source repository or VSIX.** Documentation screenshots use sample conversations. Artwork and product names remain associated with their respective owners.
+Byte, Miso, and Fern are original geometric artwork drawn by `src/native/OriginalPets.swift`, under MIT. The native app uses a fixed internal catalog and never loads character paths from window snapshots. Old external selections fall back to Byte; newer selections remain usable even when old extension hosts publish legacy pet catalogs. Documentation media is rendered from this same code using sample conversations.
 
 ## Build from source
 
@@ -27,7 +27,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.11.3-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.14.0-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -35,7 +35,7 @@ Run the activity monitor tests:
 node --test test/*.test.cjs
 ```
 
-Run the native UI tests in a logged-in macOS desktop session with Codex installed:
+Run the native UI tests in a logged-in macOS desktop session:
 
 ```sh
 node test/native-dashboard.cjs --mixed
@@ -43,7 +43,7 @@ node test/native-dashboard.cjs --builtin --mixed
 node test/native-dashboard.cjs --overflow
 ```
 
-Set `CODEX_PET_ASSET_DIR` if Codex's `webview/assets` directory is in a nonstandard location. Native tests use temporary sample chats under `artifacts/` and do not modify pet preferences. The optional `--hotkey` test briefly registers the global shortcut; close the regular helper first to avoid a conflict.
+Native tests use temporary sample chats under `artifacts/` and do not modify pet preferences. No Codex artwork or asset directory is needed. `node test/native-dashboard.cjs --mixed --overflow --legacy-pet` also checks migration from an external character. Regenerate documentation with `python3 scripts/render-demos.py`.
 
 ## Upgrade compatibility
 
@@ -67,7 +67,7 @@ The Marketplace identity is `merttalhayener.agent-pet`. Earlier GitHub previews 
 
 Please open an issue with your macOS, VS Code, and Codex extension versions, the expected behavior, and steps to reproduce. Use sample conversation names in screenshots and avoid posting session transcripts or credentials.
 
-Original source and the built-in vector robot use the [MIT license](../LICENSE). External pet artwork is not bundled or licensed by this repository; see [third-party notices](../src/THIRD-PARTY-NOTICES.md).
+Original source, all three character drawings and the application icon use the [MIT license](../LICENSE). No provider character artwork is loaded or distributed. Product names remain with their respective owners; see [third-party notices](../src/THIRD-PARTY-NOTICES.md).
 
 ## Desktop-only extension
 
@@ -135,6 +135,12 @@ The countdown offers Later, persisted for that workspace and version, and can be
 
 ## Marketplace distribution (0.11.0)
 
-Official `@vscode/vsce` packaging targets `darwin-arm64` and marks the release as a prerelease. `npm ci` installs the pinned build tool. See [publishing instructions](marketplace.md). Protocol 9 carries the current extension ID for Claude links.
+Official `@vscode/vsce` packaging targets `darwin-arm64`. Versions through 0.11.4 were prereleases; 0.12.0 and later use the regular release channel. `npm ci` installs the pinned build tool. See [publishing instructions](marketplace.md). Protocol 9 carries the current extension ID for Claude links.
 
 Marketplace installations no longer use the GitHub updater. VS Code downloads updates according to its settings. The reload controller checks the local installation index and confirms the new package identity/version before counting down; an unreadable index leaves reload manual. The existing idle, unsaved-work, task/debug and Later protections still apply.
+
+## macOS signing
+
+The helper is currently ad-hoc signed; it is not Developer ID signed or notarized. This does not identify the publisher to Gatekeeper, so launch behavior on other Macs can differ. Marketplace acceptance does not provide Apple notarization.
+
+For verified distribution outside the Mac App Store, sign with a Developer ID certificate and submit the app to Apple’s automatic notarization service. The standard Apple Developer Program membership is 99 USD per year, or local pricing where available. This membership has not been purchased for Agent Pet. See [Developer ID](https://developer.apple.com/developer-id/) and [membership details](https://developer.apple.com/programs/whats-included/).

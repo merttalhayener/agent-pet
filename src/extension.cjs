@@ -14,9 +14,9 @@ const { describeWorkspace } = require('./workspace.cjs');
 const { resolveWindowNavigation } = require('./window-navigation.cjs');
 
 const PETS = [
-  ['codex', 'Codex'], ['dewey', 'Dewey'], ['fireball', 'Fireball'],
-  ['hoots', 'Hoots'], ['bsod', 'BSOD'], ['null-signal', 'Null Signal'],
-  ['rocky', 'Rocky'], ['seedy', 'Seedy'], ['stacky', 'Stacky']
+  { id: 'agent-pet', name: 'Byte', file: '' },
+  { id: 'miso', name: 'Miso', file: '' },
+  { id: 'fern', name: 'Fern', file: '' }
 ];
 
 async function activate(context) {
@@ -25,20 +25,14 @@ async function activate(context) {
   const updater = createMarketplaceUpdater(vscode, context);
   context.subscriptions.push(updater, vscode.commands.registerCommand('codexPet.checkForUpdates', () => updater.check(true)));
   updater.start();
-  let selected = context.globalState.get('pet', 'codex');
+  let selected = context.globalState.get('pet', 'agent-pet');
   const sleeping = context.globalState.get('sleeping', false);
   let selectedAt = context.globalState.get('petSelectedAt', 0);
   const sleepAt = context.globalState.get('petSleepAt', 0);
   let desktop;
   const navigationLinks = await resolveWindowNavigation(vscode, extensionId).catch(() => undefined);
   let activity = { status: 'idle', active: 0 };
-  const codex = vscode.extensions.getExtension('openai.chatgpt');
-  const assetDir = codex && path.join(codex.extensionPath, 'webview', 'assets');
-  const available = await fs.readdir(assetDir || '').catch(() => []);
-  const pets = [{ id: 'agent-pet', name: 'Agent Pet', file: '' }, ...PETS.flatMap(([id, name]) => {
-    const file = available.find(f => f.startsWith(`${id}-spritesheet-`) && f.endsWith('.webp'));
-    return file ? [{ id, name, file: path.join(assetDir, file) }] : [];
-  })];
+  const pets = PETS;
   if (!pets.some(p => p.id === selected)) { selected = 'agent-pet'; selectedAt = Date.now(); }
   function broadcast() { if (desktop) void desktop.write().catch(() => {}); }
   async function choose() {
@@ -55,7 +49,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 9, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 10, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); }, extensionId, async () => path.join((await installedMarketplacePackage(context)).extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'));
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));

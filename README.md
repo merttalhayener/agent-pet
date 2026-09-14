@@ -13,6 +13,12 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 </div>
 
+## Meet your companions
+
+**Byte** the robot, **Miso** the cat, and **Fern** the sprout. Three original, animated characters included with Agent Pet. Choose one from **Pets**; no artwork from other extensions is used.
+
+<img src="docs/images/characters.png" alt="Byte the robot, Miso the cat and Fern the sprout, original Agent Pet characters" width="720">
+
 ## See when a chat needs you
 
 Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time.
@@ -46,7 +52,7 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). Version **0.12.0** uses the regular release channel; the package is ready and Marketplace upload is pending.
+Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). Version **0.14.0** includes only original characters; the regular-release package is ready and Marketplace upload is pending.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
@@ -75,4 +81,4 @@ Independent community project. No added telemetry; chat records stay local. Mark
 
 ## License
 
-Original source code and the built-in vector robot are [MIT licensed](LICENSE). Optional artwork loaded from an installed Codex extension is not bundled or relicensed; see [third-party notices](src/THIRD-PARTY-NOTICES.md).
+Original source code, Byte, Miso, Fern, and the application icon are [MIT licensed](LICENSE). No external character artwork is loaded or bundled. Codex and Claude Code names identify supported integrations; Agent Pet is an independent community project.

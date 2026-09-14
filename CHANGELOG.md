@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.0 — Original companions
+
+- Replace optional Codex artwork with three original MIT-licensed characters: Byte, Miso and Fern.
+- Draw pets locally with typing, blinking, sleeping, waiting, completion and click reactions; respect Reduce Motion.
+- Stop discovering external sprite sheets and ignore legacy artwork paths from older VS Code windows.
+- Keep pet selection independent of installed agent extensions; migrate old selections to Byte.
+- Re-render all current documentation PNGs, GIFs and the feature video with original artwork.
+- Document the distinction between the current ad-hoc signature and optional Apple Developer ID/notarization.
+
 ## 0.12.0 — Regular release channel
 
 - Ship Marketplace packages as regular releases by default, without the prerelease flag.

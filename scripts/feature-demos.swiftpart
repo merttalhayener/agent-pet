@@ -1,0 +1,53 @@
+    func exportFeatureDemos() {
+        animation?.invalidate(); polling?.invalidate()
+        language = .english; grouped = false; panelOnly = false; panelHidden = false; presentationHidden = false; collapsed = false
+        dashboardScale = 1; textSize = 11.5; petScale = 1; listOpacity = 0.97
+        view.hovered = false; pinned = []; foldedWorkspaces = []; celebrationUntil = 0
+        let now = Date().timeIntervalSince1970 * 1000
+        let web = WorkspaceInfo(id: "website", name: "Website"), mobile = WorkspaceInfo(id: "mobile", name: "Mobile App")
+        let folder = directory.appendingPathComponent("output")
+        try! FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for kind in ["status", "workspaces", "panel-only", "pets"] {
+            let output = folder.appendingPathComponent(kind + ".gif")
+            let gif = CGImageDestinationCreateWithURL(output as CFURL, "com.compuserve.gif" as CFString, 36, nil)!
+            CGImageDestinationSetProperties(gif, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary)
+            for frame in 0..<36 {
+                let phase = frame / 12
+                selected = kind == "pets" ? OriginalPets.catalog[phase].0 : kind == "workspaces" ? "fern" : "miso"
+                tick = frame * 2
+                grouped = kind == "workspaces" && phase > 0
+                panelOnly = kind == "panel-only" && phase == 1
+                foldedWorkspaces = kind == "workspaces" && phase == 2 ? [mobile.id] : []
+                let state = kind == "status" ? ["running", "waiting", "ready"][phase] : "running"
+                let first = ThreadActivity(id: "11111111-1111-4111-8111-111111111111", title: "Build the landing page", status: state, changedAt: now, lastEventAt: now, startedAt: now - 120000, finishedAt: state == "ready" ? now : nil, workspace: web)
+                let second = ThreadActivity(id: "claude:22222222-2222-4222-8222-222222222222", title: "Review accessibility", status: "ready", changedAt: now, lastEventAt: now, startedAt: now - 60000, finishedAt: now, workspace: web)
+                let third = ThreadActivity(id: "33333333-3333-4333-8333-333333333333", title: "Add sign in", status: "waiting", changedAt: now, lastEventAt: now, startedAt: now - 180000, workspace: mobile)
+                displayThreads = kind == "workspaces" ? [first, second, third] : [first, second]
+                allThreads = displayThreads
+                view.scrollOffset = 0; resizeToList(); step(); view.display()
+                let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds)!
+                view.cacheDisplay(in: view.bounds, to: bitmap)
+                let context = CGContext(data: nil, width: 720, height: 540, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+                NSColor(calibratedRed: 0.047, green: 0.062, blue: 0.082, alpha: 1).setFill(); NSRect(x: 0, y: 0, width: 720, height: 540).fill()
+                let caption = kind == "pets" ? OriginalPets.catalog[phase].1 : kind == "status" ? ["Running", "Waiting for your reply", "Completed"][phase] : kind == "workspaces" ? ["All chats", "Grouped by workspace", "Click a group to collapse it"][phase] : ["Pet + chat panel", "Hide pet → keep the panel", "Bring the pet back anytime"][phase]
+                let style = NSMutableParagraphStyle(); style.alignment = .center
+                (caption as NSString).draw(in: NSRect(x: 20, y: 486, width: 680, height: 30), withAttributes: [.font: NSFont.systemFont(ofSize: 20, weight: .semibold), .foregroundColor: NSColor.white, .paragraphStyle: style])
+                let scale = min(1.55, 630 / view.bounds.width, 410 / view.bounds.height)
+                let rect = NSRect(x: (720 - view.bounds.width * scale) / 2, y: 46 + (410 - view.bounds.height * scale) / 2, width: view.bounds.width * scale, height: view.bounds.height * scale)
+                context.draw(bitmap.cgImage!, in: rect)
+                for i in 0..<3 { (phase == i ? NSColor.systemTeal : NSColor.white.withAlphaComponent(0.2)).setFill(); NSBezierPath(roundedRect: NSRect(x: 328 + i * 24, y: 26, width: 16, height: 3), xRadius: 1.5, yRadius: 1.5).fill() }
+                NSGraphicsContext.restoreGraphicsState()
+                let image = context.makeImage()!
+                CGImageDestinationAddImage(gif, image, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 1.0/6, kCGImagePropertyGIFUnclampedDelayTime: 1.0/6]] as CFDictionary)
+                if frame % 12 == 6 {
+                    let png = CGImageDestinationCreateWithURL(folder.appendingPathComponent("\(kind)-\(phase).png") as CFURL, "public.png" as CFString, 1, nil)!
+                    CGImageDestinationAddImage(png, image, nil); CGImageDestinationFinalize(png)
+                }
+                Thread.sleep(forTimeInterval: 1.0/6)
+            }
+            precondition(CGImageDestinationFinalize(gif))
+            print("Rendered \(kind): 36 frames, 6 seconds")
+        }
+        NSApp.terminate(nil)
+    }

@@ -14,7 +14,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   const vscode = {
     StatusBarAlignment: { Right: 2 },
     extensions: { getExtension: () => withCodex ? ({ extensionPath: '/test/codex' }) : undefined },
-    window: { registerUriHandler: () => ({ dispose() {} }), createStatusBarItem: () => entry, showQuickPick: async () => ({ id: withCodex ? 'bsod' : 'agent-pet' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
+    window: { registerUriHandler: () => ({ dispose() {} }), createStatusBarItem: () => entry, showQuickPick: async () => ({ id: 'fern' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
     commands: { registerCommand: (id, fn) => { commands.set(id, fn); return { dispose() {} }; }, executeCommand: () => assert.fail('Unexpected VS Code UI command') },
     workspace: { workspaceFolders: [], getConfiguration: () => ({ get: (key, fallback) => key === 'desktopEnabled' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose() {} }) }
   };
@@ -25,12 +25,13 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
     async write() {}
   }
   class AgentActivityMonitor { start() {} async tick() {} }
-  const dependencies = { vscode, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { mkdir: async () => {}, writeFile: async file => writes.push(file), readdir: async () => withCodex ? ['codex-spritesheet-test.webp', 'bsod-spritesheet-test.webp'] : [] } };
+  const dependencies = { vscode, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { mkdir: async () => {}, writeFile: async file => writes.push(file), readdir: async () => assert.fail('External pet artwork must not be discovered') } };
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   const api = await sandbox.module.exports.activate(context);
-  assert.ok(api.availablePets.includes('agent-pet'));
-  if (!withCodex) { assert.equal(snapshot().selected, 'agent-pet'); assert.ok(snapshot().selectedAt > 0); }
+  assert.deepEqual(Array.from(api.availablePets), ['agent-pet','miso','fern']);
+  assert.ok(snapshot().pets.every(p => p.file === ''));
+  assert.equal(snapshot().selected, 'agent-pet');
   assert.equal(snapshot().workspace.name, 'No workspace');
   assert.match(snapshot().workspace.id, /^[a-f0-9]{64}$/);
   assert.ok(entry.visible); assert.equal(entry.command, 'codexPet.showDesktop');
@@ -40,6 +41,6 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   await commands.get('codexPet.hideDesktop')();
   assert.deepEqual(writes, ['/test/storage/desktop/desktop-hide-panel-request']);
   await commands.get('codexPet.choose')();
-  assert.equal(snapshot().selected, withCodex ? 'bsod' : 'agent-pet');
-  assert.equal(state.get('pet'), withCodex ? 'bsod' : 'agent-pet');
+  assert.equal(snapshot().selected, 'fern');
+  assert.equal(state.get('pet'), 'fern');
 });

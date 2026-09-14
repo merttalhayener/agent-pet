@@ -1,15 +1,13 @@
-# Agent Pet v0.12.0 — Regular release
+# Agent Pet v0.14.0 — Original companions
 
-Agent Pet now uses the regular release channel. Marketplace packages no longer carry the prerelease flag, and the installation documentation no longer asks users to install a preview.
+Meet **Byte** the robot, **Miso** the cat and **Fern** the sprout. All three are original geometric drawings included under MIT, with typing, waiting, sleeping and completion reactions.
 
-This version includes all 0.11.4 fixes:
+Agent Pet no longer reads pet artwork from Codex. Older windows cannot reintroduce external character catalogs or file paths; removed selections fall back to Byte. Codex and Claude Code chat tracking continues as before.
 
-- Hide pet, Hide panel and Hide all work independently, with menu labels refreshed immediately.
-- A running desktop helper detects installed updates and switches to the newer version without interrupting chats.
-- Visibility preferences, workspace groups and live chat snapshots are preserved.
+Current README images, GIFs and the feature video have been re-rendered with these original characters. The repository also contains the media rendering tools.
 
-Existing 0.11.4 users can receive the higher 0.12.0 release through VS Code updates. Users on 0.11.3 or earlier need one window reload to activate automatic helper handover. Active chats continue to postpone extension-host reloads.
+Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-Apple Silicon · macOS 26+ · English / Türkçe.
+The native helper remains ad-hoc signed, without Developer ID signing or Apple notarization. Marketplace upload of `agent-pet-marketplace-0.14.0-darwin-arm64.vsix` is pending.
 
-Marketplace upload is pending. Upload `agent-pet-marketplace-0.12.0-darwin-arm64.vsix` using the existing extension’s Update action.
+Validation: 59 Node tests; native UI checks including original pet selection and legacy snapshot rejection; visual inspection of the characters and regenerated media.

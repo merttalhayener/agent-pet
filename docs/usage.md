@@ -50,9 +50,9 @@ The app reads local agent activity; it cannot tell whether the chat UI is receiv
 
 English is the default. Choose **Language → English / Türkçe** from the paw or right-click menu. Chat titles keep their original language.
 
-No telemetry is added and no chat records are sent to a server by this extension. An included vector robot works without Codex; optional character artwork comes from the installed Codex extension.
+No telemetry is added and no chat records are sent to a server by this extension. Byte, Miso and Fern are included original characters, drawn locally without loading artwork from Codex or Claude Code. Choose one under **Pets**. Old character choices fall back to Byte.
 
-This is a beta for Apple Silicon and macOS 26+. Developer ID signing/notarization and a general open-source license are not yet provided. See [development details](development.md).
+This release targets Apple Silicon and macOS 26+. The original source and artwork are MIT licensed. Developer ID signing and notarization are not yet provided. See [development details](development.md).
 
 ## Pet and panel visibility
 

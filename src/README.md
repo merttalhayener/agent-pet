@@ -13,6 +13,12 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 </div>
 
+## Meet your companions
+
+**Byte** the robot, **Miso** the cat, and **Fern** the sprout. Three original, animated characters included with Agent Pet. Choose one from **Pets**; no artwork from other extensions is used.
+
+<img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/images/characters.png" alt="Byte the robot, Miso the cat and Fern the sprout, original Agent Pet characters" width="720">
+
 ## See when a chat needs you
 
 Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time.
@@ -75,4 +81,4 @@ Independent community project. No added telemetry; chat records stay local. Mark
 
 ## License
 
-Original source code and the built-in vector robot are [MIT licensed](https://github.com/merttalhayener/agent-pet/blob/main/LICENSE). Optional artwork loaded from an installed Codex extension is not bundled or relicensed; see [third-party notices](https://github.com/merttalhayener/agent-pet/blob/main/src/THIRD-PARTY-NOTICES.md).
+Original source code, Byte, Miso, Fern, and the application icon are [MIT licensed](https://github.com/merttalhayener/agent-pet/blob/main/LICENSE). No external character artwork is loaded or bundled. Codex and Claude Code names identify supported integrations; Agent Pet is an independent community project.

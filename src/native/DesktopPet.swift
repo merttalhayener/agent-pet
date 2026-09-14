@@ -152,8 +152,7 @@ final class PetPanel: NSPanel {
 
 final class DashboardView: NSView {
     weak var owner: DesktopPet?
-    var sheet: NSImage?
-    var spriteRow = 0, spriteColumn = 0
+    var lookOffset: CGFloat = 0
     var hovered = false, hoveredRow: String?
     var scrollOffset = 0
     var dragStart = NSPoint.zero, windowStart = NSPoint.zero
@@ -244,28 +243,14 @@ final class DashboardView: NSView {
         }
     }
     func drawBuiltInPet() {
-        let r = spriteRect
-        func part(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, _ color: NSColor, _ radius: CGFloat = 5) {
-            color.setFill()
-            NSBezierPath(roundedRect: NSRect(x: r.minX + x * r.width / 112, y: r.minY + y * r.height / 121, width: w * r.width / 112, height: h * r.height / 121), xRadius: radius, yRadius: radius).fill()
-        }
-        let metal = NSColor(calibratedRed: 0.77, green: 0.80, blue: 0.94, alpha: owner?.sleeping == true ? 0.62 : 1)
-        let accent = NSColor(calibratedRed: 0.48, green: 0.42, blue: 0.96, alpha: 1)
-        part(34, 3, 17, 19, metal); part(61, 3, 17, 19, metal)
-        part(28, 18, 56, 41, metal, 10); part(16, 25, 11, 27, metal); part(85, 25, 11, 27, metal)
-        part(52, 99, 8, 14, metal, 3); part(49, 110, 14, 10, accent)
-        part(16, 51, 80, 53, metal, 14); part(23, 58, 66, 38, .init(calibratedWhite: 0.13, alpha: 1), 10)
-        let blink = owner?.sleeping == true || (owner?.tick ?? 0) % 70 > 66
-        part(36, 74, 8, blink ? 3 : 11, accent, 3); part(67, 74, 8, blink ? 3 : 11, accent, 3)
-        part(49, 65, 14, 3, .white, 2); part(47, 29, 18, 17, accent, 5)
+        guard let owner else { return }
+        OriginalPets.draw(id: owner.selected, in: spriteRect, tick: owner.tick, status: owner.overallStatus,
+                          sleeping: owner.sleeping, reacting: owner.reactionUntil > Date.timeIntervalSinceReferenceDate || owner.celebrationUntil > Date.timeIntervalSinceReferenceDate,
+                          look: lookOffset, reducedMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
     }
     override func draw(_ dirtyRect: NSRect) {
         NSColor.clear.setFill(); bounds.fill(using: .copy)
-        if petVisible, let sheet {
-            let source = NSRect(x: CGFloat(spriteColumn) * 192, y: CGFloat(10 - spriteRow) * 208, width: 192, height: 208)
-            sheet.draw(in: spriteRect, from: source, operation: .sourceOver, fraction: owner?.sleeping == true ? 0.62 : 1, respectFlipped: false, hints: [.interpolation: NSImageInterpolation.high])
-        }
-        if petVisible && sheet == nil { drawBuiltInPet() }
+        if petVisible { drawBuiltInPet() }
         if chatPanelVisible {
             let card = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 0.5, width: bounds.width - 1, height: cardHeight - 1), xRadius: 13, yRadius: 13)
             NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
@@ -331,7 +316,7 @@ final class DashboardView: NSView {
         lines.line(to: NSPoint(x: grip.maxX - 5, y: grip.maxY - 5)); lines.stroke()
     }
     override func mouseEntered(with event: NSEvent) { hovered = true; needsDisplay = true }
-    override func mouseExited(with event: NSEvent) { hovered = false; hoveredRow = nil; owner?.lookUntil = 0; needsDisplay = true }
+    override func mouseExited(with event: NSEvent) { hovered = false; hoveredRow = nil; lookOffset = 0; needsDisplay = true }
     override func mouseMoved(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
         hoveredRow = rowAt(p)?.id
@@ -342,9 +327,7 @@ final class DashboardView: NSView {
         else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row.status, language: language)) · " + text("Click to open in VS Code") }
         else { toolTip = text(petVisible ? "Click to pet · Drag to move · Right-click for options" : "Drag header to move · Right-click for options") }
         guard let owner, !owner.sleeping, owner.overallStatus == "idle", spriteRect.contains(p), !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { needsDisplay = true; return }
-        let angle = (atan2(p.x - spriteRect.midX, p.y - spriteRect.midY) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
-        let index = Int((angle / 22.5).rounded()) % 16
-        spriteRow = 9 + index / 8; spriteColumn = index % 8; owner.lookUntil = Date.timeIntervalSinceReferenceDate + 0.7; needsDisplay = true
+        lookOffset = min(1, max(-1, (p.x - spriteRect.midX) / (spriteRect.width / 2))); needsDisplay = true
     }
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
@@ -399,8 +382,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     let defaults = UserDefaults(suiteName: "local.codex-pet-desktop")!
     var panel: PetPanel!
     var view: DashboardView!
-    var assets: [PetAsset] = []
-    var selected = "codex", sleeping = false
+    let assets: [PetAsset] = OriginalPets.catalog.map { PetAsset(id: $0.0, name: $0.1, file: "") }
+    var selected = "agent-pet", sleeping = false
     var selectedAt: Double = 0, sleepAt: Double = 0
     var retained: [String: ThreadActivity] = [:], dismissed: [String: Double] = [:]
     var displayThreads: [ThreadActivity] = []
@@ -429,9 +412,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     var lastObserved: [String: Date] = [:]
     var order: [String] = []
-    var reactionUntil: Double = 0, lookUntil: Double = 0
+    var reactionUntil: Double = 0
     var tick = 0, lockFD: Int32 = -1
-    var imagePath = ""
     var testOpenedURL: String?
     var navigationNoticeUntil: Double = 0
     var dashboardScale: CGFloat = 1
@@ -499,7 +481,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             }
             let savedScale = defaults.double(forKey: "dashboardScale")
             if savedScale.isFinite && savedScale > 0 { dashboardScale = min(2, max(0.65, savedScale)) }
-            selected = defaults.string(forKey: "pet") ?? "codex"; sleeping = defaults.bool(forKey: "sleeping")
+            selected = defaults.string(forKey: "pet") ?? "agent-pet"; sleeping = defaults.bool(forKey: "sleeping")
             selectedAt = defaults.double(forKey: "selectedAt"); sleepAt = defaults.double(forKey: "sleepAt")
             // Preserve the most recently chosen character from the previous multi-pet UI.
             for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("selectedAt.") {
@@ -592,8 +574,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let toggleRequest = directory.appendingPathComponent("desktop-presentation-request")
         if FileManager.default.fileExists(atPath: toggleRequest.path) { togglePresentation(); try? FileManager.default.removeItem(at: toggleRequest) }
         let live = snapshots(), now = Date()
-        if let latest = live.max(by: { ($0.protocolVersion ?? 0) == ($1.protocolVersion ?? 0) ? $0.updatedAt < $1.updatedAt : ($0.protocolVersion ?? 0) < ($1.protocolVersion ?? 0) }) { assets = latest.pets }
-        if let choice = live.max(by: { $0.selectedAt < $1.selectedAt }), choice.selectedAt > selectedAt { selected = choice.selected; selectedAt = choice.selectedAt }
+        if let choice = live.filter({ OriginalPets.contains($0.selected) }).max(by: { $0.selectedAt < $1.selectedAt }), choice.selectedAt > selectedAt { selected = choice.selected; selectedAt = choice.selectedAt }
         if let choice = live.max(by: { $0.sleepAt < $1.sleepAt }), choice.sleepAt > sleepAt { sleeping = choice.sleeping; sleepAt = choice.sleepAt }
         let threads = mergeThreads(live)
         for id in live.flatMap({ $0.activity.threads ?? [] }).map({ $0.id }) { lastObserved[id] = now }
@@ -633,10 +614,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         observeCompletions(allThreads)
         observeWaiting(allThreads)
         updateStatusMenu()
-        if selected == "agent-pet" || (!assets.contains { $0.id == selected } && assets.first?.id == "agent-pet") { view.sheet = nil; imagePath = "builtin" }
-        else if let asset = assets.first(where: { $0.id == selected }) ?? assets.first, asset.file != imagePath, let image = NSImage(contentsOfFile: asset.file) {
-            image.size = NSSize(width: 1536, height: 2288); view.sheet = image; imagePath = asset.file
-        }
+        if !OriginalPets.contains(selected) { selected = "agent-pet" }
         view.clampScroll(); resizeToList(); view.needsDisplay = true
         panel.invalidateCursorRects(for: view)
         view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.agentName), \($0.title): \(Self.statusText($0.status, language: language))" }.joined(separator: ". "))
@@ -675,13 +653,6 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     func step() {
         guard view != nil, !allHidden else { return }
-        let now = Date.timeIntervalSinceReferenceDate
-        if sleeping { view.spriteRow = 0; view.spriteColumn = 5 }
-        else if lookUntil <= now || reactionUntil > now {
-            let state = reactionUntil > now || celebrationUntil > now ? "jumping" : overallStatus
-            let frames = ["idle": (0, 6), "running": (7, 6), "waiting": (6, 6), "ready": (8, 6), "failed": (5, 8), "jumping": (4, 5)][state] ?? (0, 6)
-            view.spriteRow = frames.0; view.spriteColumn = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : (state == "idle" ? tick / 10 : tick / 2) % frames.1
-        }
         tick += 1; view.needsDisplay = true
     }
     func react() { if !sleeping { reactionUntil = Date.timeIntervalSinceReferenceDate + 1.5; tick = 0; step() } }
@@ -713,7 +684,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         applyVisibility()
     }
     @objc func togglePanelOnly() {
-        panelOnly.toggle(); reactionUntil = 0; lookUntil = 0
+        panelOnly.toggle(); reactionUntil = 0; view.lookOffset = 0
         if !panelOnly { clearPresentationHide() }
         applyVisibility()
     }
@@ -816,7 +787,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         savePreferences(); refresh(); updateStatusMenu()
     }
     @objc func toggleSleep() { sleeping.toggle(); sleepAt = Date().timeIntervalSince1970 * 1000; savePreferences(); step(); updateStatusMenu() }
-    @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react(); updateStatusMenu() } }
+    @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String, OriginalPets.contains(id) { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react(); updateStatusMenu() } }
     @objc func openCode() {
         let config = NSWorkspace.OpenConfiguration(); config.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"), configuration: config)
@@ -911,9 +882,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         menu.addItem(.separator())
 
         let petsMenu = group(text("Pets"))
-        let names = ["bsod": "BSOD", "null-signal": "Null Signal"]
         for asset in assets {
-            let item = action(names[asset.id] ?? asset.name, #selector(choosePet(_:)), in: petsMenu, value: asset.id)
+            let item = action(asset.name, #selector(choosePet(_:)), in: petsMenu, value: asset.id)
             item.state = asset.id == selected ? .on : .off
         }
         petsMenu.addItem(.separator())
@@ -1078,6 +1048,33 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     func capture(_ name: String) {
         view.display()
         if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) { view.cacheDisplay(in: view.bounds, to: bitmap); if let png = bitmap.representation(using: .png, properties: [:]) { try? png.write(to: directory.appendingPathComponent(name)) } }
+    }
+    func testOriginalPets() -> Bool {
+        let saved = selected, savedAt = selectedAt, savedThreads = allThreads, savedSleep = sleeping, savedTick = tick
+        defer { selected = saved; selectedAt = savedAt; allThreads = savedThreads; sleeping = savedSleep; tick = savedTick; refresh() }
+        var images = Set<Data>()
+        var valid = assets.map { $0.id } == ["agent-pet", "miso", "fern"] && assets.allSatisfy { $0.file.isEmpty }
+        // Old windows can still publish an external pet. Their artwork is ignored.
+        let legacy = directory.appendingPathComponent("client-legacy-pet.json")
+        let snapshot = Snapshot(protocolVersion: 99, updatedAt: Date().timeIntervalSince1970 * 1000, selectedAt: Date().timeIntervalSince1970 * 1000 + 100000,
+                                sleepAt: 0, selected: "bsod", sleeping: false, activity: Activity(status: "idle", active: 0, threads: [], trackingDisabled: false),
+                                pets: [PetAsset(id: "bsod", name: "External", file: "/must-not-load/external.webp")])
+        try? JSONEncoder().encode(snapshot).write(to: legacy)
+        defer { try? FileManager.default.removeItem(at: legacy) }
+        selected = "dewey"; refresh(); valid = valid && selected == "agent-pet" && assets.count == 3
+        for asset in assets {
+            let item = NSMenuItem(); item.representedObject = asset.id; choosePet(item)
+            refresh(); valid = valid && selected == asset.id
+            reactionUntil = 0; celebrationUntil = 0; allThreads = []; sleeping = false; tick = 12
+            view.display()
+            if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                view.cacheDisplay(in: view.bounds, to: bitmap)
+                if let png = bitmap.representation(using: .png, properties: [:]) { images.insert(png) }
+            }
+            capture("original-\(asset.id).png")
+            sleeping = true; view.display(); capture("original-\(asset.id)-sleep.png")
+        }
+        return valid && images.count == assets.count
     }
     func testWorkspaceView() -> Bool {
         let saved = displayThreads, savedGrouped = grouped, savedFolded = foldedWorkspaces
@@ -1535,7 +1532,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             reopenedChatStaysAfterCompletion = restored && displayThreads.contains { $0.id == sample.id && $0.status == "ready" }
         }
         let raw = initial.map { ["id": $0.id, "title": $0.title, "status": $0.status, "indicator": $0.status == "running" ? "spinner" : $0.status == "ready" ? "check" : "other"] }
-        let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "spriteLoaded": view.sheet != nil, "builtinPet": imagePath == "builtin", "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
+        let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "builtinPet": OriginalPets.contains(selected), "originalPets": assets.map { $0.id }, "originalPetsWork": testOriginalPets(), "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
         let clicks: [String: Any] = ["reopenedChatStaysAfterCompletion": reopenedChatStaysAfterCompletion, "dismissedSameTurnStaysHidden": dismissedSameTurnStaysHidden, "bottomCornersStay": bottomCornersStay, "listChangeKeepsCorner": listChangeKeepsCorner, "refreshDoesNotMoveDrag": refreshDoesNotMoveDrag, "cornerResizeWorks": cornerResizeWorks, "refreshPreservesSize": refreshPreservesSize, "minimumWorks": minimumWorks, "maximumWorks": maximumWorks, "rowClickOpensChat": rowClickOpensChat, "dragDoesNotOpen": dragDoesNotOpen, "removeDoesNotOpen": removeDoesNotOpen, "changedRowDoesNotOpen": changedRowDoesNotOpen]
         let features = featureTests()
         if let data = try? JSONSerialization.data(withJSONObject: result.merging(clicks) { _, new in new }.merging(features) { _, new in new }, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: directory.appendingPathComponent("dashboard-test.json")); print(String(data: data, encoding: .utf8)!) }
