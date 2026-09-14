@@ -1,15 +1,15 @@
-# Agent Pet v0.11.4 — Replace the running panel after updates
+# Agent Pet v0.12.0 — Regular release
 
-Once this version is active, the desktop panel checks for an installed Marketplace update every five seconds. It closes the older helper and opens the new version without interrupting chats. Visibility preferences, workspace groups and the live window snapshots are preserved. A deliberately quit helper stays closed.
+Agent Pet now uses the regular release channel. Marketplace packages no longer carry the prerelease flag, and the installation documentation no longer asks users to install a preview.
 
-Repeated starts reuse the existing helper. Older VS Code windows cannot downgrade a newer running helper, and a missing replacement executable leaves the working helper running.
+This version includes all 0.11.4 fixes:
 
-**First upgrade:** Users on 0.11.3 or earlier still need a window reload to activate this mechanism. The extension host continues to use the safe idle reload with a 15-second countdown; active chats are not forcibly reloaded.
+- Hide pet, Hide panel and Hide all work independently, with menu labels refreshed immediately.
+- A running desktop helper detects installed updates and switches to the newer version without interrupting chats.
+- Visibility preferences, workspace groups and live chat snapshots are preserved.
 
-Includes the independent Hide pet / Hide panel / Hide all controls and menu label fixes from 0.11.1–0.11.3.
+Existing 0.11.4 users can receive the higher 0.12.0 release through VS Code updates. Users on 0.11.3 or earlier need one window reload to activate automatic helper handover. Active chats continue to postpone extension-host reloads.
 
-Apple Silicon · macOS 26+ · English / Türkçe · Prerelease.
+Apple Silicon · macOS 26+ · English / Türkçe.
 
-Validation: Node regression tests and a real macOS process/lock handover test, including background detection during active chat snapshots, hidden state preservation, old-process termination, and a stale second window.
-
-Marketplace upload is pending. Use `agent-pet-marketplace-0.11.4-darwin-arm64.vsix` instead of the previous package.
+Marketplace upload is pending. Upload `agent-pet-marketplace-0.12.0-darwin-arm64.vsix` using the existing extension’s Update action.

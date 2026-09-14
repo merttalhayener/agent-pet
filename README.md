@@ -7,7 +7,7 @@
 A floating desktop companion for **Codex and Claude Code in VS Code**.<br>
 See what’s running, finished, or waiting for you—even while using another app.
 
-**macOS 26+ · Apple Silicon · English / Türkçe · Beta**
+**macOS 26+ · Apple Silicon · English / Türkçe**
 
 [**Download**](https://github.com/merttalhayener/agent-pet/releases) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
@@ -46,10 +46,10 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-Install the prerelease from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). **The visibility fix described above is included in 0.11.4, currently available on [GitHub](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.4) and awaiting Marketplace upload.**
+Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). Version **0.12.0** uses the regular release channel; the package is ready and Marketplace upload is pending.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
-2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install the prerelease.
+2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
 3. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 **Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.

@@ -1,4 +1,4 @@
-"""Package the Marketplace prerelease with the official VS Code packager."""
+"""Package the Marketplace release with the official VS Code packager."""
 from pathlib import Path
 import json
 import plistlib
@@ -20,5 +20,5 @@ if not vsce.is_file():
 target = root / 'artifacts' / f"agent-pet-marketplace-{p['version']}-darwin-arm64.vsix"
 target.parent.mkdir(parents=True, exist_ok=True)
 (src / 'CHANGELOG.md').write_bytes((root / 'CHANGELOG.md').read_bytes())
-subprocess.run([str(vsce), 'package', '--pre-release', '--target', 'darwin-arm64', '--no-dependencies', '--out', str(target)], cwd=src, check=True)
+subprocess.run([str(vsce), 'package', '--target', 'darwin-arm64', '--no-dependencies', '--out', str(target)], cwd=src, check=True)
 print(target)

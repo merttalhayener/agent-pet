@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.0 — Regular release channel
+
+- Ship Marketplace packages as regular releases by default, without the prerelease flag.
+- Use a version above 0.11.4 so existing preview users can receive the release through VS Code updates.
+- Remove beta/prerelease installation wording from the English and Turkish READMEs.
+- Include all 0.11.4 fixes: independent pet/panel visibility, refreshed menu labels, and automatic replacement of the running desktop helper after installed updates.
+
 ## 0.11.4 — Replace the running pet after updates
 
 - Detect a newly installed Marketplace package every five seconds while the desktop helper is running.

@@ -7,7 +7,7 @@
 A floating desktop companion for **Codex and Claude Code in VS Code**.<br>
 See what’s running, finished, or waiting for you—even while using another app.
 
-**macOS 26+ · Apple Silicon · English / Türkçe · Beta**
+**macOS 26+ · Apple Silicon · English / Türkçe**
 
 [**Download**](https://github.com/merttalhayener/agent-pet/releases) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/main/README.tr.md) · [Changelog](https://github.com/merttalhayener/agent-pet/blob/main/CHANGELOG.md)
 
@@ -46,15 +46,15 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-Install **Agent Pet** by **merttalhayener** from VS Code’s Extensions view. This is a prerelease for **Apple Silicon Macs running macOS 26 or later**.
+Install **Agent Pet** by **merttalhayener** from VS Code’s Extensions view. Available for **Apple Silicon Macs running macOS 26 or later**.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
-2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install the prerelease.
+2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
 3. Run **Agent Pet: Show Desktop Pet** from the Command Palette.
 
 **Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.
 
-Subsequent Marketplace updates use VS Code’s update settings. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
+Subsequent Marketplace updates use VS Code’s update settings. The running desktop helper switches to newly installed versions without interrupting chats, preserving visibility preferences. Upgrading from 0.11.3 or earlier requires one window reload to enable this mechanism. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
 
 ## Quick controls
 
