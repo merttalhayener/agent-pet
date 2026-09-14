@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.2 — Refresh menu labels after toggling
+
+- Fix the paw menu retaining **Show pet** after the character is shown.
+- Refresh the same menu before every opening and track its actual open/close lifecycle.
+- Preserve open menu items during background activity updates.
+- Cover repeated pet/panel toggles in English and Turkish without waiting for polling.
+
+
 ## 0.11.1 — Separate pet and panel visibility
 
 - Fix **Hide pet** hiding the entire panel: it now hides only the character.

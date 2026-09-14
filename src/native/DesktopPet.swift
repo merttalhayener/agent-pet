@@ -387,7 +387,7 @@ final class DashboardView: NSView {
     }
 }
 
-final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSMenuDelegate {
     let directory: URL
     let testing: Bool
     let defaults = UserDefaults(suiteName: "local.codex-pet-desktop")!
@@ -442,6 +442,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var observedThreads: [String: ThreadActivity] = [:]
     var didObserve = false, notificationCount = 0
     var statusItem: NSStatusItem?
+    var statusMenuTracking = false
     var hotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?
     var animation: Timer?, polling: Timer?
     var overallStatus: String { allThreads.contains { $0.status == "waiting" } ? "waiting" : allThreads.contains { $0.status == "running" } ? "running" : allThreads.contains { $0.status == "failed" } ? "failed" : !allThreads.isEmpty && allThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
@@ -748,11 +749,32 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         updateStatusMenu()
     }
     func updateStatusMenu() {
-        // Do not replace an open NSMenu while AppKit is tracking a selection.
-        if statusItem?.menu?.highlightedItem == nil { statusItem?.menu = petMenu(thread: nil) }
+        if let statusItem {
+            if statusItem.menu == nil {
+                let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu
+            }
+            if let menu = statusItem.menu, !statusMenuTracking { populateStatusMenu(menu) }
+        }
         statusItem?.button?.imagePosition = .imageLeading
         statusItem?.button?.title = menuCounter ? " " + counterText : ""
         statusItem?.button?.toolTip = "Agent Pet · " + text(hotKey == nil ? "Shortcut in use; hide/show from this menu." : "Hide/show with ⌃⌥⌘P")
+    }
+    func populateStatusMenu(_ menu: NSMenu) {
+        let fresh = petMenu(thread: nil)
+        menu.removeAllItems()
+        for item in fresh.items { fresh.removeItem(item); menu.addItem(item) }
+    }
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === statusItem?.menu else { return }
+        // AppKit requests this before displaying the menu. Refresh the existing
+        // object even when the previously selected item is still highlighted.
+        populateStatusMenu(menu)
+    }
+    func menuWillOpen(_ menu: NSMenu) {
+        if menu === statusItem?.menu { statusMenuTracking = true }
+    }
+    func menuDidClose(_ menu: NSMenu) {
+        if menu === statusItem?.menu { statusMenuTracking = false }
     }
     @objc func chooseLanguage(_ item: NSMenuItem) {
         guard let code = item.representedObject as? String, let choice = PetLanguage(rawValue: code) else { return }
@@ -1096,6 +1118,43 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && latest?.workspace?.id == dedicated.id && latest?.status == "ready"
         return valid
     }
+    func testStatusMenuRefresh() -> Bool {
+        let savedItem = statusItem, savedTracking = statusMenuTracking
+        let savedMode = panelOnly, savedHidden = presentationHidden, savedLanguage = language, savedFrame = panel.frame
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.isVisible = false; statusItem = item; statusMenuTracking = false
+        defer {
+            NSStatusBar.system.removeStatusItem(item); statusItem = savedItem; statusMenuTracking = savedTracking
+            panelOnly = savedMode; presentationHidden = savedHidden; language = savedLanguage
+            resizeToList(); panel.setFrameOrigin(savedFrame.origin)
+            if savedHidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
+            updateStatusMenu()
+        }
+        updateStatusMenu()
+        guard let menu = item.menu, menu.delegate === self else { return false }
+        var valid = true
+        for choice in PetLanguage.allCases {
+            language = choice; panelOnly = true; presentationHidden = false; resizeToList(); panel.orderFrontRegardless()
+            for closeBeforeAction in [false, true] {
+                for title in ["Show pet", "Hide pet", "Show pet", "Hide pet", "Hide panel", "Show panel"] {
+                    menu.delegate?.menuNeedsUpdate?(menu)
+                    guard let selected = menu.items.first(where: { $0.title == text(title) }), let selector = selected.action else { return false }
+                    menu.delegate?.menuWillOpen?(menu)
+                    // Polling while open must not replace the tracked menu or its items.
+                    updateStatusMenu(); valid = valid && item.menu === menu && menu.items.contains { $0 === selected }
+                    if closeBeforeAction { menu.delegate?.menuDidClose?(menu) }
+                    valid = NSApp.sendAction(selector, to: selected.target, from: selected) && valid
+                    if !closeBeforeAction { menu.delegate?.menuDidClose?(menu) }
+                    // Reopen immediately, without waiting for the one-second poll.
+                    menu.delegate?.menuNeedsUpdate?(menu)
+                    valid = valid && item.menu === menu && !statusMenuTracking
+                    valid = valid && menu.items.contains { $0.title == text(panelOnly ? "Show pet" : "Hide pet") }
+                    valid = valid && menu.items.contains { $0.title == text(presentationHidden ? "Show panel" : "Hide panel") }
+                }
+            }
+        }
+        return valid
+    }
     func testVisibilityMenu() -> Bool {
         let oldMode = panelOnly, oldHidden = presentationHidden, oldLanguage = language, oldFrame = panel.frame
         let oldGrouped = grouped, oldFolded = foldedWorkspaces, ids = displayThreads.map { $0.id }
@@ -1243,6 +1302,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         celebrationUntil = 0
         let original = displayThreads
         let workspaceOwnershipWorks = testWorkspaceOwnership()
+        let statusMenuRefreshWorks = testStatusMenuRefresh()
         let visibilityMenuWorks = testVisibilityMenu()
         let panelOnlyWorks = testPanelOnly()
         let workspaceViewWorks = testWorkspaceView()
@@ -1328,7 +1388,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
     }
     func selfTest() {
         capture("dashboard-test.png")

@@ -46,7 +46,7 @@ Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not su
 
 ## Install
 
-Install the prerelease from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). **The visibility fix described above is included in 0.11.1, currently available on [GitHub](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.1) and awaiting Marketplace upload.**
+Install the prerelease from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). **The visibility fix described above is included in 0.11.2, currently available on [GitHub](https://github.com/merttalhayener/agent-pet/releases/tag/v0.11.2) and awaiting Marketplace upload.**
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install the prerelease.
