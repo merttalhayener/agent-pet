@@ -89,6 +89,6 @@ Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır
 
 ## Marketplace geçişi ve lisans
 
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.16.1** kurulum rehberini otomatik açar; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.16.1) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.16.2** devam eden sohbetin sessiz düşünme ve araç çalıştırma sırasında çalışan durumunda kalmasını sağlar; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.16.2) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
 
 Özgün kaynak kod, Byte, Miso, Fern ve uygulama ikonu [MIT lisanslıdır](LICENSE). Harici karakter görseli yüklenmez veya dağıtılmaz. Codex ve Claude Code adları desteklenen entegrasyonları belirtir; Agent Pet bağımsız bir topluluk projesidir.

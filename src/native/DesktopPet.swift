@@ -494,7 +494,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "quiet": "No recent activity", "idle": "Idle"][status] ?? "Idle") }
     static func displayStatus(_ thread: ThreadActivity, now: Double, connected: Bool) -> String {
         if ["running", "quiet", "waiting"].contains(thread.status) && !connected { return "unknown" }
-        if thread.status == "running" && now - thread.lastEventAt >= 60000 { return "quiet" }
+        // Older connected clients used quiet for a confirmed, unfinished turn.
+        if thread.status == "quiet" { return "running" }
         return thread.status
     }
     static func durationText(_ thread: ThreadActivity, language: PetLanguage = .english, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
@@ -1457,7 +1458,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && mergeThreads([snapshot(old, protocolVersion: 8), snapshot(done, protocolVersion: 99)]).first?.status == "ready"
         let reconnect = ThreadActivity(id: next.id, title: next.title, status: "unknown", changedAt: next.changedAt, lastEventAt: next.lastEventAt, startedAt: next.startedAt)
         valid = valid && mergeThreads([snapshot(next, protocolVersion: 8), snapshot(reconnect, protocolVersion: 99)]).first?.status == "running"
-        valid = valid && Self.displayStatus(next, now: 85000, connected: true) == "quiet"
+        valid = valid && Self.displayStatus(next, now: 85000, connected: true) == "running"
+        let legacyQuiet = ThreadActivity(id: next.id, title: next.title, status: "quiet", changedAt: next.changedAt, lastEventAt: next.lastEventAt, startedAt: next.startedAt)
+        valid = valid && Self.displayStatus(legacyQuiet, now: 85000, connected: true) == "running"
+        valid = valid && Self.displayStatus(legacyQuiet, now: 85000, connected: false) == "unknown"
         valid = valid && Self.displayStatus(next, now: 85000, connected: false) == "unknown"
         valid = valid && Self.displayStatus(next, now: 320, connected: true) == "running"
         valid = valid && Self.displayStatus(done, now: 3600000, connected: false) == "ready"

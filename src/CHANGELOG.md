@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.2 — Keep ongoing turns running during silence
+
+- Remove the 60-second inactivity downgrade from the shared Codex/Claude monitor and native panel.
+- Keep confirmed, unfinished turns running through long reasoning and tool execution, with elapsed time advancing.
+- Preserve unknown status after reload until new progress; withdraw live evidence when the session source disappears or becomes unreadable.
+- Render legacy quiet states from connected windows as ongoing turns, allowing the native fix to take effect before a window reload.
+- Retain explicit completion, interruption, waiting and window-disconnection behavior.
+
 ## 0.16.1 — Open the setup guide automatically
 
 - Open Get Started directly once in the first focused VS Code window, without requiring a notification click.

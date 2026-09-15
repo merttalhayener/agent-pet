@@ -1,13 +1,15 @@
-# Agent Pet v0.16.1 — Open the setup guide automatically
+# Agent Pet v0.16.2 — Keep ongoing turns running during silence
 
-The first-run guide now opens directly in the first focused VS Code window. No notification click is required.
+A chat that is still working could show **No recent activity** after 60 seconds without a new log entry. Long reasoning and tool calls can be silent for longer than that.
 
-Users who missed the 0.16.0 notification and have not completed setup get the guide too. It opens only once across windows and subsequent launches. Close the tab whenever you want and reopen it with **Agent Pet: Get Started**. Completed setups are skipped; failed initial display can retry.
+Confirmed, unfinished turns now keep their spinner and advancing elapsed time. The fix covers the shared Codex/Claude monitor and native panel. Connected older windows reporting the former quiet state are displayed correctly by the updated helper too.
 
-Existing windows need to load the updated extension before this behavior takes effect. Finish active work before reloading.
+Reloaded windows still need new progress before claiming a chat is running. Lost window connections and unreadable/removed session files become **No update**. Explicit completion and interruption records still control the final status.
+
+The native helper updates without forcing a window reload. Existing windows load the updated monitor after a safe reload when active work finishes.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-Marketplace upload of `agent-pet-marketplace-0.16.1-darwin-arm64.vsix` is pending.
+Marketplace upload of `agent-pet-marketplace-0.16.2-darwin-arm64.vsix` is pending.
 
-Validation: Node regression tests covering missed notification migration, simultaneous windows, focus changes, completed setup and failed guide initialization; native build and VSIX manifest/signature checks.
+Validation: 77 Node tests including long silence, missing source recovery, reload, interruption and Claude transitions; native lifecycle/status tests; package and signature checks.

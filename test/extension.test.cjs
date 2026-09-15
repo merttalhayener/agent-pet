@@ -33,7 +33,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   assert.deepEqual(Array.from(api.availablePets), ['agent-pet','miso','fern']);
   assert.ok(snapshot().pets.every(p => p.file === ''));
   assert.equal(snapshot().selected, 'agent-pet');
-  assert.equal(snapshot().protocolVersion, 11);
+  assert.equal(snapshot().protocolVersion, 12);
   for (const command of ['agentPet.getStarted','agentPet.connections','agentPet.diagnostics']) await commands.get(command)();
   await uriHandler.handleUri({authority:'merttalhayener.agent-pet',path:'/support',query:'windowId=42'});
   assert.deepEqual(supportTabs,['setup','connections','diagnostics','connections']);

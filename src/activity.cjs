@@ -6,7 +6,6 @@ const execFileAsync = promisify(execFile);
 
 const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
-const LIVE_TIMEOUT = 60 * 1000;
 
 function progress(state, at) {
   state.lastEventAt = at || state.lastEventAt || 0;
@@ -244,9 +243,12 @@ class ActivityMonitor {
         changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt
       });
     }
+    const readableIds = new Set(states.map(s => s.id));
     const threads = [...this.seenThreads.values()].filter(t => inWorkspace(t.cwd, this.getRoots())).map(t => ({
       ...t, title: this.titles.get(t.id) || t.title,
-      status: t.status === 'running' && now - t.lastEventAt >= LIVE_TIMEOUT ? 'quiet' : t.status
+      // A confirmed open turn can be silent during reasoning or a long tool.
+      // Only lifecycle evidence ends it; losing its source makes it unknown.
+      status: ['running', 'waiting'].includes(t.status) && !readableIds.has(t.id) ? 'unknown' : t.status
     })).sort((a, b) => a.id.localeCompare(b.id));
     const activeCount = threads.filter(t => t.status === 'running').length;
     if (threads.some(t => t.status === 'waiting')) return { status: 'waiting', active: activeCount, threads };

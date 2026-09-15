@@ -87,7 +87,7 @@ test('active work wins over completed work; stale activity never means completed
   m.files.set('a', { id: 'a', cwd: '/work/app', source: 'vscode', status: 'ready', changedAt: Date.now(), lastEventAt: Date.now() });
   m.files.set('b', { id: 'b', cwd: '/work/app', source: 'vscode', status: 'running', changedAt: Date.now(), lastEventAt: Date.now() });
   assert.equal(m.snapshot().status, 'running');
-  m.files.delete('a'); m.seenThreads.clear(); m.files.get('b').lastEventAt = 0;
+  m.files.delete('a'); m.seenThreads.clear(); m.files.get('b').lastEventAt = 0; m.files.get('b').liveConfirmed = false;
   assert.equal(m.snapshot().status, 'idle');
   m.dispose();
 });
@@ -127,7 +127,7 @@ test('reload requires fresh progress; silence, settings and user records never p
     await m.tick(); assert.equal(s.threads[0].status, 'unknown');
     await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(s.active, 1);
     const last = s.threads[0].lastEventAt;
-    s = m.snapshot(last + 60001); assert.equal(s.active, 0); assert.equal(s.threads[0].status, 'quiet');
+    s = m.snapshot(last + 60001); assert.equal(s.active, 1); assert.equal(s.threads[0].status, 'running');
     const reload = new ActivityMonitor(root, () => ['/work/app'], value => { s = value; });
     try { await reload.tick(); assert.equal(s.threads[0].status, 'unknown'); } finally { reload.dispose(); }
     await fs.appendFile(file, event('token_count')); await m.tick(); assert.equal(s.active, 1);
@@ -146,12 +146,28 @@ test('workspace changes exclude previously seen chats outside the new roots', ()
  m.dispose();
 });
 
-test('quiet confirmed turns recover on progress, while completed turns never expire', () => {
+test('confirmed open turns survive long silence; missing sources become unknown and completion never expires', () => {
  const m = new ActivityMonitor('', () => ['/work/app'], () => {}), now = Date.now();
  const state = {id:'quiet-chat',cwd:'/work/app',source:'vscode',status:'running',changedAt:now,startedAt:now,lastEventAt:now,liveConfirmed:true};
  m.files.set('a',state); assert.equal(m.snapshot(now).threads[0].status,'running');
- assert.equal(m.snapshot(now+85000).threads[0].status,'quiet');
+ assert.equal(m.snapshot(now+3600000).threads[0].status,'running');
+ m.files.delete('a');assert.equal(m.snapshot(now+3600000).threads[0].status,'unknown');
+ m.files.set('a',state);
  state.lastEventAt=now+86000;assert.equal(m.snapshot(now+86000).threads[0].status,'running');
  state.status='ready';state.changedAt=state.finishedAt=state.lastEventAt=now+87000;
  assert.equal(m.snapshot(now+3600000).threads[0].status,'ready');m.dispose();
+});
+
+test('read failure withdraws running evidence; reopening the same log still needs new progress', async () => {
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'pet-source-')),dir=path.join(root,'2026','09','15');await fs.mkdir(dir,{recursive:true});
+ const file=path.join(dir,'source.jsonl'),log=JSON.stringify({type:'session_meta',payload:{id:'source',cwd:'/work/app',source:'vscode'}})+'\n'+event('task_started');
+ let result;const m=new ActivityMonitor(root,()=>['/work/app'],s=>result=s);
+ try {
+  await fs.writeFile(file,log);await m.tick();assert.equal(result.threads[0].status,'unknown');
+  await fs.appendFile(file,event('token_count'));await m.tick();assert.equal(m.snapshot(Date.now()+3600000).threads[0].status,'running');
+  const saved=await fs.readFile(file);await fs.unlink(file);await m.tick();assert.equal(result.threads[0].status,'unknown');assert.equal(result.active,0);
+  await fs.writeFile(file,saved);await m.tick();assert.equal(result.threads[0].status,'unknown');
+  await fs.appendFile(file,event('token_count'));await m.tick();assert.equal(result.active,1);
+  await fs.appendFile(file,event('turn_aborted'));await m.tick();assert.equal(result.threads[0].status,'idle');assert.equal(result.active,0);
+ } finally {m.dispose();await fs.rm(root,{recursive:true,force:true});}
 });

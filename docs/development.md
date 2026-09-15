@@ -27,7 +27,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.16.1-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.16.2-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -76,7 +76,7 @@ Version 0.5.2 removes the former sidebar webview and its contributed views. `cod
 
 ## Reload and liveness
 
-Protocol 3 requires newly appended progress before a historical running turn is reported as live. Settings changes and user message records do not confirm agent progress. Running turns with no progress for 60 seconds become unknown; explicit terminal events are still authoritative. This is an activity signal, not a guarantee of backend health or chat UI delivery.
+Protocol 3 requires newly appended progress before a historical running turn is reported as live. Settings changes and user message records do not confirm agent progress. Protocol 12 keeps confirmed open turns running through silent periods; explicit terminal events remain authoritative. This is an activity signal, not a guarantee of backend health or chat UI delivery.
 
 Closing the native panel hides it while retaining the menu bar entry and global shortcut. VS Code also provides a persistent status bar command to relaunch the helper. Showing the pet preserves individually dismissed rows.
 
@@ -124,7 +124,7 @@ The helper is now an ad-hoc-signed `Agent Pet.app` bundle with stable ID `local.
 
 ## Quiet activity and terminal-state reconciliation (0.10.1)
 
-After 60 seconds without recorded progress, a confirmed running turn becomes `quiet` (clock / No recent activity). It remains tracked and resumes running on new progress. Reloads still require fresh progress; disconnected or unconfirmed sessions remain unknown. Quiet sessions do not count as currently running, and their duration freezes at the last activity until progress resumes.
+From 0.16.2 / protocol 12, confirmed open turns keep running through silent periods; the monitor and native view no longer impose a 60-second progress timeout. A missing/unreadable source withdraws live evidence, while a reload still requires newly appended progress. Native snapshots must remain connected; legacy `quiet` from a connected client is rendered as running until its explicit lifecycle changes. Neither file mtime nor the snapshot heartbeat changes the last recorded progress timestamp.
 
 Native reconciliation compares lifecycle timestamps before heartbeat/protocol freshness. Older running/unknown reports cannot overwrite a recorded terminal event. A new task start can replace completion normally. This avoids losing completion when different VS Code windows report the same chat while reconnecting.
 

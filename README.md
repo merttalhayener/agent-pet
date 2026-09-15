@@ -62,7 +62,7 @@ Open these tabs from the Command Palette or the paw menu’s **Connections & dia
 
 ## Install
 
-Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.1** opens the setup guide automatically; its Marketplace upload is pending.
+Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.2** keeps ongoing chats running during silent reasoning and tool calls; its Marketplace upload is pending.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
