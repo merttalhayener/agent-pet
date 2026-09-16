@@ -32,7 +32,7 @@ Right-click a row → **Assign workspace** to pick a known workspace. This overr
 
 Codex can ask a non-blocking question and keep working. Agent Pet counts that chat as **running**, keeps its spinner and timer, and shows **Running · question pending** (Türkçe: **Çalışıyor · açık soru var**). The extra label is visible even when optional status labels are off. The **Waiting for me** filter includes these open questions, but the waiting counter counts only chats actually waiting.
 
-A blocking question, or a completed turn with an unanswered question, shows **Waiting for your reply**. Answering every pending question clears the question indicator; partial replies keep it. Notifications can still alert you to a new question while work continues. Finishing that same turn does not repeat the alert. After reload, an unfinished turn still needs fresh progress to be counted as running.
+A blocking question, or a completed turn with an unanswered question, shows **Waiting for your reply**. Answering every pending question clears the question indicator; partial replies keep it. Notifications can still alert you to a new question while work continues. Finishing that same turn does not repeat the alert. After reload, an unfinished turn still needs fresh progress to be counted as running. For Claude plugins, matching tool-progress records also count. If Claude does not write progress while a tool is running, confirmation must wait for the next assistant or tool-result record.
 
 ## Waiting notifications
 

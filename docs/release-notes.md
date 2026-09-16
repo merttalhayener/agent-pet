@@ -1,15 +1,17 @@
-# Agent Pet v0.16.3 — Show work and open questions separately
+# Agent Pet v0.16.4 — Follow Claude plugin progress
 
-Codex can ask a question and keep working. Agent Pet previously treated every unanswered question as a paused chat, incorrectly showing **0 running · 1 waiting**.
+Claude plugin and MCP tool calls now confirm running status from matching progress records after the monitor reconnects to an unfinished call. Tool results marked as metadata are processed as well, including results that resolve blocking questions. A message containing a tool call cannot also mark the chat completed.
 
-These chats now keep the running spinner and count, with **Running · question pending** / **Çalışıyor · açık soru var** beneath the title. Blocking questions and finished turns with unanswered questions still show **Waiting for your reply**.
+Unrelated progress and late background updates after completion or interruption do not restart the chat. Ordinary plugin calls, results and reasoning remain running until an explicit finish.
 
-The attention filter includes open questions during work. Optional notifications still announce a new question, without repeating it when the same turn finishes. Partial replies and reload safeguards are preserved.
+This addresses reproduced parser gaps. The externally reported session was not available for replay; Claude versions that do not write progress records still require a new assistant or tool-result record to confirm work after reload.
 
-After updating, finish active work and reload existing VS Code windows so they publish the separate question state. The new helper cannot infer it from older snapshots.
+Includes the 0.16.3 fix for Codex continuing to work while an asynchronous question remains open.
+
+After updating, finish active work and reload existing VS Code windows to load the updated tracker.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-Marketplace upload of `agent-pet-marketplace-0.16.3-darwin-arm64.vsix` is pending.
+Marketplace upload of `agent-pet-marketplace-0.16.4-darwin-arm64.vsix` is pending.
 
-Validation: Node regression tests for asynchronous/blocking questions, partial replies, completion, cancellation and reload; native label/counter/filter/notification tests and a rendered sample panel; VSIX version, platform and signature checks.
+Validation: 82 Node tests pass, including synthetic plugin/reload/progress/metadata-result regressions. Two new regression cases fail against the previous parser. VSIX version, target platform, bundled sources and native signature are checked during packaging.

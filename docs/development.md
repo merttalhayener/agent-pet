@@ -27,7 +27,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.16.3-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.16.4-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -176,3 +176,10 @@ A helper heartbeat is fresh for five seconds; client heartbeats are connected fo
 ## Concurrent work and questions (0.16.3)
 
 Protocol 13 carries optional `replyPending` and `replyRequestedAt` independently of lifecycle status. Non-blocking Codex questions leave a confirmed open turn running; blocking requests and completed turns with pending questions remain waiting. The native refresh preserves these fields, keeps running/waiting counters exclusive, and includes both kinds of unanswered questions in the attention filter. Notification deduplication uses the question timestamp, so completing a turn does not announce the same question again. Older clients remain readable but need a safe reload after updating to publish these fields.
+
+
+## Claude plugin progress (0.16.4)
+
+The adapter retains only outstanding tool IDs, not arguments or results. A `progress` record confirms an unfinished call only when its `parentToolUseID` (or `toolUseID` fallback) matches an outstanding call. Tool results retire those IDs, including results marked `isMeta`; a new prompt, completion or interruption clears them. Foreign sessions, sidechains and unrelated background progress cannot confirm activity. Tool-call content takes precedence over a contradictory completion stop reason in the same message.
+
+The progress envelope and parent ID relationship were checked in the installed Claude Code 2.1.273 implementation. Not every Claude version persists these events. Without newly appended assistant, result or matching progress records, historical unfinished work remains unconfirmed after reload. The external feedback session was unavailable; synthetic replay verifies the parser cases, not that specific user's session.

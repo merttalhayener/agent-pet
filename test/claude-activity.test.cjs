@@ -71,3 +71,61 @@ test('mixed agents keep colliding UUIDs distinct and reconcile old retained comp
     m.enabled = false; await m.tick(); assert.equal(s.threads.length, 0); assert.ok(s.trackingDisabled);
   } finally { m.dispose(); }
 }));
+
+const pluginCall = (id = 'plugin-call') => assistant('tool_use', [{ type: 'tool_use', id, name: 'mcp__plugin_playwright_playwright__browser_run_code_unsafe', input: {} }]);
+const pluginProgress = (extra = {}) => record('progress', { parentToolUseID: 'plugin-call', toolUseID: 'progress-1', data: { type: 'mcp_progress', progress: 1 }, ...extra });
+test('plugin progress after reload confirms an unfinished call; silence does not end it', async () => fixture(async ({ projects, file }) => {
+  await fs.writeFile(file, user() + pluginCall());
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick(); assert.equal(snapshot.threads[0].status, 'unknown');
+    await fs.appendFile(file, pluginProgress()); await monitor.tick();
+    assert.equal(snapshot.active, 1); assert.equal(snapshot.threads[0].status, 'running');
+    assert.equal(monitor.snapshot(Date.now() + 5 * 60000).active, 1);
+    await fs.appendFile(file, record('user', { isMeta: true, message: { content: [{ type: 'tool_result', tool_use_id: 'plugin-call', content: 'Synthetic result' }] } }));
+    await monitor.tick(); assert.equal(snapshot.active, 1);
+    await fs.appendFile(file, assistant('end_turn')); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready');
+    await fs.appendFile(file, pluginProgress()); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready', 'Late background progress cannot restart the turn');
+  } finally { monitor.dispose(); }
+}));
+test('unrelated, foreign and sidechain progress cannot confirm a plugin call', async () => fixture(async ({ projects, file }) => {
+  await fs.writeFile(file, user() + pluginCall());
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick();
+    for (const extra of [{ parentToolUseID: 'background-server' }, { sessionId: OTHER }, { isSidechain: true }]) {
+      await fs.appendFile(file, pluginProgress(extra)); await monitor.tick();
+      assert.equal(snapshot.threads[0].status, 'unknown');
+    }
+    await fs.appendFile(file, record('user', { message: { content: '[Request interrupted by user]' } }) + pluginProgress());
+    await monitor.tick(); assert.equal(snapshot.threads[0].status, 'idle');
+  } finally { monitor.dispose(); }
+}));
+test('plugin calls override a contradictory stop reason; metadata results resolve blocking tools', () => {
+  const state = { sessionId: ID };
+  applyClaudeEvent(state, JSON.parse(user()));
+  applyClaudeEvent(state, JSON.parse(assistant('end_turn', [{ type: 'tool_use', id: 'plugin-call', name: 'mcp__sample__run', input: {} }])));
+  assert.equal(state.status, 'running');
+  applyClaudeEvent(state, JSON.parse(assistant('tool_use', [{ type: 'tool_use', id: 'ask', name: 'AskUserQuestion', input: {} }])));
+  assert.ok(state.pendingInputs.ask);
+  applyClaudeEvent(state, JSON.parse(record('user', { isMeta: true, message: { content: [{ type: 'tool_result', tool_use_id: 'ask', content: 'Synthetic answer' }] } })));
+  assert.equal(Object.keys(state.pendingInputs).length, 0);
+  applyClaudeEvent(state, JSON.parse(assistant('end_turn')));
+  assert.equal(state.status, 'ready'); assert.equal(state.pendingTools.size, 0);
+});
+test('ordinary plugin calls and results keep running through reasoning and finish explicitly', async () => fixture(async ({ projects, file }) => {
+  await fs.writeFile(file, user());
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick();
+    for (const event of [pluginCall(), record('user', { message: { content: [{ type: 'tool_result', tool_use_id: 'plugin-call', content: 'Synthetic result' }] } }), assistant(null, [{ type: 'thinking', thinking: 'Synthetic reasoning' }]), pluginCall('second-call')]) {
+      await fs.appendFile(file, event); await monitor.tick(); assert.equal(snapshot.active, 1);
+    }
+    await fs.appendFile(file, assistant('end_turn')); await monitor.tick(); assert.equal(snapshot.active, 0); assert.equal(snapshot.threads[0].status, 'ready');
+  } finally { monitor.dispose(); }
+}));

@@ -17,23 +17,37 @@ function applyClaudeEvent(s, r) {
   if (!Number.isFinite(at)) return;
   const m = r.message || {}, content = Array.isArray(m.content) ? m.content : [];
   const progress = () => { s.lastEventAt = at; s.progressVersion = (s.progressVersion || 0) + 1; };
-  const finish = status => { s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; progress(); };
-  if (r.type === 'user' && !r.isMeta) {
+  const finish = status => { s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.pendingTools = new Set(); progress(); };
+  if (r.type === 'progress') {
+    // Only progress belonging to an unfinished foreground call confirms activity.
+    // Late background-server/subagent updates must not resurrect a finished turn.
+    const id = r.parentToolUseID || r.toolUseID;
+    if (s.status === 'running' && s.pendingTools?.has(id)) progress();
+    return;
+  }
+  if (r.type === 'user') {
     const results = content.filter(c => c.type === 'tool_result');
     if (results.length) {
-      for (const c of results) delete s.pendingInputs?.[c.tool_use_id];
+      for (const c of results) {
+        delete s.pendingInputs?.[c.tool_use_id];
+        s.pendingTools?.delete(c.tool_use_id);
+      }
       s.status = 'running'; s.finishedAt = undefined; progress(); return;
     }
+    if (r.isMeta) return;
     const message = typeof m.content === 'string' ? m.content : content.filter(c => c.type === 'text').map(c => c.text || '').join(' ');
     if (!message.trim()) return;
     if (/^\[Request interrupted by user/.test(message)) { finish('idle'); return; }
     if (!s.titlePriority) { s.title = clean(message); s.titlePriority = 1; }
-    s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; progress();
+    s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.pendingTools = new Set(); progress();
   } else if (r.type === 'assistant') {
     if (r.isAbortedMidStream) { finish('idle'); return; }
     s.pendingInputs ||= {};
-    for (const c of content) if (c.type === 'tool_use' && ['AskUserQuestion', 'ExitPlanMode'].includes(c.name) && c.id) s.pendingInputs[c.id] = true;
-    if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !Object.keys(s.pendingInputs).length) { finish('ready'); return; }
+    const calls = content.filter(c => c.type === 'tool_use');
+    s.pendingTools ||= new Set();
+    for (const c of calls) if (c.id) s.pendingTools.add(c.id);
+    for (const c of calls) if (['AskUserQuestion', 'ExitPlanMode'].includes(c.name) && c.id) s.pendingInputs[c.id] = true;
+    if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) { finish('ready'); return; }
     s.status = 'running'; s.finishedAt = undefined; progress();
   } else if (r.type === 'result') {
     if (r.is_error === true) finish('failed');

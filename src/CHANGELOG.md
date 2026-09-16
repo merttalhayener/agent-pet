@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.4 — Follow Claude plugin progress
+
+- Confirm unfinished Claude plugin/tool calls from matching progress events after reconnecting to their logs.
+- Process tool results even when marked as metadata, including answers to blocking questions.
+- Keep tool-call messages running when accompanied by a contradictory completion stop reason.
+- Ignore unrelated, foreign-session and sidechain progress; late background updates cannot restart a finished or interrupted turn.
+- Add synthetic regression coverage for plugin calls, reasoning, results, reload and completion.
+
 ## 0.16.3 — Show work and open questions separately
 
 - Keep the running spinner and count when Codex asks a non-blocking question while continuing to work.

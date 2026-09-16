@@ -62,7 +62,7 @@ Open these tabs from the Command Palette or the paw menu’s **Connections & dia
 
 ## Install
 
-Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.3** distinguishes working chats from unanswered questions; its Marketplace upload is pending.
+Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.4** improves Claude plugin activity tracking and keeps ongoing work separate from unanswered questions; its Marketplace upload is pending.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
