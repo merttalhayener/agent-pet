@@ -1,15 +1,15 @@
-# Agent Pet v0.16.2 — Keep ongoing turns running during silence
+# Agent Pet v0.16.3 — Show work and open questions separately
 
-A chat that is still working could show **No recent activity** after 60 seconds without a new log entry. Long reasoning and tool calls can be silent for longer than that.
+Codex can ask a question and keep working. Agent Pet previously treated every unanswered question as a paused chat, incorrectly showing **0 running · 1 waiting**.
 
-Confirmed, unfinished turns now keep their spinner and advancing elapsed time. The fix covers the shared Codex/Claude monitor and native panel. Connected older windows reporting the former quiet state are displayed correctly by the updated helper too.
+These chats now keep the running spinner and count, with **Running · question pending** / **Çalışıyor · açık soru var** beneath the title. Blocking questions and finished turns with unanswered questions still show **Waiting for your reply**.
 
-Reloaded windows still need new progress before claiming a chat is running. Lost window connections and unreadable/removed session files become **No update**. Explicit completion and interruption records still control the final status.
+The attention filter includes open questions during work. Optional notifications still announce a new question, without repeating it when the same turn finishes. Partial replies and reload safeguards are preserved.
 
-The native helper updates without forcing a window reload. Existing windows load the updated monitor after a safe reload when active work finishes.
+After updating, finish active work and reload existing VS Code windows so they publish the separate question state. The new helper cannot infer it from older snapshots.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-Marketplace upload of `agent-pet-marketplace-0.16.2-darwin-arm64.vsix` is pending.
+Marketplace upload of `agent-pet-marketplace-0.16.3-darwin-arm64.vsix` is pending.
 
-Validation: 77 Node tests including long silence, missing source recovery, reload, interruption and Claude transitions; native lifecycle/status tests; package and signature checks.
+Validation: Node regression tests for asynchronous/blocking questions, partial replies, completion, cancellation and reload; native label/counter/filter/notification tests and a rendered sample panel; VSIX version, platform and signature checks.

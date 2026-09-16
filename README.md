@@ -21,7 +21,7 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 ## See when a chat needs you
 
-Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time.
+Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time. If Codex asks a question while continuing to work, the spinner stays active with **Running · question pending**.
 
 <img src="docs/media/status.gif" alt="A Codex chat changes from a spinning progress indicator to waiting, then a completion checkmark" width="600">
 
@@ -62,7 +62,7 @@ Open these tabs from the Command Palette or the paw menu’s **Connections & dia
 
 ## Install
 
-Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.2** keeps ongoing chats running during silent reasoning and tool calls; its Marketplace upload is pending.
+Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.3** distinguishes working chats from unanswered questions; its Marketplace upload is pending.
 
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
 2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.

@@ -17,14 +17,17 @@ test('pending questions survive async acceptance and completion, resolve per ans
   try {
     await m.tick(); const startedAt = result.threads[0].startedAt; assert.ok(startedAt > 0);
     await fs.appendFile(file, record('response_item', { type: 'function_call', name: 'request_user_input_async', call_id: 'ask-1', arguments: JSON.stringify({ questions: [{}, {}] }) }));
-    await m.tick(); assert.equal(result.threads[0].status, 'waiting');
-    await fs.appendFile(file, record('response_item', { type: 'function_call_output', call_id: 'ask-1', output: '{"accepted":true}' }) + event('task_complete'));
-    await m.tick(); assert.equal(result.threads[0].status, 'waiting'); assert.ok(result.threads[0].finishedAt >= startedAt);
+    await m.tick(); assert.equal(result.threads[0].status, 'running'); assert.equal(result.active, 1); assert.equal(result.threads[0].replyPending, true);
+    const questionAt = result.threads[0].replyRequestedAt;
+    await fs.appendFile(file, record('response_item', { type: 'function_call_output', call_id: 'ask-1', output: '{"accepted":true}' }) + event('token_count'));
+    await m.tick(); assert.equal(result.threads[0].status, 'running'); assert.equal(result.threads[0].replyPending, true);
+    await fs.appendFile(file, event('task_complete'));
+    await m.tick(); assert.equal(result.threads[0].status, 'waiting'); assert.ok(result.threads[0].finishedAt >= startedAt); assert.equal(result.threads[0].replyRequestedAt, questionAt);
     const restarted = new ActivityMonitor(root, () => ['/work/app'], s => { result = s; });
     try { await restarted.tick(); assert.equal(result.threads[0].status, 'waiting'); } finally { restarted.dispose(); }
     const answer = i => record('event_msg', { type: 'user_message', message: '<send_user_message_question_reply>' + JSON.stringify([{ questionItemId: JSON.stringify(['request_user_input_async', 'ask-1', i]), answer: 'yes' }]) + '</send_user_message_question_reply>' });
     await fs.appendFile(file, answer(0)); await m.tick(); assert.equal(result.threads[0].status, 'waiting');
-    await fs.appendFile(file, answer(1)); await m.tick(); assert.equal(result.threads[0].status, 'ready');
+    await fs.appendFile(file, answer(1)); await m.tick(); assert.equal(result.threads[0].status, 'ready'); assert.equal(result.threads[0].replyPending, false);
     assert.equal(result.threads[0].startedAt, startedAt);
     await fs.appendFile(file, event('task_started') + record('response_item', { type: 'function_call', name: 'exec_command', call_id: 'exec-1', arguments: '{"sandbox_permissions":"require_escalated"}' }));
     await m.tick(); assert.equal(result.threads[0].status, 'running', 'Requesting elevated execution alone does not prove a human approval is pending');
@@ -170,4 +173,24 @@ test('read failure withdraws running evidence; reopening the same log still need
   await fs.appendFile(file,event('token_count'));await m.tick();assert.equal(result.active,1);
   await fs.appendFile(file,event('turn_aborted'));await m.tick();assert.equal(result.threads[0].status,'idle');assert.equal(result.active,0);
  } finally {m.dispose();await fs.rm(root,{recursive:true,force:true});}
+});
+
+test('async questions preserve running through partial replies; blocking questions and reload remain distinct', () => {
+ const {applyEvent}=require('../src/activity.cjs'),now=Date.now();
+ const m=new ActivityMonitor('',()=>['/work/app'],()=>{}),s={id:'async',cwd:'/work/app',source:'vscode',liveConfirmed:true};
+ m.files.set('sample',s);
+ const record=(type,payload,at=now)=>applyEvent(s,{type,payload,timestamp:new Date(at).toISOString()});
+ const ask=(id,async=true)=>record('response_item',{type:'function_call',name:async?'functions.request_user_input_async':'functions.request_user_input',call_id:id,arguments:JSON.stringify({questions:[{},{}]})});
+ const reply=i=>record('event_msg',{type:'user_message',message:'<send_user_message_question_reply>'+JSON.stringify([{questionItemId:JSON.stringify(['request_user_input_async','a',i]),answer:'yes'}])+'</send_user_message_question_reply>'});
+ try {
+  record('event_msg',{type:'task_started'});ask('a');reply(0);
+  assert.equal(m.snapshot().active,1);assert.equal(m.snapshot().threads[0].replyPending,true);
+  ask('blocking',false);assert.equal(m.snapshot().threads[0].status,'waiting');
+  record('response_item',{type:'function_call_output',call_id:'blocking',output:'{"answers":{}}'});
+  assert.equal(m.snapshot().threads[0].status,'running');assert.equal(m.snapshot().threads[0].replyPending,true);
+  s.liveConfirmed=false;assert.equal(m.snapshot().threads[0].status,'unknown');s.liveConfirmed=true;
+  reply(1);assert.equal(m.snapshot().threads[0].status,'running');assert.equal(m.snapshot().threads[0].replyPending,false);
+  ask('cancelled');record('response_item',{type:'function_call_output',call_id:'cancelled',output:'{"accepted":false}'});assert.equal(m.snapshot().threads[0].replyPending,false);
+  ask('a');record('event_msg',{type:'turn_aborted'},now+1);assert.equal(m.snapshot().threads[0].status,'idle');assert.equal(m.snapshot().threads[0].replyPending,false);
+ } finally {m.dispose();}
 });

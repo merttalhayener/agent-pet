@@ -10,7 +10,7 @@ async function main() {
   await fs.mkdir(dir, { recursive: true });
   const pets = ['agent-pet', 'miso', 'fern'].map(id => ({ id, name: id, file: '' }));
   const now = Date.now();
-  const a = { id: '11111111-1111-4111-8111-111111111111', title: 'Build a feature', status: 'running', startedAt: now - 180000, changedAt: now - 1000, lastEventAt: now - 500 };
+  const a = { ...(process.argv.includes('--reply-pending') ? {replyPending:true,replyRequestedAt:now-1000} : {}), id: '11111111-1111-4111-8111-111111111111', title: 'Build a feature', status: 'running', startedAt: now - 180000, changedAt: now - 1000, lastEventAt: now - 500 };
   const b = { id: (process.argv.includes('--mixed') ? 'claude:' : '') + '22222222-2222-4222-8222-222222222222', title: 'Review changes', status: 'ready', startedAt: now - 120000, finishedAt: now - 200, changedAt: now - 300, lastEventAt: now - 200 };
   const extra = process.argv.includes('--overflow') ? Array.from({ length: 10 }, (_, i) => ({ ...b, id: 'extra-' + i, title: 'Tamamlanan sohbet ' + (i + 1) })) : [];
   const base = { workspace: { id: 'test-workspace', name: 'Website' }, navigation: { codex: 'vscode://openai.chatgpt/local/?windowId=42', claude: 'vscode://local.codex-pet-panel/claude?windowId=42' }, selected: process.argv.includes('--legacy-pet') ? 'bsod' : 'miso', selectedAt: now, sleepAt: now, sleeping: false, pets };
@@ -22,6 +22,7 @@ async function main() {
   assert.equal(result.windowCount, 1);
   assert.equal(result.rows.find(w => w.id === '11111111-1111-4111-8111-111111111111').indicator, 'spinner');
   assert.equal(result.rows.find(w => w.id === b.id).indicator, 'check');
+  if (process.argv.includes('--reply-pending')) assert.equal(result.rows.find(w => w.id === a.id).subtitle, 'Codex · Running · question pending');
   assert.ok(result.visible && result.builtinPet && result.transparent && result.floating && !result.hidesOnDeactivate);
   assert.ok(result.sleepWorks); assert.ok(result.removeKeepsOther); assert.equal(result.restoredCount, 2 + extra.length); assert.equal(result.visibleRows, Math.min(8, 2 + extra.length)); assert.ok(result.scrollReachesLast);
   assert.equal(result.appActive, false);

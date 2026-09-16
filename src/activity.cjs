@@ -26,6 +26,7 @@ function applyEvent(state, record) {
     if (p.type === 'function_call' && /(?:^|\.)request_user_input(?:_async)?$/.test(p.name || '')) {
       state.pendingInputs ||= {};
       let args; try { args = JSON.parse(p.arguments); } catch {}
+      state.lastQuestionAt = at || state.lastQuestionAt;
       state.pendingInputs[p.call_id] = { async: p.name.endsWith('_async'), remaining: Array.from({ length: Math.max(1, args?.questions?.length || 0) }, (_, i) => i) };
       state.lastEventAt = at || state.lastEventAt;
     } else if (p.type === 'function_call_output' && state.pendingInputs?.[p.call_id]) {
@@ -54,7 +55,7 @@ function applyEvent(state, record) {
   }
   if (status) {
     state.status = status; state.changedAt = at;
-    if (type === 'task_started') { state.startedAt = at; state.finishedAt = undefined; state.pendingInputs = {}; }
+    if (type === 'task_started') { state.startedAt = at; state.finishedAt = undefined; state.pendingInputs = {}; state.lastQuestionAt = undefined; }
     else { state.finishedAt = at; if (status !== 'ready') state.pendingInputs = {}; }
   }
   if (status || ['token_count', 'agent_message', 'agent_reasoning'].includes(type)) progress(state, at);
@@ -237,9 +238,13 @@ class ActivityMonitor {
       if (!this.trackedIds.has(s.id) && !this.seenThreads.has(s.id) && !active.includes(s) && !recentUnknown && (!s.changedAt || now - s.changedAt > 90000)) continue;
       const previous = this.seenThreads.get(s.id);
       if (previous && previous.lastEventAt > s.lastEventAt) continue;
+      const pending = Object.values(s.pendingInputs || {});
+      const blocked = pending.some(input => input?.async !== true);
+      const status = pending.length && (blocked || s.status === 'ready') ? 'waiting'
+        : s.status === 'running' && s.liveConfirmed === false ? 'unknown' : s.status;
       this.seenThreads.set(s.id, {
         id: s.id, cwd: s.cwd, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
-        status: Object.keys(s.pendingInputs || {}).length ? 'waiting' : s.status === 'running' && s.liveConfirmed === false ? 'unknown' : s.status,
+        status, replyPending: pending.length > 0, replyRequestedAt: pending.length ? s.lastQuestionAt : undefined,
         changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt
       });
     }

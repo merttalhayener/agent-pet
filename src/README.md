@@ -21,7 +21,7 @@ See what’s running, finished, or waiting for you—even while using another ap
 
 ## See when a chat needs you
 
-Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time.
+Watch a chat move from **running → waiting for your reply → completed**. Each conversation keeps its own status and elapsed time. If Codex asks a question while continuing to work, the spinner stays active with **Running · question pending**.
 
 <img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/status.gif" alt="A Codex chat changes from a spinning progress indicator to waiting, then a completion checkmark" width="600">
 

@@ -27,7 +27,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.16.2-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.16.3-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -172,3 +172,7 @@ The first check uses temporary copies of the built app, sample heartbeats and a 
 `support.cjs` owns the singleton webview, automatic first-run guide, allowed actions, connection history and privacy-filtered report. `support.html` / `support-ui.js` are bundled without external resources; a per-panel CSP nonce permits only their inline script/style. The native helper publishes `helper-health.json` once per refresh and removes it on normal termination. Protocol 11 client snapshots include the extension version, stable per-host client ID and focus state. The support menu uses an expiring, targeted request plus the platform-generated window URI.
 
 A helper heartbeat is fresh for five seconds; client heartbeats are connected for fifteen seconds, and recently disconnected rows remain for ten minutes. Record-directory checks test readability only. Diagnostics never parse transcript content and copy only known fields/error codes. From 0.16.1, `setup-auto-opened` is claimed exclusively in shared local storage to open only one guide across windows. Failed or cancelled initial display releases the claim. Completed setups are skipped; the old notification marker does not suppress the new guide. Focus events and polling both check for first-run eligibility.
+
+## Concurrent work and questions (0.16.3)
+
+Protocol 13 carries optional `replyPending` and `replyRequestedAt` independently of lifecycle status. Non-blocking Codex questions leave a confirmed open turn running; blocking requests and completed turns with pending questions remain waiting. The native refresh preserves these fields, keeps running/waiting counters exclusive, and includes both kinds of unanswered questions in the attention filter. Notification deduplication uses the question timestamp, so completing a turn does not announce the same question again. Older clients remain readable but need a safe reload after updating to publish these fields.

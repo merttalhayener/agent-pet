@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.3 — Show work and open questions separately
+
+- Keep the running spinner and count when Codex asks a non-blocking question while continuing to work.
+- Show Running · question pending / Çalışıyor · açık soru var, even with optional status labels off.
+- Reserve waiting status for blocking questions and finished turns with unanswered questions.
+- Keep pending questions in the attention filter and deduplicate their alerts across turn completion.
+- Preserve partial replies, reload confirmation, interruption and legacy-client compatibility.
+
 ## 0.16.2 — Keep ongoing turns running during silence
 
 - Remove the 60-second inactivity downgrade from the shared Codex/Claude monitor and native panel.

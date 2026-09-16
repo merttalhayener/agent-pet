@@ -28,6 +28,12 @@ Right-click a row → **Assign workspace** to pick a known workspace. This overr
 
 **Appearance → Menu bar counter** shows running/waiting totals beside the paw, including chats hidden by filters. It stays visible while the panel is hidden; turn it off for a smaller menu bar item.
 
+## Working while a question is open
+
+Codex can ask a non-blocking question and keep working. Agent Pet counts that chat as **running**, keeps its spinner and timer, and shows **Running · question pending** (Türkçe: **Çalışıyor · açık soru var**). The extra label is visible even when optional status labels are off. The **Waiting for me** filter includes these open questions, but the waiting counter counts only chats actually waiting.
+
+A blocking question, or a completed turn with an unanswered question, shows **Waiting for your reply**. Answering every pending question clears the question indicator; partial replies keep it. Notifications can still alert you to a new question while work continues. Finishing that same turn does not repeat the alert. After reload, an unfinished turn still needs fresh progress to be counted as running.
+
 ## Waiting notifications
 
 Enable **Notifications → Notify when waiting for me**, then allow Agent Pet in the macOS permission prompt. Notifications are off by default. Click a notification to open that chat in its assigned live workspace window. Right-click a chat → **Mute waiting notifications** to silence only that conversation.

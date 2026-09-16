@@ -10,6 +10,8 @@ enum PetLanguage: String, CaseIterable {
     func text(_ key: String) -> String { self == .turkish ? Self.translations[key] ?? key : key }
     private static let translations: [String: String] = [
         "Stopped": "Durduruldu",
+        "Running · question pending": "Çalışıyor · açık soru var",
+        "Question pending": "Yanıtlanmamış soru var",
         "Connections & diagnostics": "Bağlantılar ve tanılama",
         "VS Code windows connected": "VS Code penceresi bağlı",
         "VS Code disconnected": "VS Code bağlantısı kesildi",
@@ -127,6 +129,9 @@ struct ThreadActivity: Codable, Equatable {
     var finishedAt: Double? = nil
     var workspace: WorkspaceInfo? = nil
     var cwd: String? = nil
+    var replyPending: Bool? = nil
+    var replyRequestedAt: Double? = nil
+    var needsReply: Bool { status == "waiting" || (status == "running" && replyPending == true) }
 }
 struct Activity: Codable {
     let status: String
@@ -332,7 +337,7 @@ final class DashboardView: NSView {
         else if groupingRect.contains(p) { toolTip = text(owner?.grouped == true ? "Compact list" : "Group by workspace") }
         else if let workspace = workspaceAt(p) { toolTip = workspace.name + " · " + text("Click to expand or collapse workspace") }
         else if resizeHandleRect.contains(p) { toolTip = text("Drag to resize") }
-        else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row.status, language: language)) · " + text("Click to open in VS Code") }
+        else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row, language: language)) · " + text("Click to open in VS Code") }
         else { toolTip = text(petVisible ? "Click to pet · Drag to move · Right-click for options" : "Drag header to move · Right-click for options") }
         guard let owner, !owner.sleeping, owner.overallStatus == "idle", spriteRect.contains(p), !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { needsDisplay = true; return }
         lookOffset = min(1, max(-1, (p.x - spriteRect.midX) / (spriteRect.width / 2))); needsDisplay = true
@@ -458,12 +463,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     var counterText: String { String(format: text("%d running · %d waiting"), allThreads.filter { $0.status == "running" }.count, allThreads.filter { $0.status == "waiting" }.count) }
     func rowSubtitle(_ thread: ThreadActivity) -> String {
-        guard statusLabels else { return thread.agentName }
-        let status = thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread.status, language: language)
+        guard statusLabels || (thread.status == "running" && thread.replyPending == true) else { return thread.agentName }
+        let status = thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread, language: language)
         return thread.agentName + " · " + status
     }
     func applyFilters(_ threads: [ThreadActivity]) -> [ThreadActivity] {
-        threads.filter { (statusFilter == "all" || $0.status == statusFilter) && (workspaceFilter.isEmpty || $0.workspace?.id == workspaceFilter) }
+        threads.filter { (statusFilter == "all" || $0.status == statusFilter || (statusFilter == "waiting" && $0.needsReply)) && (workspaceFilter.isEmpty || $0.workspace?.id == workspaceFilter) }
     }
     var lastObserved: [String: Date] = [:]
     var order: [String] = []
@@ -492,6 +497,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var animation: Timer?, polling: Timer?
     var overallStatus: String { allThreads.contains { $0.status == "waiting" } ? "waiting" : allThreads.contains { $0.status == "running" } ? "running" : allThreads.contains { $0.status == "failed" } ? "failed" : !allThreads.isEmpty && allThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
     static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "quiet": "No recent activity", "idle": "Idle"][status] ?? "Idle") }
+    static func statusText(_ thread: ThreadActivity, language: PetLanguage = .english) -> String {
+        if thread.status == "running" && thread.replyPending == true { return language.text("Running · question pending") }
+        return statusText(thread.status, language: language)
+    }
     static func displayStatus(_ thread: ThreadActivity, now: Double, connected: Bool) -> String {
         if ["running", "quiet", "waiting"].contains(thread.status) && !connected { return "unknown" }
         // Older connected clients used quiet for a confirmed, unfinished turn.
@@ -697,7 +706,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
             let status = Self.displayStatus(thread, now: now.timeIntervalSince1970 * 1000, connected: now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) <= 15)
-            return ThreadActivity(id: thread.id, title: thread.title, status: status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd)
+            return ThreadActivity(id: thread.id, title: thread.title, status: status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd, replyPending: thread.replyPending, replyRequestedAt: thread.replyRequestedAt)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
@@ -722,7 +731,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         if !OriginalPets.contains(selected) { selected = "agent-pet" }
         view.clampScroll(); resizeToList(); view.needsDisplay = true
         panel.invalidateCursorRects(for: view)
-        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.agentName), \($0.title): \(Self.statusText($0.status, language: language))" }.joined(separator: ". "))
+        view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.agentName), \($0.title): \(Self.statusText($0, language: language))" }.joined(separator: ". "))
         savePreferences()
     }
     func resizeToList() {
@@ -1102,14 +1111,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     func observeWaiting(_ threads: [ThreadActivity]) {
         var resolved: [String] = []
         for thread in threads {
-            guard thread.status == "waiting" else { if !["unknown", "quiet"].contains(thread.status), waitingSeen.removeValue(forKey: thread.id) != nil { resolved.append(thread.id) }; continue }
+            guard thread.needsReply else { if !["unknown", "quiet"].contains(thread.status), waitingSeen.removeValue(forKey: thread.id) != nil { resolved.append(thread.id) }; continue }
             // A silent startup baseline avoids replaying historical requests.
-            let newRequest = waitingSeen[thread.id] != thread.changedAt
-            waitingSeen[thread.id] = thread.changedAt
+            let requestAt = thread.replyRequestedAt ?? thread.changedAt
+            let newRequest = waitingSeen[thread.id] != requestAt
+            waitingSeen[thread.id] = requestAt
             guard waitingObserved, newRequest, waitingNotifications, !allHidden, !mutedChats.contains(thread.id) else { continue }
             if testing { testWaitingNotifications.append(thread.id); continue }
             let content = UNMutableNotificationContent()
-            content.title = "Agent Pet · " + text("Waiting for your reply")
+            content.title = "Agent Pet · " + text(thread.status == "running" ? "Question pending" : "Waiting for your reply")
             content.body = thread.title + " · " + thread.agentName
             content.userInfo = ["threadID": thread.id]; content.sound = .default
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: thread.id, content: content, trigger: nil)) { error in
@@ -1441,6 +1451,39 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && !displayThreads.contains { $0.id == waiting.id } && threadURL(waiting.id, live: [snapshot])?.query == "windowId=99&session=22222222-2222-4222-8222-222222222222"
         return valid
     }
+    func testWorkingWithQuestion() -> Bool {
+        let savedAll = allThreads, savedStatus = statusFilter, savedWorkspace = workspaceFilter
+        let savedLanguage = language, savedLabels = statusLabels, savedSeen = waitingSeen
+        let savedObserved = waitingObserved, savedNotifications = waitingNotifications, savedHidden = presentationHidden
+        let savedMuted = mutedChats, savedTest = testWaitingNotifications
+        defer {
+            allThreads = savedAll; statusFilter = savedStatus; workspaceFilter = savedWorkspace
+            language = savedLanguage; statusLabels = savedLabels; waitingSeen = savedSeen
+            waitingObserved = savedObserved; waitingNotifications = savedNotifications; presentationHidden = savedHidden
+            mutedChats = savedMuted; testWaitingNotifications = savedTest
+        }
+        func row(_ status: String, _ question: Double? = nil, changed: Double = 100) -> ThreadActivity {
+            ThreadActivity(id: "async-question", title: "Investigate a transfer", status: status, changedAt: changed,
+                           lastEventAt: 500, startedAt: 100, replyPending: question != nil, replyRequestedAt: question)
+        }
+        let running = row("running", 200), waiting = row("waiting", 200, changed: 600)
+        allThreads = [running]; language = .english; statusLabels = false; statusFilter = "waiting"; workspaceFilter = ""
+        var valid = counterText == "1 running · 0 waiting" && overallStatus == "running" && applyFilters(allThreads) == [running]
+        valid = valid && rowSubtitle(running) == "Codex · Running · question pending"
+        language = .turkish; valid = valid && rowSubtitle(running) == "Codex · Çalışıyor · açık soru var"
+        language = .english
+        waitingSeen = [:]; waitingObserved = false; waitingNotifications = true; presentationHidden = false; mutedChats = []; testWaitingNotifications = []
+        observeWaiting([row("running")]); observeWaiting([running]); observeWaiting([running])
+        valid = valid && testWaitingNotifications == [running.id]
+        observeWaiting([waiting]); valid = valid && testWaitingNotifications.count == 1
+        observeWaiting([row("unknown", 200)]); observeWaiting([waiting]); valid = valid && testWaitingNotifications.count == 1
+        observeWaiting([row("running")]); observeWaiting([row("running", 700)])
+        valid = valid && testWaitingNotifications.count == 2
+        if let data = try? JSONEncoder().encode(running), let decoded = try? JSONDecoder().decode(ThreadActivity.self, from: data) {
+            valid = valid && decoded.replyPending == true && decoded.replyRequestedAt == 200
+        } else { valid = false }
+        return valid
+    }
     func testQuietAndTerminalStates() -> Bool {
         let saved = retained
         defer { retained = saved }
@@ -1625,6 +1668,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         return routed && health["connections"] as? Int == snapshots().count && health["version"] as? String == Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String && health["activity"] == nil && health["workspace"] == nil
     }
     func selfTest() {
+        precondition(testWorkingWithQuestion(), "Running/question labels, counters, filtering or notifications failed")
         precondition(testSupportCenter(), "Support routing or health report failed")
         precondition(testBundleRemoval(), "Bundle removal scope/metadata guards failed")
         precondition(testHelperLifetime(), "Helper lifetime grace, reload, multi-window or removal failed")
@@ -1708,7 +1752,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             refresh(); refresh()
             reopenedChatStaysAfterCompletion = restored && displayThreads.contains { $0.id == sample.id && $0.status == "ready" }
         }
-        let raw = initial.map { ["id": $0.id, "title": $0.title, "status": $0.status, "indicator": $0.status == "running" ? "spinner" : $0.status == "ready" ? "check" : "other"] }
+        let raw = initial.map { ["id": $0.id, "title": $0.title, "subtitle": rowSubtitle($0), "status": $0.status, "indicator": $0.status == "running" ? "spinner" : $0.status == "ready" ? "check" : "other"] }
         let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "builtinPet": OriginalPets.contains(selected), "originalPets": assets.map { $0.id }, "originalPetsWork": testOriginalPets(), "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
         let clicks: [String: Any] = ["reopenedChatStaysAfterCompletion": reopenedChatStaysAfterCompletion, "dismissedSameTurnStaysHidden": dismissedSameTurnStaysHidden, "bottomCornersStay": bottomCornersStay, "listChangeKeepsCorner": listChangeKeepsCorner, "refreshDoesNotMoveDrag": refreshDoesNotMoveDrag, "cornerResizeWorks": cornerResizeWorks, "refreshPreservesSize": refreshPreservesSize, "minimumWorks": minimumWorks, "maximumWorks": maximumWorks, "rowClickOpensChat": rowClickOpensChat, "dragDoesNotOpen": dragDoesNotOpen, "removeDoesNotOpen": removeDoesNotOpen, "changedRowDoesNotOpen": changedRowDoesNotOpen]
         let features = featureTests()
