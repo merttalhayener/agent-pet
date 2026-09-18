@@ -20,5 +20,6 @@ if not vsce.is_file():
 target = root / 'artifacts' / f"agent-pet-marketplace-{p['version']}-darwin-arm64.vsix"
 target.parent.mkdir(parents=True, exist_ok=True)
 (src / 'CHANGELOG.md').write_bytes((root / 'CHANGELOG.md').read_bytes())
+subprocess.run(['node', str(root / 'scripts/sync-readme.cjs')], check=True)
 subprocess.run([str(vsce), 'package', '--target', 'darwin-arm64', '--no-dependencies', '--out', str(target)], cwd=src, check=True)
 print(target)

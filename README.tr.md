@@ -7,17 +7,17 @@
 VS Code’daki **Codex ve Claude Code** sohbetleri için masaüstü yardımcısı.<br>
 Başka uygulamadayken de hangi sohbet çalışıyor, hangisi bitti, hangisi seni bekliyor gör.
 
-**macOS 26+ · Apple Silicon · English / Türkçe**
+[![Marketplace sürümü](https://img.shields.io/visual-studio-marketplace/v/merttalhayener.agent-pet?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet)
+[![Kurulum](https://img.shields.io/visual-studio-marketplace/i/merttalhayener.agent-pet)](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet)
+[![Lisans: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[**İndir**](https://github.com/merttalhayener/agent-pet/releases) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+[**Marketplace’ten kur**](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
+
+<sub>**Gereksinimler:** Apple Silicon üzerinde macOS 26+ · yerel VS Code oturumları (yalnızca CLI veya bulut oturumları desteklenmez) · English / Türkçe</sub>
+
+<img src="docs/media/demo.gif" alt="Agent Pet paneli: kedi Miso’nun altında çalışan ve tamamlanmış Codex ve Claude Code sohbetleri" width="720">
 
 </div>
-
-## Yeni arkadaşlarınla tanış
-
-Robot **Byte**, kedi **Miso** ve filiz **Fern**. Agent Pet ile gelen üç özgün, animasyonlu karakter. **Petler** menüsünden seç; başka eklentilerden görsel yüklenmez.
-
-<img src="docs/images/characters.png" alt="Agent Pet’in özgün karakterleri: robot Byte, kedi Miso ve filiz Fern" width="720">
 
 ## Sohbetin ne zaman seni beklediğini gör
 
@@ -33,42 +33,35 @@ Sohbet **çalışıyor → yanıt bekliyor → tamamlandı** durumlarından geç
 
 ## Panel kalsın, pet gizlensin
 
-Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür kalır; **Peti göster** karakteri geri getirir. **Paneli gizle** yalnızca sohbet listesini gizler, pet görünür kalır. **Tümünü gizle** ikisini birlikte gizler. **Görünüm → Yalnızca panel** aynı karakter tercihini kontrol eder.
+Daha az dikkat dağınıklığı için **Peti gizle** seç. Sohbetler görünür kalır; **Peti göster** karakteri geri getirir. **Paneli gizle** yalnızca sohbet listesini gizler, pet görünür kalır. **Tümünü gizle** ikisini birlikte gizler.
 
 <img src="docs/media/panel-only.gif" alt="Pet gizlenirken sohbet paneli açık kalıyor; ardından pet geri geliyor" width="600">
 
 *Animasyonlar, uygulamada oluşturulmuş örnek sohbetleri gösterir.*
 
-**Yerel VS Code oturumları** desteklenir. Yalnızca CLI veya bulut oturumları desteklenmez. Canlı güncellemeler için VS Code açık kalmalıdır. API anahtarı veya hook ayarı gerekmez.
-
-## Kurulumu tamamla, bağlantılarını gör
-
-İlk odaklanan VS Code penceresinde kısa kurulum rehberi otomatik açılır. İstediğinde kapatabilir, **Agent Pet: Get Started** komutuyla yeniden açabilirsin: agent eklentilerini kontrol et, peti göster ve istersen bekleyen sohbet bildirimlerini aç.
-
-**Bağlantılar**, hangi VS Code pencerelerinin veri gönderdiğini, çalışma alanlarını ve son bağlantı zamanını gösterir. **Tanılama**, pencerede yüklü eklenti, diskte kurulu eklenti ve çalışan pet sürümlerini karşılaştırır. Sorun yaşarsan raporu kopyalayabilirsin; sohbet metinleri, proje adları ve dosya yolları rapora girmez.
-
-Komut paletinden veya pati menüsündeki **Bağlantılar ve tanılama** seçeneğinden açılır. İngilizce ve Türkçe desteklenir.
-
-<img src="docs/images/connections.png" alt="Örnek verilerle Agent Pet bağlantı ekranı: bir bağlı, bir bağlantısı kesilmiş çalışma alanı" width="800">
-
 ## Odağını koru
 
 - **Filtreler:** tüm sohbetleri, çalışanları veya yanıtını bekleyenleri göster; tek çalışma alanına daralt.
-- **Çalışma alanı ataması:** sohbete sağ tıkla → **Çalışma alanı ata**. Hem grubu hem açılacak pencereyi seç.
-- **Açık durum yazıları:** simgelerin yanında **Durduruldu**, **Güncelleme yok** gibi açıklamalar göster.
 - **Yanıt bildirimleri:** **Bildirimler** menüsünden aç; macOS bildirimine tıklayarak sohbete dön. Sohbetleri ayrı ayrı sessize al.
 - **Menü çubuğu sayacı:** panel gizliyken de çalışan ve bekleyen sohbet sayılarını gör.
-- **Güncellemeler:** Marketplace kurulumlarını VS Code günceller. **Güncellemeleri denetle…** mağaza kaydını açar.
+- **Çalışma alanı ataması:** sohbete sağ tıkla → **Çalışma alanı ata**. Hem grubu hem açılacak pencereyi seç.
+- **Açık durum yazıları:** simgelerin yanında **Durduruldu**, **Güncelleme yok** gibi açıklamalar göster.
+
+## Yeni arkadaşlarınla tanış
+
+Robot **Byte**, kedi **Miso** ve filiz **Fern**: üç özgün, animasyonlu karakter. **Petler** menüsünden seç.
+
+<img src="docs/images/characters.png" alt="Agent Pet’in özgün karakterleri: robot Byte, kedi Miso ve filiz Fern" width="720">
 
 ## Kurulum
 
 1. VS Code’a **Codex**, **Claude Code** veya ikisini birden kur ve giriş yap.
-2. [darwin-arm64 VSIX dosyasını indir](https://github.com/merttalhayener/agent-pet/releases), **Extensions → ⋯ → Install from VSIX…** ile kur.
-3. Komut paletinden **Agent Pet: Show Desktop Pet** çalıştır.
+2. [Agent Pet’i Marketplace’ten kur](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) ya da Extensions’ta `@id:merttalhayener.agent-pet` ara.
+3. **Get Started** rehberi otomatik açılır. İstediğin zaman **Agent Pet: Get Started** komutuyla yeniden aç.
 
-0.11.4 itibarıyla çalışan masaüstü paneli, yeni sürüm kurulduktan birkaç saniye sonra eski süreci kapatıp yeni sürüme geçer; görünürlük tercihleri ve aktif sohbetler korunur. Eski sürümden ilk geçişte bu mekanizmanın başlaması için bir kez pencere yenilenmesi gerekir. Güncellemeler takip edilen sohbetler bitip değişiklikler kaydedilince her pencereyi otomatik yeniler; 15 saniyelik **Daha sonra** seçeneği vardır. **GitHub önizlemesinden geçiyorsan**, **Replace preview** seçeneğini kullan; aktif işler bitince her pencerede bir kez **Developer: Reload Window** çalıştır.
+API anahtarı veya hook ayarı gerekmez. Canlı güncellemeler için VS Code açık kalmalıdır. Yeni sürümler VS Code’un normal eklenti güncellemeleriyle gelir.
 
-macOS uygulaması eklentinin içindedir; Applications klasörüne ayrı kurulmaz. 0.14.2’den itibaren uninstall, peti kapatır ve ilgili kurulumun `Agent Pet.app` klasörünü siler. Başka profilde hâlâ kurulu olan sürüm korunur. Tüm VS Code pencerelerini kapatmak uygulamayı kaldırmaz; pet yaklaşık bir dakika sonra kapanır. Eklenti ve petin ikisi de çalışmıyorsa temizlik, VS Code’un kaldırma hookunu çalıştırmasıyla yapılır.
+GitHub önizlemesinden mi geçiyorsun, ya da güncelleme ve kaldırma ayrıntılarını mı arıyorsun? [Install, update & remove (EN)](docs/usage.md#install-update--remove) bölümüne bak.
 
 ## Hızlı kullanım
 
@@ -83,12 +76,14 @@ macOS uygulaması eklentinin içindedir; Applications klasörüne ayrı kurulmaz
 
 Ayarlar için pete veya panele sağ tıkla. Tercihlerin kaydedilir.
 
-Bağımsız topluluk projesi. Telemetri eklemez; sohbet kayıtları yerel kalır. Marketplace güncellemelerini VS Code yönetir. Yanıt bildirimleri macOS izni gerektirir.
+## Gizlilik ve destek
+
+Telemetri eklemez; sohbet kayıtları Mac’inde kalır. Marketplace indirmelerini ve güncelleme denetimlerini VS Code yönetir. Yanıt bildirimleri macOS izni gerektirir.
+
+Sorun yaşarsan pati menüsünden veya komut paletinden **Bağlantılar ve tanılama** ekranını aç. Hangi VS Code pencerelerinin bağlı olduğunu gösterir ve rapor kopyalamanı sağlar; sohbet metinleri, proje adları ve dosya yolları rapora girmez.
 
 [Kullanım ve sorun giderme (EN)](docs/usage.md) · [Derleme ve teknik ayrıntılar (EN)](docs/development.md) · [Sorun bildir](https://github.com/merttalhayener/agent-pet/issues)
 
-## Marketplace geçişi ve lisans
-
-Agent Pet [VS Code Marketplace üzerinden](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) kurulabilir. **0.16.4** Claude plugin etkinlik takibini iyileştirir ve devam eden işi açık sorudan ayrı gösterir; [GitHub paketi](https://github.com/merttalhayener/agent-pet/releases/tag/v0.16.4) hazır, Marketplace yüklemesi bekleniyor. Paket yalnızca **macOS 26+ / Apple Silicon** içindir. Önizleme kurulumundan geçerken **Replace preview** seçeneğini kullanıp aktif işler bitince her pencerede **Developer: Reload Window** çalıştırın. Pet tercihleri korunur. Marketplace sürümünde güncellemeleri VS Code yönetir.
+## Lisans
 
 Özgün kaynak kod, Byte, Miso, Fern ve uygulama ikonu [MIT lisanslıdır](LICENSE). Harici karakter görseli yüklenmez veya dağıtılmaz. Codex ve Claude Code adları desteklenen entegrasyonları belirtir; Agent Pet bağımsız bir topluluk projesidir.
