@@ -40,11 +40,15 @@ Enable **Notifications → Notify when waiting for me**, then allow Agent Pet in
 
 Notifications follow newly detected requests for input, not every log update. Existing requests are quiet on startup, reconnecting does not repeat the same request, and hiding the whole panel pauses alerts. Panel-only mode and list filters do not pause them. Some agent permission dialogs are not recorded and cannot trigger a notification. macOS Focus and notification settings also control banner delivery.
 
-## Updates
+## Install, update & remove
+
+The macOS app is bundled inside the extension; there is no separate Applications-folder installation.
 
 Use **Check for updates…** in the paw menu or **Agent Pet: Check for Updates** in the Command Palette to open the Marketplace entry. VS Code manages downloads according to its extension update settings. From 0.11.4, the running desktop helper detects the installed package every five seconds and replaces its old process without reloading VS Code. Hidden components stay hidden; a deliberately quit helper stays closed. An older window cannot downgrade a newer running helper. The first upgrade from 0.11.3 or earlier needs a window reload to load this mechanism. Each window waits for its tracked chats to finish and then reloads after a 15-second countdown. **Later** postpones that version in that workspace. New activity, unknown/quiet/waiting chats, disabled tracking, unsaved editors, active tasks and debugging postpone reload. Disable `codexPet.autoReloadAfterUpdate` for manual reloads.
 
-**Moving from the GitHub preview?** Install the Marketplace version, choose **Replace preview**, and reload each window after active work finishes. Pet preferences are retained. The former preview's GitHub update settings do not control Marketplace downloads.
+**Moving from the GitHub preview?** Install the Marketplace version, choose **Replace preview**, and reload each window after active work finishes. Pet preferences are retained. The former preview's GitHub update settings do not control Marketplace downloads. The older `local.codex-pet-panel` and the Marketplace extension have different identities, so this is a one-time migration.
+
+From 0.14.2, uninstalling closes the helper and deletes that installation’s `Agent Pet.app` bundle. A version still installed in another profile is kept. Closing all connected VS Code windows only closes the helper after a short reconnect grace period (about one minute); it does not uninstall the app. If neither the extension nor the helper is running, VS Code’s uninstall hook performs cleanup when it next runs.
 
 ## Opening chats
 

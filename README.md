@@ -7,17 +7,17 @@
 A floating desktop companion for **Codex and Claude Code in VS Code**.<br>
 See what’s running, finished, or waiting for you—even while using another app.
 
-**macOS 26+ · Apple Silicon · English / Türkçe**
+[![Marketplace version](https://img.shields.io/visual-studio-marketplace/v/merttalhayener.agent-pet?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/merttalhayener.agent-pet)](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[**Download**](https://github.com/merttalhayener/agent-pet/releases) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+[**Install from the Marketplace**](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
+
+<sub>**Requires** macOS 26+ on Apple Silicon · local VS Code sessions (not CLI-only or cloud-only) · English / Türkçe</sub>
+
+<img src="docs/media/demo.gif" alt="Agent Pet panel with Miso the cat above a list of Codex and Claude Code chats showing running and completed states" width="720">
 
 </div>
-
-## Meet your companions
-
-**Byte** the robot, **Miso** the cat, and **Fern** the sprout. Three original, animated characters included with Agent Pet. Choose one from **Pets**; no artwork from other extensions is used.
-
-<img src="docs/images/characters.png" alt="Byte the robot, Miso the cat and Fern the sprout, original Agent Pet characters" width="720">
 
 ## See when a chat needs you
 
@@ -33,46 +33,35 @@ Click **▤** to group chats by workspace. Fold a group to make room; click a ch
 
 ## Keep the panel, hide the pet
 
-Choose **Hide pet** for fewer distractions. Your chats stay visible; **Show pet** brings the character back. **Hide panel** hides only the chat list, leaving the pet visible. **Hide all** hides both. **Appearance → Panel only** controls the same character preference.
+Choose **Hide pet** for fewer distractions. Your chats stay visible; **Show pet** brings the character back. **Hide panel** hides only the chat list, leaving the pet visible. **Hide all** hides both.
 
 <img src="docs/media/panel-only.gif" alt="The pet disappears while its chat panel stays visible, then the pet returns" width="600">
 
 *Animations use sample conversations rendered by the app.*
 
-Supports **local VS Code sessions**. CLI-only and cloud-only sessions are not supported. VS Code must stay open for live updates. No API keys or hooks to configure.
-
-## Get connected
-
-Open **Agent Pet: Get Started** for a short setup guide: check your agent extensions, show your companion, and optionally enable waiting notifications.
-
-**Connections** shows which VS Code windows are sending updates, their workspaces, and their last connection time. **Diagnostics** compares the loaded extension, installed extension, and running pet versions. Copy a report when something goes wrong; chat text, project names and file paths are excluded.
-
-Open these tabs from the Command Palette or the paw menu’s **Connections & diagnostics**.
-
-<img src="docs/images/connections.png" alt="Agent Pet Connections tab with one connected workspace and one recently disconnected workspace, using sample data" width="800">
-
 ## Stay focused
 
 - **Filters:** show all chats, running chats, or those waiting for you; narrow to one workspace.
-- **Workspace overrides:** right-click a chat → **Assign workspace** to choose its group and destination window.
-- **Clear statuses:** optional text explains the icons, including **Stopped** and **No update**.
 - **Waiting notifications:** opt in under **Notifications**; click a macOS banner to return to the chat. Mute individual chats.
 - **Menu bar counter:** see running and waiting totals even with the panel hidden.
-- **Updates:** Marketplace installations use VS Code’s extension updates. **Check for updates…** opens the extension’s store entry.
+- **Workspace overrides:** right-click a chat → **Assign workspace** to choose its group and destination window.
+- **Clear statuses:** optional text explains the icons, including **Stopped** and **No update**.
+
+## Meet your companions
+
+**Byte** the robot, **Miso** the cat, and **Fern** the sprout—three original, animated characters. Choose one from **Pets**.
+
+<img src="docs/images/characters.png" alt="Byte the robot, Miso the cat and Fern the sprout, original Agent Pet characters" width="720">
 
 ## Install
 
-Install Agent Pet from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet). GitHub release **0.16.4** improves Claude plugin activity tracking and keeps ongoing work separate from unanswered questions; its Marketplace upload is pending.
-
 1. Install **Codex**, **Claude Code**, or both in VS Code and sign in.
-2. Open Extensions, search `@id:merttalhayener.agent-pet`, and install Agent Pet.
-3. The **Get Started** guide opens automatically in the first focused VS Code window. Close it whenever you want; reopen it with **Agent Pet: Get Started**.
+2. Install [Agent Pet from the Marketplace](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet), or search `@id:merttalhayener.agent-pet` in Extensions.
+3. The **Get Started** guide opens automatically. Reopen it anytime with **Agent Pet: Get Started**.
 
-**Coming from the GitHub preview?** Choose **Replace preview**, let active chats finish, then run **Developer: Reload Window** in each VS Code window. Pet preferences are kept. The older `local.codex-pet-panel` and new Marketplace extension have different identities, so this is a one-time migration.
+No API keys or hooks to configure. VS Code must stay open for live updates. New versions arrive through VS Code’s normal extension updates.
 
-Subsequent Marketplace updates use VS Code’s update settings. From 0.11.4, the running desktop panel switches to the newly installed helper within a few seconds, keeping visibility preferences and active chats. The first upgrade from an older version needs a window reload to enable this mechanism. Agent Pet can reload each window after tracked chats finish and changes are saved, with a 15-second **Later** option. Disable this with `codexPet.autoReloadAfterUpdate` if you prefer manual reloads.
-
-The macOS app is bundled inside the extension; there is no separate Applications-folder installation. From 0.14.2, uninstall closes the helper and deletes that installation’s `Agent Pet.app` bundle. A version still installed in another profile is kept. Closing all connected VS Code windows only closes the helper after a short reconnect grace period (about one minute); it does not uninstall the app. If neither the extension nor helper is running, VS Code’s uninstall hook performs cleanup when it next runs.
+Coming from the GitHub preview, or want details on updates and uninstalling? See [Install, update & remove](docs/usage.md#install-update--remove).
 
 ## Quick controls
 
@@ -87,7 +76,11 @@ The macOS app is bundled inside the extension; there is no separate Applications
 
 Right-click the pet or panel for settings. Your preferences are remembered.
 
-Independent community project. No added telemetry; chat records stay local. Marketplace downloads and update checks are managed by VS Code. Waiting notifications require macOS permission.
+## Privacy & support
+
+No added telemetry; chat records stay on your Mac. Marketplace downloads and update checks are managed by VS Code. Waiting notifications require macOS permission.
+
+If something goes wrong, open **Connections & diagnostics** from the paw menu or Command Palette. It shows which VS Code windows are connected and lets you copy a report; chat text, project names and file paths are excluded.
 
 [Usage & troubleshooting](docs/usage.md) · [Build & technical details](docs/development.md) · [Report an issue](https://github.com/merttalhayener/agent-pet/issues)
 
