@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.6 — Make terminal support easier to find
+
+- Highlight VS Code integrated-terminal support in the README introduction and a dedicated section.
+- Explain terminal labels, click-to-terminal navigation and row lifetime in English and Turkish.
+- Publish the refreshed Marketplace README under a new patch version.
+
 ## 0.16.5 — Follow agents in the integrated terminal
 
 - Show Claude Code and Codex CLI chats started in a VS Code integrated terminal, labeled Claude Code · Terminal / Codex · Terminal.

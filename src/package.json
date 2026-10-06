@@ -2,7 +2,7 @@
   "name": "agent-pet",
   "displayName": "Agent Pet",
   "description": "See Codex and Claude Code chats from VS Code extensions and integrated terminals in one floating panel, and click one to bring its window to the front.",
-  "version": "0.16.5",
+  "version": "0.16.6",
   "publisher": "merttalhayener",
   "license": "MIT",
   "engines": {

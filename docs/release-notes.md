@@ -1,13 +1,11 @@
-# Agent Pet v0.16.5 — Follow agents in the integrated terminal
+# Agent Pet v0.16.6 — Make terminal support easier to find
 
-Codex CLI and Claude Code chats started in VS Code’s integrated terminal now appear alongside extension chats, labeled **Codex · Terminal** or **Claude Code · Terminal**. Click a row to bring its window forward and reveal the terminal running it.
+The README now introduces Codex and Claude Code across VS Code extensions and integrated terminals. A dedicated terminal section explains provider labels, returning to the owning terminal and when rows disappear. English and Turkish documentation are aligned.
 
-Chats belong to their window through the terminal’s process tree, including when the agent changes folders. A row stays while its terminal is open, even after the CLI exits. Closing the terminal removes it. Agents running in other terminal apps and cloud sessions remain outside tracking.
-
-Reload existing VS Code windows after updating to enable the updated tracker and terminal navigation.
+Includes all 0.16.5 integrated-terminal support. Agent tracking behavior is unchanged.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-Package: `agent-pet-marketplace-0.16.5-darwin-arm64.vsix`. Marketplace publication awaits publisher authentication.
+Package: `agent-pet-marketplace-0.16.6-darwin-arm64.vsix`. Upload this version through the existing Marketplace extension’s Update action; 0.16.5 is already published and cannot be replaced.
 
-Validation: 90 Node tests pass. The native dashboard self-test passes, including terminal navigation, row removal after terminal closure/disconnection, mixed providers and overflow. VSIX identity/version, regular channel, platform, packaged sources, native bundle version and signature were checked.
+Validation: 90 Node tests and the native dashboard self-test pass. VSIX version, platform, packaged sources, current README/changelog, native bundle version and signature are verified. Packaged files contain no Co-Authored-By trailers or Anthropic attribution email.
