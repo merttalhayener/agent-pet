@@ -3,11 +3,11 @@ const path = require('node:path');
 const { ActivityMonitor } = require('./activity.cjs');
 const { ClaudeActivityMonitor } = require('./claude-activity.cjs');
 class AgentActivityMonitor {
-  constructor(codexRoot, claudeRoot, getRoots, onStatus, directory) {
-    this.directory = directory;
+  constructor(codexRoot, claudeRoot, getRoots, onStatus, directory, terminals) {
+    this.directory = directory; this.terminals = terminals;
     this.statuses = new Map(); this.onStatus = onStatus;
     const update = agent => status => { this.statuses.set(agent, status); this.publish(); };
-    this.monitors = [new ActivityMonitor(codexRoot, getRoots, update('codex')), new ClaudeActivityMonitor(claudeRoot, getRoots, update('claude'))];
+    this.monitors = [new ActivityMonitor(codexRoot, getRoots, update('codex'), terminals), new ClaudeActivityMonitor(claudeRoot, getRoots, update('claude'), terminals)];
   }
   set enabled(value) { for (const m of this.monitors) m.enabled = value; }
   start() { void this.tick(); this.timer = setInterval(() => void this.tick(), 1500); }
@@ -21,6 +21,7 @@ class AgentActivityMonitor {
           if (Array.isArray(ids)) for (const m of this.monitors) m.setTrackedIds(new Set(ids.filter(id => typeof id === 'string').slice(0, 10000)));
         } catch {}
       }
+      if (this.terminals && this.monitors.some(m => m.enabled)) await this.terminals.refresh().catch(() => {});
       if (!this.disposed) await Promise.all(this.monitors.map(m => m.tick()));
     } finally { this.busy = false; }
   }

@@ -120,7 +120,8 @@ struct ThreadActivity: Codable, Equatable {
     let id: String
     var isClaude: Bool { id.hasPrefix("claude:") }
     var sessionID: String { isClaude ? String(id.dropFirst(7)) : id }
-    var agentName: String { isClaude ? "Claude Code" : "Codex" }
+    var isTerminal: Bool { surface == "terminal" }
+    var agentName: String { (isClaude ? "Claude Code" : "Codex") + (isTerminal ? " · Terminal" : "") }
     let title: String
     let status: String
     let changedAt: Double
@@ -131,6 +132,7 @@ struct ThreadActivity: Codable, Equatable {
     var cwd: String? = nil
     var replyPending: Bool? = nil
     var replyRequestedAt: Double? = nil
+    var surface: String? = nil
     var needsReply: Bool { status == "waiting" || (status == "running" && replyPending == true) }
 }
 struct Activity: Codable {
@@ -139,7 +141,7 @@ struct Activity: Codable {
     let threads: [ThreadActivity]?
     let trackingDisabled: Bool?
 }
-struct WindowNavigation: Codable { let codex: String; let claude: String }
+struct WindowNavigation: Codable { let codex: String; let claude: String; var terminal: String? = nil }
 struct Snapshot: Codable {
     var extensionVersion: String? = nil
     var clientId: String? = nil
@@ -613,7 +615,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         }
     }
     func mergeThreads(_ live: [Snapshot]) -> [ThreadActivity] {
-        var byID = retained
+        // Terminal rows are valid only while a connected window still owns them.
+        let terminalIDs = Set(live.flatMap { $0.activity.threads ?? [] }.filter { $0.isTerminal }.map { $0.id })
+        var byID = retained.filter { !$0.value.isTerminal || terminalIDs.contains($0.key) }
         var protocolByID: [String: Int] = [:]
         for snapshot in live.sorted(by: { ($0.protocolVersion ?? 0) == ($1.protocolVersion ?? 0) ? $0.updatedAt < $1.updatedAt : ($0.protocolVersion ?? 0) < ($1.protocolVersion ?? 0) }) {
             for thread in snapshot.activity.threads ?? [] {
@@ -706,7 +710,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
             let status = Self.displayStatus(thread, now: now.timeIntervalSince1970 * 1000, connected: now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) <= 15)
-            return ThreadActivity(id: thread.id, title: thread.title, status: status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd, replyPending: thread.replyPending, replyRequestedAt: thread.replyRequestedAt)
+            return ThreadActivity(id: thread.id, title: thread.title, status: status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd, replyPending: thread.replyPending, replyRequestedAt: thread.replyRequestedAt, surface: thread.surface)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
@@ -918,17 +922,20 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         }
         // Untagged historical rows are safe only if exactly one window owns them.
         guard thread?.workspace != nil || candidates.count == 1 else { return nil }
+        // Integrated-terminal chats open the owning terminal, not the agent's chat view.
+        let terminal = thread?.isTerminal == true
         for snapshot in candidates.sorted(by: { $0.updatedAt > $1.updatedAt }) {
             guard let routes = snapshot.navigation,
-                  var parts = URLComponents(string: claude ? routes.claude : routes.codex),
+                  var parts = URLComponents(string: terminal ? routes.terminal ?? "" : claude ? routes.claude : routes.codex),
                   ["vscode", "vscode-insiders"].contains(parts.scheme ?? ""),
-                  parts.host == (claude ? snapshot.extensionId ?? "local.codex-pet-panel" : "openai.chatgpt"),
-                  parts.path == (claude ? "/claude" : "/local/"),
+                  parts.host == (terminal || claude ? snapshot.extensionId ?? "local.codex-pet-panel" : "openai.chatgpt"),
+                  parts.path == (terminal ? "/terminal" : claude ? "/claude" : "/local/"),
                   parts.user == nil, parts.password == nil, parts.port == nil, parts.fragment == nil else { continue }
             let query = parts.queryItems ?? []
             guard query.count == 1, query[0].name == "windowId", let windowID = query[0].value,
                   !windowID.isEmpty, windowID.allSatisfy({ $0.isASCII && $0.isNumber }) else { continue }
-            if claude { parts.queryItems = query + [URLQueryItem(name: "session", value: session)] }
+            if terminal { parts.queryItems = query + [URLQueryItem(name: "thread", value: id)] }
+            else if claude { parts.queryItems = query + [URLQueryItem(name: "session", value: session)] }
             else { parts.path += session }
             return parts.url
         }
@@ -1542,7 +1549,20 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         var malformed = fixture
         malformed.navigation = WindowNavigation(codex: "https://example.com/local/?windowId=42", claude: "vscode://local.codex-pet-panel/claude?windowId=42&prompt=unwanted")
         let rejectedRoute = threadURL(ownedID, live: [malformed]) == nil
-        let windowRoutingWorks = correctWindow && closedWindow && rejectedRoute
+        let terminalID = "claude:88888888-8888-4888-8888-888888888888"
+        let terminalSample = ThreadActivity(id: terminalID, title: "Sample", status: "ready", changedAt: 1, lastEventAt: 1, surface: "terminal")
+        var terminalWindow = Snapshot(extensionId: "merttalhayener.agent-pet", navigation: WindowNavigation(codex: routes.codex, claude: "vscode://merttalhayener.agent-pet/claude?windowId=42", terminal: "vscode://merttalhayener.agent-pet/terminal?windowId=42"), workspace: fixture.workspace, updatedAt: 1, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "ready", active: 0, threads: [terminalSample], trackingDisabled: false), pets: [])
+        let savedRetained = retained[terminalID]; retained[terminalID] = terminalSample
+        let terminalLink = threadURL(terminalID, live: [terminalWindow])?.absoluteString == "vscode://merttalhayener.agent-pet/terminal?windowId=42&thread=claude:88888888-8888-4888-8888-888888888888"
+        let terminalRetainedWhileOpen = mergeThreads([terminalWindow]).contains { $0.id == terminalID }
+        let closedTerminalWindow = Snapshot(workspace: terminalWindow.workspace, updatedAt: 1, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "ready", active: 0, threads: [], trackingDisabled: false), pets: [])
+        let terminalRemovedWhenClosed = !mergeThreads([closedTerminalWindow]).contains { $0.id == terminalID }
+        let terminalRemovedWhenDisconnected = !mergeThreads([]).contains { $0.id == terminalID }
+        terminalWindow.navigation = WindowNavigation(codex: routes.codex, claude: "vscode://merttalhayener.agent-pet/claude?windowId=42")
+        let terminalNeedsRoute = threadURL(terminalID, live: [terminalWindow]) == nil
+        retained[terminalID] = savedRetained
+        let terminalRoutingWorks = terminalLink && terminalNeedsRoute && terminalRetainedWhileOpen && terminalRemovedWhenClosed && terminalRemovedWhenDisconnected && terminalSample.agentName == "Claude Code · Terminal"
+        let windowRoutingWorks = correctWindow && closedWindow && rejectedRoute && terminalRoutingWorks
         testOpenedURL = nil; openThread("claude:invalid?prompt=unwanted")
         let invalidLinkRejected = testOpenedURL == nil
         let originalLanguage = language

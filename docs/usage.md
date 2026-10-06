@@ -54,7 +54,11 @@ From 0.14.2, uninstalling closes the helper and deletes that installation’s `A
 
 Click a row to open the chat in its live workspace window. Each window must load the installed extension version to publish current routing information. Automatic update reloads handle this from 0.10.2; older hosts need the one-time manual reload described above.
 
-Claude opens in the right sidebar. Claude may keep an active or unsaved session in its existing editor tab; finish the turn, close that tab, then click its pet row again. A completed, uniquely identified tab can move automatically.
+Claude extension chats open in the right sidebar. Claude may keep an active or unsaved session in its existing editor tab; finish the turn, close that tab, then click its pet row again. A completed, uniquely identified tab can move automatically.
+
+## Integrated terminal chats
+
+Run Codex CLI or Claude Code in VS Code’s integrated terminal. Its chat appears with a **Terminal** label; clicking it brings that VS Code window forward and reveals the terminal. The row remains after the CLI exits while the terminal stays open, and disappears when the terminal closes. Agents in other terminal apps are not tracked. Reload existing VS Code windows after updating to enable terminal discovery and navigation.
 
 ## Restoring the panel
 

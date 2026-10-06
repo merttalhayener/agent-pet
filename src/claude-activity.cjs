@@ -108,8 +108,8 @@ class ClaudeActivityMonitor extends ActivityMonitor {
       const before = s.progressVersion || 0; this.consume(s, text);
       if (!s.initializing && (s.progressVersion || 0) > before) s.liveConfirmed = true;
       s.initializing = false;
-      // This release targets the VS Code integration. CLI-only and sidechain logs
-      // must not create rows whose click destination cannot be guaranteed.
+      // CLI logs appear only when an integrated terminal of this window owns them;
+      // otherwise their click destination cannot be guaranteed.
       s.source = s.entrypoint === 'claude-vscode' ? 'vscode' : 'unsupported';
       if (s.title) this.titles.set(s.id, s.title);
     } finally { await handle.close(); }
