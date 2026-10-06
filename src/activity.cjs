@@ -69,8 +69,8 @@ function inWorkspace(cwd, roots) {
 }
 
 class ActivityMonitor {
-  constructor(root, getRoots, onStatus) {
-    this.root = root; this.getRoots = getRoots; this.onStatus = onStatus;
+  constructor(root, getRoots, onStatus, terminals = { has: () => false, files: () => [] }) {
+    this.root = root; this.getRoots = getRoots; this.onStatus = onStatus; this.terminals = terminals;
     this.files = new Map(); this.candidates = []; this.lastDiscovery = 0;
     this.enabled = true; this.disposed = false; this.busy = false;
     this.titles = new Map(); this.seenThreads = new Map(); this.trackedIds = new Set();
@@ -81,6 +81,9 @@ class ActivityMonitor {
     }
     this.trackedIds = ids;
   }
+  // Integrated-terminal ownership is direct evidence; other chats need a VS Code
+  // session in one of this window's folders.
+  tracks(state) { return this.terminals.has(state.id) || (state.source === 'vscode' && inWorkspace(state.cwd, this.getRoots())); }
   start() { void this.tick(); this.timer = setInterval(() => void this.tick(), 1500); }
   dispose() { this.disposed = true; clearInterval(this.timer); this.files.clear(); this.seenThreads.clear(); }
   async dirs(base, count) {
@@ -110,7 +113,7 @@ class ActivityMonitor {
         }
       }
     }
-    this.candidates = [...new Set([...indexed, ...result.sort((a, b) => b.mtime - a.mtime).map(e => e.file)])].slice(0, 128);
+    this.candidates = [...new Set([...this.terminals.files(), ...indexed, ...result.sort((a, b) => b.mtime - a.mtime).map(e => e.file)])].slice(0, 128);
     const keep = new Set(this.candidates);
     for (const file of this.files.keys()) if (!keep.has(file)) this.files.delete(file);
   }
@@ -223,14 +226,14 @@ class ActivityMonitor {
       this.consume(state, text);
       // An old task_started record is history, not proof the reloaded host is working.
       if (!state.initializing && (state.progressVersion || 0) > before) state.liveConfirmed = true;
-      if (state.initializing && !state.startedAt && state.source === 'vscode' && inWorkspace(state.cwd, this.getRoots()) && (Date.now() - state.lastEventAt < 10 * 60 * 1000 || this.trackedIds.has(state.id))) {
+      if (state.initializing && !state.startedAt && this.tracks(state) && (Date.now() - state.lastEventAt < 10 * 60 * 1000 || this.trackedIds.has(state.id))) {
         await this.findLifecycle(handle, stat.size, state);
       }
       state.initializing = false;
     } finally { await handle.close(); }
   }
   snapshot(now = Date.now()) {
-    const states = [...this.files.values()].filter(s => s.source === 'vscode' && inWorkspace(s.cwd, this.getRoots()));
+    const states = [...this.files.values()].filter(s => this.tracks(s));
     const active = states.filter(s => s.status === 'running' && now - s.lastEventAt < 10 * 60 * 1000);
     for (const s of states) {
       if (!s.id) continue;
@@ -245,11 +248,12 @@ class ActivityMonitor {
       this.seenThreads.set(s.id, {
         id: s.id, cwd: s.cwd, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
         status, replyPending: pending.length > 0, replyRequestedAt: pending.length ? s.lastQuestionAt : undefined,
-        changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt
+        changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt,
+        ...(this.terminals.has(s.id) ? { surface: 'terminal' } : {})
       });
     }
     const readableIds = new Set(states.map(s => s.id));
-    const threads = [...this.seenThreads.values()].filter(t => inWorkspace(t.cwd, this.getRoots())).map(t => ({
+    const threads = [...this.seenThreads.values()].filter(t => t.surface === 'terminal' ? this.terminals.has(t.id) : inWorkspace(t.cwd, this.getRoots())).map(t => ({
       ...t, title: this.titles.get(t.id) || t.title,
       // A confirmed open turn can be silent during reasoning or a long tool.
       // Only lifecycle evidence ends it; losing its source makes it unknown.

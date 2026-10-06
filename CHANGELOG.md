@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.5 — Follow agents in the integrated terminal
+
+- Show Claude Code and Codex CLI chats started in a VS Code integrated terminal, labeled Claude Code · Terminal / Codex · Terminal.
+- Attach each chat to its window from the terminal’s process tree, not from a guessed folder; chats from other terminal apps stay hidden.
+- Click a terminal chat to bring its window forward and reveal the terminal running it.
+- Keep the row while its terminal stays open, even after the CLI exits; closing the terminal removes it.
+- Reject a reused process ID left behind by a crashed Claude session.
+
 ## 0.16.4 — Follow Claude plugin progress
 
 - Confirm unfinished Claude plugin/tool calls from matching progress events after reconnecting to their logs.

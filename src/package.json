@@ -1,8 +1,8 @@
 {
   "name": "agent-pet",
   "displayName": "Agent Pet",
-  "description": "Track Codex and Claude Code chats across VS Code workspaces with a floating macOS panel and optional pet.",
-  "version": "0.16.4",
+  "description": "See Codex and Claude Code chats from VS Code extensions and integrated terminals in one floating panel, and click one to bring its window to the front.",
+  "version": "0.16.5",
   "publisher": "merttalhayener",
   "license": "MIT",
   "engines": {
@@ -102,14 +102,19 @@
   "icon": "media/icon.png",
   "keywords": [
     "codex",
-    "claude",
     "claude-code",
-    "ai",
+    "claude",
     "agent",
-    "pet",
+    "ai",
+    "multi-window",
+    "window-switcher",
     "workspace",
+    "terminal",
+    "sessions",
+    "status",
     "macos",
-    "notifications"
+    "notifications",
+    "pet"
   ],
   "galleryBanner": {
     "color": "#171923",

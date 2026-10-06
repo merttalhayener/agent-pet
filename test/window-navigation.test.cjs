@@ -7,6 +7,7 @@ test('each window gets its own platform-generated provider routes', async () => 
  assert.equal(a.codex, 'vscode://openai.chatgpt/local/?windowId=42');
  assert.equal(b.claude, 'vscode://local.codex-pet-panel/claude?windowId=99');
  assert.notEqual(a.codex, b.codex);
+ assert.equal(a.terminal, 'vscode://local.codex-pet-panel/terminal?windowId=42');
 });
 
 test('public Claude routes preserve owning window and Marketplace authority',async()=>{

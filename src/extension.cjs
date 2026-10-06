@@ -9,6 +9,7 @@ const { createMarketplaceUpdater, installedMarketplaceVersion, installedMarketpl
 const { DesktopBridge } = require('./desktop.cjs');
 const { createSupportCenter } = require('./support.cjs');
 const { createClaudeNavigation } = require('./claude-navigation.cjs');
+const { TerminalSessions, createTerminalNavigation } = require('./terminal-sessions.cjs');
 
 const { describeWorkspace } = require('./workspace.cjs');
 
@@ -55,7 +56,7 @@ async function activate(context) {
   }
   if (process.platform === 'darwin') {
     desktop = new DesktopBridge(path.join(context.globalStorageUri.fsPath, 'desktop'), path.join(context.extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'),
-      () => ({ protocolVersion: 13, extensionVersion: context.extension.packageJSON.version, focused: Boolean(vscode.window.state?.focused), focusedAt, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
+      () => ({ protocolVersion: 14, extensionVersion: context.extension.packageJSON.version, focused: Boolean(vscode.window.state?.focused), focusedAt, extensionId, navigation: navigationLinks, workspace: describeWorkspace(vscode.workspace), selected, sleeping, selectedAt, sleepAt, activity, pets }),
       error => { void vscode.window.showErrorMessage(`Could not open the desktop pet: ${error.message}`); }, extensionId, async () => path.join((await installedMarketplacePackage(context)).extensionPath, 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'));
     context.subscriptions.push(desktop);
     if (vscode.workspace.getConfiguration('codexPet').get('desktopEnabled', true)) await desktop.start().catch(error => desktop.reportError(error));
@@ -80,10 +81,12 @@ async function activate(context) {
     await desktop.start();
     await fs.writeFile(path.join(desktop.directory, 'desktop-presentation-request'), '');
   }));
-  const monitor = new AgentActivityMonitor(path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'sessions'),
-    path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects'),
+  const codexSessions = path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'sessions');
+  const claudeHome = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+  const terminals = new TerminalSessions(() => vscode.window.terminals || [], path.join(claudeHome, 'sessions'), codexSessions);
+  const monitor = new AgentActivityMonitor(codexSessions, path.join(claudeHome, 'projects'),
     () => vscode.workspace.workspaceFolders?.filter(f => f.uri.scheme === 'file').map(f => f.uri.fsPath) || [],
-    next => { if (JSON.stringify(activity) !== JSON.stringify(next)) { activity = next; broadcast(); } }, path.join(context.globalStorageUri.fsPath, 'desktop'));
+    next => { if (JSON.stringify(activity) !== JSON.stringify(next)) { activity = next; broadcast(); } }, path.join(context.globalStorageUri.fsPath, 'desktop'), terminals);
   monitor.enabled = vscode.workspace.getConfiguration('codexPet').get('followActivity', true);
   await monitor.tick(); monitor.start(); context.subscriptions.push(monitor);
   const reload = createUpdateReload(vscode, context, async () => {
@@ -103,9 +106,11 @@ async function activate(context) {
     const route = routes[id];
     return route?.workspaceID === describeWorkspace(vscode.workspace).id && typeof route.title === 'string' ? { id, title: route.title, status: 'unknown' } : undefined;
   }, extensionId);
+  const terminalNavigation = createTerminalNavigation(vscode, terminals, extensionId);
   const support = createSupportCenter(vscode, context, desktop, () => activity, open);
   context.subscriptions.push(vscode.window.registerUriHandler({ handleUri(uri) {
     if (uri.authority === extensionId && uri.path === '/support' && /^(?:windowId=\d+)?$/.test(uri.query || '')) return support.show('connections');
+    if (uri.authority === extensionId && uri.path === '/terminal') return terminalNavigation.handleUri(uri);
     return navigation.handleUri(uri);
   } }));
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {

@@ -1,17 +1,13 @@
-# Agent Pet v0.16.4 — Follow Claude plugin progress
+# Agent Pet v0.16.5 — Follow agents in the integrated terminal
 
-Claude plugin and MCP tool calls now confirm running status from matching progress records after the monitor reconnects to an unfinished call. Tool results marked as metadata are processed as well, including results that resolve blocking questions. A message containing a tool call cannot also mark the chat completed.
+Codex CLI and Claude Code chats started in VS Code’s integrated terminal now appear alongside extension chats, labeled **Codex · Terminal** or **Claude Code · Terminal**. Click a row to bring its window forward and reveal the terminal running it.
 
-Unrelated progress and late background updates after completion or interruption do not restart the chat. Ordinary plugin calls, results and reasoning remain running until an explicit finish.
+Chats belong to their window through the terminal’s process tree, including when the agent changes folders. A row stays while its terminal is open, even after the CLI exits. Closing the terminal removes it. Agents running in other terminal apps and cloud sessions remain outside tracking.
 
-This addresses reproduced parser gaps. The externally reported session was not available for replay; Claude versions that do not write progress records still require a new assistant or tool-result record to confirm work after reload.
-
-Includes the 0.16.3 fix for Codex continuing to work while an asynchronous question remains open.
-
-After updating, finish active work and reload existing VS Code windows to load the updated tracker.
+Reload existing VS Code windows after updating to enable the updated tracker and terminal navigation.
 
 Apple Silicon · macOS 26+ · English / Türkçe · Regular release.
 
-Marketplace upload of `agent-pet-marketplace-0.16.4-darwin-arm64.vsix` is pending.
+Package: `agent-pet-marketplace-0.16.5-darwin-arm64.vsix`. Marketplace publication awaits publisher authentication.
 
-Validation: 82 Node tests pass, including synthetic plugin/reload/progress/metadata-result regressions. Two new regression cases fail against the previous parser. VSIX version, target platform, bundled sources and native signature are checked during packaging.
+Validation: 90 Node tests pass. The native dashboard self-test passes, including terminal navigation, row removal after terminal closure/disconnection, mixed providers and overflow. VSIX identity/version, regular channel, platform, packaged sources, native bundle version and signature were checked.
