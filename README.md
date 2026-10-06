@@ -4,7 +4,7 @@
 
 **Every agent, every window, one glance.**
 
-Codex in one project, Claude Code in three others, each in its own VS Code window.<br>
+Codex and Claude Code, across VS Code chats and integrated terminals.<br>
 One floating panel shows every chat’s status—click one and its window comes to the front.
 
 [![Marketplace version](https://img.shields.io/visual-studio-marketplace/v/merttalhayener.agent-pet?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet)
@@ -13,7 +13,7 @@ One floating panel shows every chat’s status—click one and its window comes 
 
 [**Install from the Marketplace**](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) · [Türkçe](README.tr.md) · [Changelog](CHANGELOG.md)
 
-<sub>**Requires** macOS 26+ on Apple Silicon · Codex and/or Claude Code running inside VS Code · English / Türkçe</sub>
+<sub>**Requires** macOS 26+ on Apple Silicon · Codex and/or Claude Code in VS Code extensions or integrated terminals · English / Türkçe</sub>
 
 <img src="docs/media/workspaces.gif" alt="A flat list of Codex and Claude Code chats becomes workspace groups, then the Mobile App group collapses" width="720">
 
@@ -27,9 +27,13 @@ Every chat from every connected VS Code window lands in the same list, whether i
 
 **Click any chat and its window comes to the front.** Codex extension chats open in their own window; Claude extension chats open in that window’s right sidebar. If a Claude chat still has an unsaved turn in an existing tab, finish it and close the tab before clicking again.
 
-**VS Code integrated terminals are supported too.** Run Codex CLI or Claude Code in an integrated terminal and its chat appears with a **Terminal** label. Clicking the row reveals the terminal running it. Ownership follows the terminal’s process tree; the row stays while that terminal is open, even after the CLI exits.
-
 Extension chats are matched to workspaces by folder, which is a good guess rather than a certainty. When it guesses wrong, right-click a chat → **Assign workspace** to pin it to the right group and destination window; **Automatic** hands the decision back.
+
+## Follow agents in the terminal
+
+Run **Codex CLI** or **Claude Code** in VS Code’s integrated terminal. Its chat appears alongside extension chats, labeled **Codex · Terminal** or **Claude Code · Terminal**, with the same status and elapsed time.
+
+**Click the row to return to that terminal in its VS Code window.** Terminal chats belong to the window running them, even when you change folders. The row stays after the CLI exits while the terminal remains open; closing the terminal removes it from the list.
 
 ## Know which chat needs you
 
@@ -50,7 +54,7 @@ Turn on **Appearance → Status labels** and the icons get words: **Stopped** fo
 
 ## Nothing to configure
 
-Codex and Claude Code already write session records on your Mac. Agent Pet reads those. There are no API keys, no hooks, no wrapper commands and no separate account—install it, and the chats you already have show up.
+Codex and Claude Code already write session records on your Mac. Agent Pet reads those. Install Agent Pet and use your agents in VS Code—there are no API keys, hooks, wrapper commands or separate accounts to configure.
 
 It reads lifecycle events only: when a turn started, finished, was interrupted, or began waiting. Transcript text is never displayed, stored or sent anywhere, and no chat data leaves your Mac.
 
@@ -97,6 +101,7 @@ Right-click the pet or the panel for everything below; the paw in the macOS menu
 | --- | --- |
 | Group chats by workspace | Click **▤**, or **Appearance → Extended · Workspaces** |
 | Jump to a chat’s window | Click the chat |
+| Return to a CLI agent’s terminal | Click its **Terminal** row |
 | Fix a chat filed under the wrong project | Right-click → **Assign workspace** |
 | See what the icons mean | **Appearance → Status labels** |
 | Move / resize | Drag the pet or panel header / drag the top-right handle |

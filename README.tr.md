@@ -4,7 +4,7 @@
 
 **Her ajan, her pencere, tek bakış.**
 
-Bir projede Codex, üç projede Claude Code, her biri ayrı VS Code penceresinde.<br>
+VS Code sohbetlerinde ve entegre terminallerinde çalışan Codex ve Claude Code.<br>
 Tek bir yüzen panel hepsinin durumunu gösterir—tıkladığın sohbetin penceresi öne gelir.
 
 [![Marketplace sürümü](https://img.shields.io/visual-studio-marketplace/v/merttalhayener.agent-pet?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet)
@@ -13,7 +13,7 @@ Tek bir yüzen panel hepsinin durumunu gösterir—tıkladığın sohbetin pence
 
 [**Marketplace’ten kur**](https://marketplace.visualstudio.com/items?itemName=merttalhayener.agent-pet) · [English](README.md) · [Sürüm notları](CHANGELOG.md)
 
-<sub>**Gereksinimler:** Apple Silicon üzerinde macOS 26+ · VS Code içinde çalışan Codex ve/veya Claude Code · English / Türkçe</sub>
+<sub>**Gereksinimler:** Apple Silicon üzerinde macOS 26+ · VS Code eklentilerinde veya entegre terminalinde çalışan Codex ve/veya Claude Code · English / Türkçe</sub>
 
 <img src="docs/media/workspaces.gif" alt="Düz sohbet listesi çalışma alanlarına ayrılıyor ve Mobile App grubu daraltılıyor" width="720">
 
@@ -27,9 +27,13 @@ Bağlı her VS Code penceresindeki her sohbet—Codex ya da Claude Code fark etm
 
 **Bir sohbete tıkladığında penceresi öne gelir.** Codex eklentisi sohbetleri kendi penceresinde; Claude eklentisi sohbetleri o pencerenin sağ kenar çubuğunda açılır. Claude sohbetinin mevcut sekmesinde tamamlanmamış bir tur varsa, önce onu bitirip sekmeyi kapat, sonra tekrar tıkla.
 
-**VS Code’un entegre terminali de desteklenir.** Entegre terminalde Codex CLI veya Claude Code çalıştırdığında sohbeti **Terminal** etiketiyle görünür. Satıra tıkladığında ajanı çalıştıran terminal açılır. Sohbetin hangi pencereye ait olduğu terminalin süreç ağacından belirlenir; CLI kapansa bile terminal açık kaldığı sürece satır listede kalır.
-
 Eklenti sohbetleri çalışma alanlarıyla klasör üzerinden eşleşir; bu kesin bir bilgi değil, isabetli bir tahmindir. Yanlış tahmin ettiğinde sohbete sağ tıkla → **Çalışma alanı ata** ile hem doğru gruba hem doğru pencereye sabitle; **Otomatik** kararı geri devreder.
+
+## Terminaldeki ajanları da takip et
+
+VS Code’un entegre terminalinde **Codex CLI** veya **Claude Code** çalıştır. Sohbeti, eklenti sohbetleriyle aynı listede **Codex · Terminal** veya **Claude Code · Terminal** etiketiyle görünür; durumu ve geçen süresi aynı şekilde takip edilir.
+
+**Satıra tıkladığında terminalin bulunduğu VS Code penceresine dönersin.** Terminal sohbetleri, klasör değiştirsen bile onları çalıştıran pencereye bağlı kalır. CLI kapandıktan sonra terminal açık kaldığı sürece satır listede durur; terminali kapattığında listeden kaldırılır.
 
 ## Hangi sohbetin seni beklediğini gör
 
@@ -50,7 +54,7 @@ Codex çalışmayı durdurmadan soru sorabilir. O sohbet halkası ve sayacıyla 
 
 ## Ayar yapmana gerek yok
 
-Codex ve Claude Code zaten Mac’ine oturum kayıtları yazıyor. Agent Pet onları okur. API anahtarı, hook, sarmalayıcı komut ya da ayrı bir hesap yok—kur, mevcut sohbetlerin listede belirsin.
+Codex ve Claude Code zaten Mac’ine oturum kayıtları yazıyor. Agent Pet onları okur. Agent Pet’i kur ve ajanlarını VS Code içinde kullan; ayarlaman gereken API anahtarı, hook, sarmalayıcı komut veya ayrı bir hesap yok.
 
 Yalnızca yaşam döngüsü olaylarını okur: bir turun ne zaman başladığını, bittiğini, kesildiğini ya da beklemeye geçtiğini. Sohbet metni hiçbir zaman gösterilmez, saklanmaz, bir yere gönderilmez; hiçbir sohbet verisi Mac’inden çıkmaz.
 
@@ -97,6 +101,7 @@ Aşağıdakilerin hepsi için pete veya panele sağ tıkla; pet gizliyken aynı 
 | --- | --- |
 | Sohbetleri çalışma alanına göre grupla | **▤** veya **Görünüm → Genişletilmiş · Çalışma alanları** |
 | Sohbetin penceresine git | Sohbete tıkla |
+| CLI ajanının terminaline dön | **Terminal** etiketli satırına tıkla |
 | Yanlış projeye düşmüş sohbeti düzelt | Sağ tıkla → **Çalışma alanı ata** |
 | Simgelerin anlamını gör | **Görünüm → Durum yazıları** |
 | Taşı / boyutlandır | Peti veya panel başlığını / sağ üst tutamacı sürükle |
