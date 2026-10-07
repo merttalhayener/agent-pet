@@ -7,6 +7,8 @@ const vm = require('node:vm');
 for (const withCodex of [true, false]) test(`Desktop activation and reopening with Codex installed: ${withCodex}`, async () => {
   const commands = new Map(), starts = [], writes = [], state = new Map(), supportTabs = [], terminalLinks = [];
   let uriHandler;
+  let quickPick = { id: 'fern' }, choices;
+  const customCatalog = [];
   const entry = { show() { this.visible = true; }, dispose() {} };
   const context = {
     extension: { id: 'merttalhayener.agent-pet', packageJSON: {version:'0.16.0'} }, extensionPath: '/test/extension', globalStorageUri: { fsPath: '/test/storage' }, subscriptions: [],
@@ -15,7 +17,7 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   const vscode = {
     StatusBarAlignment: { Right: 2 },
     extensions: { getExtension: () => withCodex ? ({ extensionPath: '/test/codex' }) : undefined },
-    window: { registerUriHandler: handler => { uriHandler=handler; return { dispose() {} }; }, createStatusBarItem: () => entry, showQuickPick: async () => ({ id: 'fern' }), registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
+    window: { registerUriHandler: handler => { uriHandler=handler; return { dispose() {} }; }, createStatusBarItem: () => entry, showQuickPick: async items => { choices = items; return quickPick; }, registerWebviewViewProvider: () => assert.fail('Legacy view registered') },
     commands: { registerCommand: (id, fn) => { commands.set(id, fn); return { dispose() {} }; }, executeCommand: () => assert.fail('Unexpected VS Code UI command') },
     workspace: { workspaceFolders: [], getConfiguration: () => ({ get: (key, fallback) => key === 'desktopEnabled' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose() {} }) }
   };
@@ -26,14 +28,15 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
     async write() {}
   }
   class AgentActivityMonitor { start() {} async tick() {} }
-  const dependencies = { vscode, './support.cjs': {createSupportCenter:()=>({start(){},show(tab){supportTabs.push(tab);},dispose(){}})}, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './terminal-sessions.cjs': { TerminalSessions: class {}, createTerminalNavigation: () => ({ handleUri: async uri => terminalLinks.push(uri.query) }) }, './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { mkdir: async () => {}, writeFile: async file => writes.push(file), readdir: async () => assert.fail('External pet artwork must not be discovered') } };
+  const dependencies = { vscode, './support.cjs': {createSupportCenter:()=>({start(){},show(tab){supportTabs.push(tab);},dispose(){}})}, './marketplace-migration.cjs': { prepareMarketplaceMigration: async () => true }, './update-reload.cjs': { createUpdateReload: () => ({ start() {}, dispose() {} }) }, './marketplace-updater.cjs': { installedMarketplaceVersion: async () => '0.11.0', createMarketplaceUpdater: () => ({ start() {}, dispose() {}, check: async () => {} }) }, './window-navigation.cjs': { resolveWindowNavigation: async () => ({ codex: 'vscode://openai.chatgpt/local/?windowId=2', claude: 'vscode://local.codex-pet-panel/claude?windowId=2' }) }, './workspace.cjs': require('../src/workspace.cjs'), './claude-navigation.cjs': require('../src/claude-navigation.cjs'), './antigravity-activity.cjs': require('../src/antigravity-activity.cjs'), './antigravity-navigation.cjs': require('../src/antigravity-navigation.cjs'), './terminal-sessions.cjs': { TerminalSessions: class {}, createTerminalNavigation: () => ({ handleUri: async uri => terminalLinks.push(uri.query) }) }, './desktop.cjs': { DesktopBridge }, './agent-activity.cjs': { AgentActivityMonitor }, 'node:fs/promises': { mkdir: async () => {}, writeFile: async file => writes.push(file), readdir: async () => assert.fail('External pet artwork must not be discovered') } };
+  dependencies['./custom-pets.cjs'] = { listCustomPets: async () => customCatalog };
   const sandbox = { module: { exports: {} }, require: name => dependencies[name] || require(name), process: { platform: 'darwin', env: {} } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/extension.cjs'), 'utf8'), sandbox);
   const api = await sandbox.module.exports.activate(context);
   assert.deepEqual(Array.from(api.availablePets), ['agent-pet','miso','fern']);
   assert.ok(snapshot().pets.every(p => p.file === ''));
   assert.equal(snapshot().selected, 'agent-pet');
-  assert.equal(snapshot().protocolVersion, 14);
+  assert.equal(snapshot().protocolVersion, 16);
   for (const command of ['agentPet.getStarted','agentPet.connections','agentPet.diagnostics']) await commands.get(command)();
   await uriHandler.handleUri({authority:'merttalhayener.agent-pet',path:'/support',query:'windowId=42'});
   assert.deepEqual(supportTabs,['setup','connections','diagnostics','connections']);
@@ -50,4 +53,15 @@ for (const withCodex of [true, false]) test(`Desktop activation and reopening wi
   await commands.get('codexPet.choose')();
   assert.equal(snapshot().selected, 'fern');
   assert.equal(state.get('pet'), 'fern');
+  await commands.get('agentPet.addCustomPet')();
+  assert.equal(writes.at(-1), '/test/storage/desktop/desktop-add-pet-request');
+  assert.deepEqual(starts, [true, true, true]);
+  const custom = { id: 'custom-11111111-1111-4111-8111-111111111111', name: 'Luna', file: '' };
+  customCatalog.push(custom); quickPick = { id: custom.id };
+  await commands.get('codexPet.choose')();
+  assert.equal(snapshot().selected, custom.id); assert.equal(state.get('pet'), custom.id);
+  assert.ok(choices.some(item => item.label === 'Luna'));
+  quickPick = { id: 'add-custom-pet' }; await commands.get('codexPet.choose')();
+  assert.deepEqual(starts, [true, true, true, true]);
+  assert.equal(snapshot().selected, custom.id, 'Opening the editor keeps the saved selection');
 });

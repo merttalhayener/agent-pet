@@ -3,9 +3,10 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { installedMarketplacePackage } = require('./marketplace-updater.cjs');
+const { EXTENSION_ID, antigravityConnection } = require('./antigravity-activity.cjs');
 const CLIENT = /^client-\d+-[a-f0-9]+\.json$/;
 const TABS = new Set(['setup', 'connections', 'diagnostics']);
-const AGENTS = [['openai.chatgpt', 'Codex'], ['anthropic.claude-code', 'Claude Code']];
+const AGENTS = [['openai.chatgpt', 'Codex'], ['anthropic.claude-code', 'Claude Code'], [EXTENSION_ID, 'Antigravity']];
 const recent = (at, now, limit) => Number.isFinite(at) && at <= now + 5000 && now - at < limit;
 async function readJSON(file) {
   const stat = await fs.stat(file);
@@ -68,6 +69,7 @@ function createSupportCenter(vscode, context, desktop, getActivity, open) {
       try { await fs.access(root, fs.constants.R_OK); return { agent: agents[i].name, status: 'readable' }; }
       catch (e) { return { agent: agents[i].name, status: e.code === 'ENOENT' ? 'missing' : 'unreadable' }; }
     }));
+    records.push({ agent: 'Antigravity', status: antigravityConnection(vscode) ? 'readable' : agents[2].installed ? 'unreadable' : 'missing' });
     return { generatedAt: now, language: health?.language === 'tr' ? 'tr' : 'en', tab: currentTab,
       completed: context.globalState.get('setupCompleted', false),
       extension: { loaded: context.extension.packageJSON.version, installed: installed.version },
@@ -91,7 +93,7 @@ function createSupportCenter(vscode, context, desktop, getActivity, open) {
       else if (op === 'choosePet') await vscode.commands.executeCommand('codexPet.choose');
       else if (op === 'notifications' && desktop) { await open(); await fs.writeFile(path.join(directory, 'desktop-notifications-request'), ''); }
       else if (op === 'notificationSettings') await vscode.env.openExternal(vscode.Uri.parse('x-apple.systempreferences:com.apple.Notifications-Settings.extension'));
-      else if (op === 'codex' || op === 'claude') await vscode.commands.executeCommand('workbench.extensions.search', '@id:' + AGENTS[op === 'codex' ? 0 : 1][0]);
+      else if (['codex', 'claude', 'antigravity'].includes(op)) await vscode.commands.executeCommand('workbench.extensions.search', '@id:' + AGENTS[['codex', 'claude', 'antigravity'].indexOf(op)][0]);
       else if (op === 'openFolder') await vscode.commands.executeCommand('workbench.action.files.openFolder');
       else if (op === 'settings') await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:' + context.extension.id);
       else if (op === 'updates') await vscode.commands.executeCommand('codexPet.checkForUpdates');

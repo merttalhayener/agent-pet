@@ -194,3 +194,34 @@ test('async questions preserve running through partial replies; blocking questio
   ask('a');record('event_msg',{type:'turn_aborted'},now+1);assert.equal(m.snapshot().threads[0].status,'idle');assert.equal(m.snapshot().threads[0].replyPending,false);
  } finally {m.dispose();}
 });
+
+test('attention timestamps follow the oldest unanswered request while notifications follow the latest', () => {
+ const {applyEvent}=require('../src/activity.cjs'),now=Date.now();
+ const m=new ActivityMonitor('',()=>['/work/app'],()=>{}),s={id:'attention',cwd:'/work/app',source:'vscode',liveConfirmed:true};
+ m.files.set('sample',s);
+ const apply=(type,payload,at)=>applyEvent(s,{type,payload,timestamp:new Date(at).toISOString()});
+ const ask=(id,at)=>apply('response_item',{type:'function_call',name:'functions.request_user_input_async',call_id:id,arguments:'{"questions":[{}]}'},at);
+ const answer=(id,at)=>apply('event_msg',{type:'user_message',message:'<send_user_message_question_reply>'+JSON.stringify([{questionItemId:JSON.stringify(['request_user_input_async',id,0]),answer:'yes'}])+'</send_user_message_question_reply>'},at);
+ try {
+  apply('event_msg',{type:'task_started'},now);ask('first',now+1000);ask('second',now+2000);
+  ask('first',now+2500);
+  let row=m.snapshot().threads[0];assert.equal(row.waitingSince,now+1000);assert.equal(row.replyRequestedAt,now+2000);assert.equal(row.statusReason,'question_pending');
+  answer('first',now+3000);row=m.snapshot().threads[0];assert.equal(row.waitingSince,now+2000);
+  apply('event_msg',{type:'task_complete'},now+4000);row=m.snapshot().threads[0];assert.equal(row.waitingSince,now+2000);assert.equal(row.statusReason,'awaiting_reply');
+  answer('second',now+5000);row=m.snapshot().threads[0];assert.equal(row.waitingSince,undefined);assert.equal(row.statusReason,'turn_completed');
+ } finally {m.dispose();}
+});
+
+test('status reasons distinguish reconnecting, unavailable records and recorded outcomes', () => {
+ const m=new ActivityMonitor('',()=>['/work/app'],()=>{}),now=Date.now();
+ const s={id:'reason',cwd:'/work/app',source:'vscode',status:'running',changedAt:now,startedAt:now,lastEventAt:now,liveConfirmed:false};
+ m.files.set('sample',s);
+ try {
+  assert.equal(m.snapshot().threads[0].statusReason,'awaiting_activity');
+  s.liveConfirmed=true;assert.equal(m.snapshot().threads[0].statusReason,'turn_in_progress');
+  m.files.delete('sample');assert.equal(m.snapshot().threads[0].statusReason,'source_unavailable');
+  m.files.set('sample',s);s.status='idle';s.finishedAt=now;assert.equal(m.snapshot().threads[0].statusReason,'turn_interrupted');
+  s.status='failed';assert.equal(m.snapshot().threads[0].statusReason,'turn_failed');
+  s.status='ready';assert.equal(m.snapshot().threads[0].statusReason,'turn_completed');
+ } finally {m.dispose();}
+});

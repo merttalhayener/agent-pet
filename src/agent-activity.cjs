@@ -2,12 +2,14 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { ActivityMonitor } = require('./activity.cjs');
 const { ClaudeActivityMonitor } = require('./claude-activity.cjs');
+const { AntigravityActivityMonitor } = require('./antigravity-activity.cjs');
 class AgentActivityMonitor {
-  constructor(codexRoot, claudeRoot, getRoots, onStatus, directory, terminals) {
+  constructor(codexRoot, claudeRoot, getRoots, onStatus, directory, terminals, options = {}) {
     this.directory = directory; this.terminals = terminals;
     this.statuses = new Map(); this.onStatus = onStatus;
     const update = agent => status => { this.statuses.set(agent, status); this.publish(); };
-    this.monitors = [new ActivityMonitor(codexRoot, getRoots, update('codex'), terminals), new ClaudeActivityMonitor(claudeRoot, getRoots, update('claude'), terminals)];
+    this.monitors = [new ActivityMonitor(codexRoot, getRoots, update('codex'), terminals), new ClaudeActivityMonitor(claudeRoot, getRoots, update('claude'), terminals),
+      new AntigravityActivityMonitor(getRoots, update('antigravity'), options.antigravity)];
   }
   set enabled(value) { for (const m of this.monitors) m.enabled = value; }
   start() { void this.tick(); this.timer = setInterval(() => void this.tick(), 1500); }

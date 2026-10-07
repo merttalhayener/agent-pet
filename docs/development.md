@@ -15,7 +15,11 @@
 
 The extension reads local Codex and Claude Code session records and the local thread index, then exchanges chat IDs, titles, timestamps, and statuses with its helper. It does not send these records to a server. The project adds no telemetry or network-based tracking.
 
-Byte, Miso, and Fern are original geometric artwork drawn by `src/native/OriginalPets.swift`, under MIT. The native app uses a fixed internal catalog and never loads character paths from window snapshots. Old external selections fall back to Byte; newer selections remain usable even when old extension hosts publish legacy pet catalogs. Documentation media is rendered from this same code using sample conversations.
+Byte, Miso, and Fern are original geometric artwork drawn by `src/native/OriginalPets.swift`, under MIT. The native app combines this built-in catalog with explicitly imported local custom pets and never loads character paths from window snapshots. Old external selections fall back to Byte; newer selections remain usable even when old extension hosts publish legacy pet catalogs. Documentation media is rendered from this same code using sample conversations.
+
+`CustomPets.swift` owns `<state-directory>/custom-pets/library.json` and immutable `<custom-ID>/<revision>/<pose>.png` files. Imports validate PNG content, file size (10 MB), dimensions (4096 × 4096) and a single frame, then normalize to at most 1024 pixels while preserving alpha. Saves write a full new revision before atomically committing the index; failed imports and cancelled editors preserve the old pet. IDs/revisions must be UUIDs and pose filenames come from a fixed enum. Missing optional artwork falls back to normal; missing normal art falls back to Byte. A damaged index blocks writes and preserves saved files. Custom selection uses the existing timestamp ordering and native preferences. The extension reads only ID/name metadata and can request the native editor through `desktop-add-pet-request`; no artwork paths are accepted from clients.
+
+`CustomPetEditor.swift` provides the native English/Türkçe editor, per-pose preview, size/mirror/motion settings and confirmed deletion. Custom pet size multiplies the existing global pet size. Motion respects macOS Reduce Motion. The dashboard self-test exercises imports, persistence, editing, cancellation, fallback, drawing, menu selection, failed writes and deletion in a temporary library without modifying the user's library. Add `--custom-pet-previews` to `node test/native-dashboard.cjs` to show and capture the English/Türkçe test editors; window capture requires macOS screen recording access.
 
 ## Build from source
 
@@ -27,7 +31,7 @@ python3 scripts/build-native.py
 python3 build.py
 ```
 
-The package is written to `artifacts/agent-pet-marketplace-0.16.6-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
+The package is written to `artifacts/agent-pet-marketplace-0.19.0-darwin-arm64.vsix`. The Swift executable and generated artifacts are excluded from Git; the native executable is included in the VSIX.
 
 Run the activity monitor tests:
 
@@ -184,6 +188,25 @@ The adapter retains only outstanding tool IDs, not arguments or results. A `prog
 
 The progress envelope and parent ID relationship were checked in the installed Claude Code 2.1.273 implementation. Not every Claude version persists these events. Without newly appended assistant, result or matching progress records, historical unfinished work remains unconfirmed after reload. The external feedback session was unavailable; synthetic replay verifies the parser cases, not that specific user's session.
 
+Tool results now confirm activity only when their IDs match outstanding calls in an unfinished foreground turn. Late results after completion, interruption or failure, duplicate results, and results from a previous turn do not restart work or change its duration. Metadata results still resolve matching blocking questions; a subagent hand-back text record alone does not start a turn. If the parent actually resumes with a new assistant message, the adapter publishes a newer start and change timestamp so the native panel can supersede its retained completion. Records timestamped before the latest lifecycle boundary cannot overwrite it, and accepted activity timestamps never move backwards. A result found in a log tail without its corresponding call remains unconfirmed; completion still requires explicit lifecycle evidence.
+
 ## Integrated terminal agents (0.16.5)
 
 Protocol 14 adds the terminal surface and a window-specific terminal route. `src/terminal-sessions.cjs` maps integrated-terminal shell process IDs to descendant agent processes. Claude session descriptors are checked against process start times to reject reused PIDs; Codex rollout files are discovered from its open file descriptors. Ownership lasts until the terminal closes and does not depend on the agent’s cwd. Other terminal apps are excluded. Clicking a row validates its thread ID, refreshes ownership and reveals its terminal in the owning window.
+
+
+## Status explanations and attention navigation (0.17.0)
+
+Protocol 15 adds optional `statusReason` and `waitingSince` to chat records. The adapters retain only request timestamps alongside existing pending-call metadata. `waitingSince` is the oldest unresolved request; `replyRequestedAt` remains the latest new request for notification deduplication. Answering part of a question does not reset its wait; replaying an outstanding call does not announce a new question. Claude now records the actual question time rather than relying on the turn's change timestamp.
+
+The helper distinguishes source availability, reconnect confirmation, window disconnection and disabled tracking. These explanations supplement lifecycle state; silence does not complete work. Older snapshots remain readable with generic explanations and a question/change timestamp fallback. The attention shortcut uses the existing validated Codex, Claude and terminal routes, honors the workspace filter, and cycles by oldest waiting timestamp with stable ID ties. It does not change visibility, filters, pinned ordering or notification state. Global shortcuts use distinct Carbon event IDs; a registration conflict leaves the menu action available.
+
+## Antigravity adapter (0.18.0)
+
+Protocol 16 adds an optional window-specific `antigravity` navigation route. `antigravity-activity.cjs` passively reads `port` and `csrfToken` from the active official `google.google-antigravity` extension exports. It never activates the agent merely for observation. A fixed HTTP endpoint on `127.0.0.1` subscribes to `LanguageServerService/JetboxSubscribeToSummaries` using Connect JSON envelopes. All initial batches and later updates/deletes are consumed; fragmented frames, stream termination, token rotation and workspace-root changes are handled. No remote host, redirect, mutating RPC, configuration edits, hooks or bridge installs are used. CSRF tokens are kept in memory and excluded from snapshots and reports.
+
+Each summary is reduced immediately to a namespaced ID, title, file workspace path, lifecycle timestamps and outstanding-request timestamps. Transcript and tool payloads are not retained. Frames are limited to 4 MiB, workspace candidates to 32, waiting steps to 64, and retained provider states to 1000. Subagents with parent metadata, archived/cloud records, malformed IDs/timestamps and foreign workspaces are excluded. Old running summaries need newer activity before being confirmed; outstanding waiting steps are explicit request evidence on attachment. Interruption wins over active children. An idle summary is completed only when it has a prior user turn and no background/child work; silence does not finish it. Older lifecycle updates cannot resurrect a completed parent. New parent work publishes a newer start so native reconciliation can supersede completion.
+
+`antigravity-navigation.cjs` validates the session UUID and owning route, rechecks local activity, then activates the official extension on an explicit row click and calls `antigravity.openConversation(session, cwd)`. URI query strings cannot supply a workspace path or arbitrary command. Missing/malformed routes cannot fall back to a Codex chat. The native helper identifies agents by namespaced IDs and includes Antigravity in its existing counters, waiting notifications, filters and attention navigation.
+
+Integration metadata, service descriptors and command signatures were verified against the installed official Google Antigravity VS Code extension 1.7.0 and its running local backend. Real read-only subscription checks confirmed multiple initial batches. Synthetic lifecycle tests cover waiting, partial replies, completion, interruption, parent resume, reconnects, token rotation and source loss; local HTTP tests exercise Connect framing and errors. Native self-tests cover namespaces, exact window routing, waiting navigation, invalid routes and display labels. Standalone Antigravity, IDE, CLI and remotely configured backends are not supported. The internal local API can change; incompatible or unreachable sources withdraw active evidence.

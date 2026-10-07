@@ -12,6 +12,31 @@ enum PetLanguage: String, CaseIterable {
         "Stopped": "Durduruldu",
         "Running · question pending": "Çalışıyor · açık soru var",
         "Question pending": "Yanıtlanmamış soru var",
+        "Wait %@": "Yanıt %@",
+        "Waiting for your reply: %@": "Yanıtın bekleniyor: %@",
+        "Turn time: %@": "Tur süresi: %@",
+        "Last activity %@ ago": "Son etkinlik %@ önce",
+        "Open next waiting chat": "Sıradaki yanıt bekleyen sohbeti aç",
+        "Next waiting chat with ⌃⌥⌘N": "⌃⌥⌘N ile sıradaki yanıt bekleyen sohbete git",
+        "Next-chat shortcut in use; use this menu.": "Sohbet kısayolu başka uygulamada kullanımda; bu menüyü kullan.",
+        "No chats waiting in this workspace.": "Bu çalışma alanında yanıt bekleyen sohbet yok.",
+        "Reconnecting": "Yeniden bağlanıyor",
+        "Source unavailable": "Kayıt okunamıyor",
+        "Disconnected": "Bağlantı kesildi",
+        "Tracking off": "Takip kapalı",
+        "The agent is working; no completion has been recorded.": "Ajan çalışıyor; tamamlanma kaydı henüz gelmedi.",
+        "The agent is working and has an unanswered question.": "Ajan çalışmaya devam ediyor ve yanıtlanmamış bir sorusu var.",
+        "The agent needs your reply to continue.": "Ajan devam etmek için yanıtını bekliyor.",
+        "The turn has an explicit completion record.": "Turun tamamlandığı doğrulandı.",
+        "The agent reports that its work has finished.": "Ajan, çalışmasının bittiğini bildiriyor.",
+        "Background tasks or child agents are still active.": "Arka plan görevleri veya alt ajanlar hâlâ çalışıyor.",
+        "The turn was interrupted.": "Tur yarıda kesildi.",
+        "The turn ended with an error.": "Tur bir hatayla sona erdi.",
+        "Waiting for fresh activity after reconnecting.": "Yeniden bağlandıktan sonra yeni etkinlik doğrulaması bekleniyor.",
+        "The local activity record is unavailable.": "Yerel etkinlik kaydı şu an okunamıyor.",
+        "The VS Code window is disconnected; current activity is unknown.": "VS Code penceresinin bağlantısı kesildi; güncel etkinlik bilinmiyor.",
+        "Activity tracking is turned off in this workspace.": "Bu çalışma alanında etkinlik takibi kapalı.",
+        "There is no confirmed turn status yet.": "Turun durumu henüz doğrulanamadı.",
         "Connections & diagnostics": "Bağlantılar ve tanılama",
         "VS Code windows connected": "VS Code penceresi bağlı",
         "VS Code disconnected": "VS Code bağlantısı kesildi",
@@ -70,6 +95,36 @@ enum PetLanguage: String, CaseIterable {
         "Completion sound and animation are paused while hidden.": "Gizliyken bitiş sesi ve animasyonu da duraklatılır.",
         "Return to VS Code": "VS Code'a dön",
         "Pets": "Petler",
+        "Add custom pet…": "Kendi petini ekle…",
+        "Add custom pet": "Kendi petini ekle",
+        "Edit custom pet…": "Özel peti düzenle…",
+        "Edit custom pet": "Özel peti düzenle",
+        "Normal image unavailable; click to repair or delete this pet.": "Normal görsel okunamıyor; bu peti düzeltmek veya silmek için tıkla.",
+        "Normal / idle": "Normal / boşta",
+        "Completed / happy": "Tamamlandı / mutlu",
+        "Sleeping": "Uyuyor",
+        "Pet name": "Pet adı",
+        "Your companion’s name": "Petinin adı",
+        "One normal PNG is enough. Other poses are optional and fall back to normal.": "Tek bir normal PNG yeterli. Diğer pozlar isteğe bağlıdır; eksikse normal poz kullanılır.",
+        "Choose PNG…": "PNG seç…",
+        "Clear": "Temizle",
+        "Preview": "Önizleme",
+        "Flip horizontally": "Yatay çevir",
+        "Gentle movement": "Hafif hareket",
+        "Use transparent PNGs with matching canvas sizes and alignment. Images stay on this Mac.": "Aynı tuval boyutunda ve hizasında şeffaf PNG'ler kullan. Görseller bu Mac'te kalır.",
+        "Image selected": "Görsel seçildi",
+        "Required": "Zorunlu",
+        "Uses normal pose": "Normal pozu kullanır",
+        "Save pet": "Peti kaydet",
+        "Cancel": "Vazgeç",
+        "Delete pet…": "Peti sil…",
+        "Delete %@?": "%@ silinsin mi?",
+        "Delete": "Sil",
+        "This removes this pet and its imported images from this Mac.": "Bu pet ve içe aktarılan görselleri bu Mac'ten silinir.",
+        "Choose a PNG up to 10 MB and 4096 × 4096 pixels.": "En fazla 10 MB ve 4096 × 4096 piksel boyutunda PNG seç.",
+        "Enter a pet name of 1–60 characters.": "1–60 karakter uzunluğunda bir pet adı gir.",
+        "Choose a normal pose before saving.": "Kaydetmeden önce normal pozu seç.",
+        "The custom pet library could not be read. Your saved files have been kept.": "Özel pet kütüphanesi okunamadı. Kayıtlı dosyaların korundu.",
         "Wake up": "Uyandır",
         "Sleep": "Uyut",
         "Appearance": "Görünüm",
@@ -119,11 +174,12 @@ struct DashboardEntry {
 struct ThreadActivity: Codable, Equatable {
     let id: String
     var isClaude: Bool { id.hasPrefix("claude:") }
-    var sessionID: String { isClaude ? String(id.dropFirst(7)) : id }
+    var isAntigravity: Bool { id.hasPrefix("antigravity:") }
+    var sessionID: String { isClaude ? String(id.dropFirst(7)) : isAntigravity ? String(id.dropFirst(12)) : id }
     var isTerminal: Bool { surface == "terminal" }
-    var agentName: String { (isClaude ? "Claude Code" : "Codex") + (isTerminal ? " · Terminal" : "") }
+    var agentName: String { (isClaude ? "Claude Code" : isAntigravity ? "Antigravity" : "Codex") + (isTerminal ? " · Terminal" : "") }
     let title: String
-    let status: String
+    var status: String
     let changedAt: Double
     let lastEventAt: Double
     var startedAt: Double? = nil
@@ -133,7 +189,13 @@ struct ThreadActivity: Codable, Equatable {
     var replyPending: Bool? = nil
     var replyRequestedAt: Double? = nil
     var surface: String? = nil
+    var waitingSince: Double? = nil
+    var statusReason: String? = nil
     var needsReply: Bool { status == "waiting" || (status == "running" && replyPending == true) }
+    var waitingStartedAt: Double? {
+        guard needsReply else { return nil }
+        return [waitingSince, replyRequestedAt, status == "waiting" ? changedAt : nil].compactMap { $0 }.first { $0.isFinite && $0 > 0 }
+    }
 }
 struct Activity: Codable {
     let status: String
@@ -141,7 +203,7 @@ struct Activity: Codable {
     let threads: [ThreadActivity]?
     let trackingDisabled: Bool?
 }
-struct WindowNavigation: Codable { let codex: String; let claude: String; var terminal: String? = nil }
+struct WindowNavigation: Codable { let codex: String; let claude: String; var terminal: String? = nil; var antigravity: String? = nil }
 struct Snapshot: Codable {
     var extensionVersion: String? = nil
     var clientId: String? = nil
@@ -195,16 +257,17 @@ final class DashboardView: NSView {
     }
     var chatPanelVisible: Bool { owner?.panelHidden != true }
     var petVisible: Bool { owner?.panelOnly != true }
+    var petScale: CGFloat { (owner?.petScale ?? 1) * (owner?.customPets.pet(owner?.selected ?? "")?.scale ?? 1) }
     var headerControlsWidth: CGFloat { petVisible ? 73 : 99 }
     var collapsed: Bool { owner?.collapsed ?? false }
-    var logicalWidth: CGFloat { if !chatPanelVisible { return max(220, 112 * (owner?.petScale ?? 1) + 98) }; return collapsed ? (petVisible ? max(180, 112 * (owner?.petScale ?? 1) + 58) : 240) : (owner?.grouped == true ? 400 : 340) }
+    var logicalWidth: CGFloat { if !chatPanelVisible { return max(220, 112 * petScale + 98) }; return collapsed ? (petVisible ? max(180, 112 * petScale + 58) : 240) : max(petVisible ? 112 * petScale + 58 : 0, owner?.grouped == true ? 400 : 340) }
     var visibleCount: Int { !chatPanelVisible || collapsed ? 0 : min(owner?.grouped == true ? 12 : 8, entries.count) }
     var cardHeight: CGFloat { if !chatPanelVisible { return 0 }; return collapsed ? 32 : CGFloat(max(1, visibleCount)) * rowHeight + 40 }
-    var desiredHeight: CGFloat { max(1, cardHeight + (petVisible ? 121 * (owner?.petScale ?? 1) + 7 : 0)) }
+    var desiredHeight: CGFloat { max(1, cardHeight + (petVisible ? 121 * petScale + 7 : 0)) }
     var collapseRect: NSRect { guard chatPanelVisible else { return .zero }; return NSRect(x: bounds.maxX - (petVisible ? 29 : 55), y: cardHeight - 28, width: 24, height: 24) }
     var groupingRect: NSRect { guard chatPanelVisible else { return .zero }; return NSRect(x: bounds.maxX - (petVisible ? 55 : 81), y: cardHeight - 28, width: 24, height: 24) }
     var resizeHandleRect: NSRect { NSRect(x: bounds.maxX - 28, y: bounds.maxY - 28, width: 26, height: 26) }
-    var spriteRect: NSRect { guard petVisible else { return .zero }; let s = owner?.petScale ?? 1; return NSRect(x: (bounds.width - 112 * s) / 2, y: cardHeight + 5, width: 112 * s, height: 121 * s) }
+    var spriteRect: NSRect { guard petVisible else { return .zero }; let s = petScale; return NSRect(x: (bounds.width - 112 * s) / 2, y: cardHeight + 5, width: 112 * s, height: 121 * s) }
     override var isOpaque: Bool { false }
     override func resetCursorRects() {
         super.resetCursorRects()
@@ -257,15 +320,18 @@ final class DashboardView: NSView {
             label(status == "failed" || status == "waiting" ? "!" : status == "unknown" ? "?" : "–", in: NSRect(x: center.x - 5, y: center.y - 7, width: 10, height: 15), size: 10, color: color, centered: true)
         }
     }
-    func drawBuiltInPet() {
+    func drawPet() {
         guard let owner else { return }
+        let reacting = owner.reactionUntil > Date.timeIntervalSinceReferenceDate || owner.celebrationUntil > Date.timeIntervalSinceReferenceDate
+        let reducedMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if owner.customPets.draw(id: owner.selected, in: spriteRect, tick: owner.tick, status: owner.overallStatus,
+                                 sleeping: owner.sleeping, reacting: reacting, reducedMotion: reducedMotion) { return }
         OriginalPets.draw(id: owner.selected, in: spriteRect, tick: owner.tick, status: owner.overallStatus,
-                          sleeping: owner.sleeping, reacting: owner.reactionUntil > Date.timeIntervalSinceReferenceDate || owner.celebrationUntil > Date.timeIntervalSinceReferenceDate,
-                          look: lookOffset, reducedMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+                          sleeping: owner.sleeping, reacting: reacting, look: lookOffset, reducedMotion: reducedMotion)
     }
     override func draw(_ dirtyRect: NSRect) {
         NSColor.clear.setFill(); bounds.fill(using: .copy)
-        if petVisible { drawBuiltInPet() }
+        if petVisible { drawPet() }
         if chatPanelVisible {
             let card = NSBezierPath(roundedRect: NSRect(x: 0.5, y: 0.5, width: bounds.width - 1, height: cardHeight - 1), xRadius: 13, yRadius: 13)
             NSColor(calibratedWhite: 0.10, alpha: owner?.listOpacity ?? 0.91).setFill(); card.fill()
@@ -274,7 +340,7 @@ final class DashboardView: NSView {
             let summary = String(format: text(waiting > 0 ? "%d running · %d waiting" : rows.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, waiting > 0 ? waiting : rows.count)
             let celebrating = (owner?.celebrationUntil ?? 0) > Date.timeIntervalSinceReferenceDate
             let navigationNotice = (owner?.navigationNoticeUntil ?? 0) > Date.timeIntervalSinceReferenceDate
-            label(navigationNotice ? text("Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : (owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? text("Filtered") : text(owner?.grouped == true ? "Workspaces" : "Chats")) + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
+            label(navigationNotice ? text(owner?.navigationNoticeText ?? "Open this workspace in VS Code, then try again.") : collapsed ? summary : celebrating ? (owner?.completionText ?? text("Completed")) : (owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? text("Filtered") : text(owner?.grouped == true ? "Workspaces" : "Chats")) + " · " + summary, in: NSRect(x: 12, y: cardHeight - 23, width: bounds.width - headerControlsWidth, height: 17), size: 10, color: navigationNotice ? .systemOrange : celebrating ? .systemGreen : NSColor.white.withAlphaComponent(0.65))
             label(collapsed ? "⌄" : "⌃", in: collapseRect, size: 16, color: .white, centered: true)
             label("▤", in: groupingRect, size: 16, color: owner?.grouped == true ? .systemTeal : .white, centered: true)
             clampScroll()
@@ -294,9 +360,12 @@ final class DashboardView: NSView {
                 indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
                 let size = owner?.textSize ?? 11.5
                 let pinned = owner?.pinned.contains(thread.id) ?? false
-                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 118, height: size + 5), size: size, color: .white)
-                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 118, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
-                label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 80, y: rect.midY - 7, width: 48, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
+                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: .white)
+                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 132, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : thread.isAntigravity ? NSColor.systemBlue.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
+                label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
+                if thread.needsReply {
+                    label(String(format: text("Wait %@"), DesktopPet.waitingDurationText(thread, language: language)), in: NSRect(x: bounds.width - 94, y: rect.midY - 12, width: 62, height: 11), size: 8, color: .systemYellow)
+                }
                 if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
             }
             if rows.isEmpty && !collapsed { label(text(owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? "No chats match these filters" : "No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
@@ -339,7 +408,7 @@ final class DashboardView: NSView {
         else if groupingRect.contains(p) { toolTip = text(owner?.grouped == true ? "Compact list" : "Group by workspace") }
         else if let workspace = workspaceAt(p) { toolTip = workspace.name + " · " + text("Click to expand or collapse workspace") }
         else if resizeHandleRect.contains(p) { toolTip = text("Drag to resize") }
-        else if let row = rowAt(p) { toolTip = "\(row.title) — \(DesktopPet.statusText(row, language: language)) · " + text("Click to open in VS Code") }
+        else if let row = rowAt(p) { toolTip = owner?.threadTooltip(row) }
         else { toolTip = text(petVisible ? "Click to pet · Drag to move · Right-click for options" : "Drag header to move · Right-click for options") }
         guard let owner, !owner.sleeping, owner.overallStatus == "idle", spriteRect.contains(p), !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { needsDisplay = true; return }
         lookOffset = min(1, max(-1, (p.x - spriteRect.midX) / (spriteRect.width / 2))); needsDisplay = true
@@ -445,6 +514,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var panel: PetPanel!
     var view: DashboardView!
     let assets: [PetAsset] = OriginalPets.catalog.map { PetAsset(id: $0.0, name: $0.1, file: "") }
+    lazy var customPets = CustomPetLibrary(root: directory.appendingPathComponent("custom-pets"))
+    var customPetEditor: CustomPetEditor?
+    func containsPet(_ id: String) -> Bool { OriginalPets.contains(id) || customPets.available(id) }
     var selected = "agent-pet", sleeping = false
     var selectedAt: Double = 0, sleepAt: Double = 0
     var retained: [String: ThreadActivity] = [:], dismissed: [String: Double] = [:]
@@ -478,6 +550,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var tick = 0, lockFD: Int32 = -1
     var testOpenedURL: String?
     var navigationNoticeUntil: Double = 0
+    var navigationNoticeText = "Open this workspace in VS Code, then try again."
+    var lastWaitingChatID: String?
     var dashboardScale: CGFloat = 1
     var panelOnly = false
     var panelHidden = false
@@ -495,13 +569,41 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var didObserve = false, notificationCount = 0
     var statusItem: NSStatusItem?
     var statusMenuTracking = false
-    var hotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?
+    var hotKey: EventHotKeyRef?, nextWaitingHotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?
     var animation: Timer?, polling: Timer?
     var overallStatus: String { allThreads.contains { $0.status == "waiting" } ? "waiting" : allThreads.contains { $0.status == "running" } ? "running" : allThreads.contains { $0.status == "failed" } ? "failed" : !allThreads.isEmpty && allThreads.allSatisfy { $0.status == "ready" } ? "ready" : "idle" }
     static func statusText(_ status: String, language: PetLanguage = .english) -> String { language.text(["running": "Running", "waiting": "Waiting for your reply", "ready": "Completed", "failed": "Something went wrong", "unknown": "No update", "quiet": "No recent activity", "idle": "Idle"][status] ?? "Idle") }
     static func statusText(_ thread: ThreadActivity, language: PetLanguage = .english) -> String {
         if thread.status == "running" && thread.replyPending == true { return language.text("Running · question pending") }
+        if thread.status == "unknown", let label = ["awaiting_activity": "Reconnecting", "source_unavailable": "Source unavailable", "window_disconnected": "Disconnected", "tracking_disabled": "Tracking off"][thread.statusReason ?? ""] { return language.text(label) }
         return statusText(thread.status, language: language)
+    }
+    static func statusExplanation(_ thread: ThreadActivity, language: PetLanguage = .english) -> String {
+        let fallback = thread.status == "idle" && thread.finishedAt != nil ? "turn_interrupted" : ["running": thread.replyPending == true ? "question_pending" : "turn_in_progress", "waiting": "awaiting_reply", "ready": "turn_completed", "failed": "turn_failed"][thread.status] ?? "no_turn_evidence"
+        let explanations = [
+            "turn_in_progress": "The agent is working; no completion has been recorded.",
+            "question_pending": "The agent is working and has an unanswered question.",
+            "awaiting_reply": "The agent needs your reply to continue.",
+            "turn_completed": "The turn has an explicit completion record.",
+            "agent_idle": "The agent reports that its work has finished.",
+            "background_tasks_active": "Background tasks or child agents are still active.",
+            "turn_interrupted": "The turn was interrupted.",
+            "turn_failed": "The turn ended with an error.",
+            "awaiting_activity": "Waiting for fresh activity after reconnecting.",
+            "source_unavailable": "The local activity record is unavailable.",
+            "window_disconnected": "The VS Code window is disconnected; current activity is unknown.",
+            "tracking_disabled": "Activity tracking is turned off in this workspace.",
+            "no_turn_evidence": "There is no confirmed turn status yet."
+        ]
+        return language.text(explanations[thread.statusReason ?? fallback] ?? explanations[fallback]!)
+    }
+    func threadTooltip(_ thread: ThreadActivity, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
+        var lines = [thread.title + " · " + thread.agentName, Self.statusExplanation(thread, language: language)]
+        if thread.needsReply { lines.append(String(format: text("Waiting for your reply: %@"), Self.waitingDurationText(thread, language: language, now: now))) }
+        if thread.startedAt != nil { lines.append(String(format: text("Turn time: %@"), Self.durationText(thread, language: language, now: now))) }
+        if thread.lastEventAt > 0 { lines.append(String(format: text("Last activity %@ ago"), Self.elapsedText(since: thread.lastEventAt, until: now, language: language))) }
+        lines.append(text("Click to open in VS Code"))
+        return lines.joined(separator: "\n")
     }
     static func displayStatus(_ thread: ThreadActivity, now: Double, connected: Bool) -> String {
         if ["running", "quiet", "waiting"].contains(thread.status) && !connected { return "unknown" }
@@ -509,10 +611,27 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         if thread.status == "quiet" { return "running" }
         return thread.status
     }
+    static func displayThread(_ thread: ThreadActivity, now: Double, connected: Bool, trackingDisabled: Bool = false) -> ThreadActivity {
+        var row = thread
+        row.status = displayStatus(thread, now: now, connected: connected)
+        if !["ready", "idle", "failed"].contains(thread.status) {
+            if trackingDisabled { row.status = "unknown"; row.statusReason = "tracking_disabled" }
+            else if !connected { row.status = "unknown"; row.statusReason = "window_disconnected" }
+        }
+        return row
+    }
     static func durationText(_ thread: ThreadActivity, language: PetLanguage = .english, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
         guard let start = thread.startedAt, start > 0 else { return "–" }
         let end = thread.finishedAt ?? (["unknown", "quiet"].contains(thread.status) ? thread.lastEventAt : now)
-        let seconds = max(0, Int((end - start) / 1000))
+        return elapsedText(since: start, until: end, language: language)
+    }
+    static func waitingDurationText(_ thread: ThreadActivity, language: PetLanguage = .english, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
+        guard let start = thread.waitingStartedAt else { return "–" }
+        return elapsedText(since: start, until: now, language: language)
+    }
+    static func elapsedText(since start: Double, until end: Double, language: PetLanguage) -> String {
+        guard start.isFinite, end.isFinite else { return "–" }
+        let seconds = Int(min(315360000, max(0, (end - start) / 1000)))
         let value = seconds < 60 ? seconds : seconds < 3600 ? seconds / 60 : seconds / 3600
         return "\(value) " + language.text(seconds < 60 ? "s" : seconds < 3600 ? "min" : "h")
     }
@@ -571,7 +690,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         view = DashboardView(frame: NSRect(x: 0, y: 0, width: 340, height: 174)); view.owner = self
         view.setAccessibilityElement(true); view.setAccessibilityRole(.group); panel.contentView = view
         restorePosition(); refresh(); step(); if !allHidden { panel.orderFrontRegardless() }
-        if !testing || CommandLine.arguments.contains("--hotkey-self-test") { setupMenuBarAndHotKey() }
+        if !testing || CommandLine.arguments.contains("--hotkey-self-test") || CommandLine.arguments.contains("--attention-hotkey-self-test") { setupMenuBarAndHotKey() }
         animation = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in self?.step() }
         polling = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.refresh() }
         if testing && !CommandLine.arguments.contains("--lifecycle-test") { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.selfTest() } }
@@ -692,7 +811,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                 NSApp.terminate(nil); return
             }
         }
-        if let choice = live.filter({ OriginalPets.contains($0.selected) }).max(by: { $0.selectedAt < $1.selectedAt }), choice.selectedAt > selectedAt { selected = choice.selected; selectedAt = choice.selectedAt }
+        if let choice = live.filter({ containsPet($0.selected) }).max(by: { $0.selectedAt < $1.selectedAt }), choice.selectedAt > selectedAt { selected = choice.selected; selectedAt = choice.selectedAt }
         if let choice = live.max(by: { $0.sleepAt < $1.sleepAt }), choice.sleepAt > sleepAt { sleeping = choice.sleeping; sleepAt = choice.sleepAt }
         let threads = mergeThreads(live)
         for id in live.flatMap({ $0.activity.threads ?? [] }).map({ $0.id }) { lastObserved[id] = now }
@@ -709,8 +828,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                 dismissed.removeValue(forKey: thread.id)
                 if !testing { defaults.removeObject(forKey: "dismissed.\(thread.id)") }
             }
-            let status = Self.displayStatus(thread, now: now.timeIntervalSince1970 * 1000, connected: now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) <= 15)
-            return ThreadActivity(id: thread.id, title: thread.title, status: status, changedAt: thread.changedAt, lastEventAt: thread.lastEventAt, startedAt: thread.startedAt, finishedAt: thread.finishedAt, workspace: thread.workspace, cwd: thread.cwd, replyPending: thread.replyPending, replyRequestedAt: thread.replyRequestedAt, surface: thread.surface)
+            let connected = now.timeIntervalSince(lastObserved[thread.id] ?? .distantPast) <= 15
+            let owners = live.filter { snapshot in
+                snapshot.activity.threads?.contains { $0.id == thread.id } == true || (thread.workspace != nil && snapshot.workspace?.id == thread.workspace?.id)
+            }
+            let trackingDisabled = !owners.isEmpty && owners.allSatisfy { $0.activity.trackingDisabled == true }
+            return Self.displayThread(thread, now: now.timeIntervalSince1970 * 1000, connected: connected, trackingDisabled: trackingDisabled)
         }.sorted { a, b in
             let ap = pinned.contains(a.id) ? 0 : a.status == "waiting" ? 1 : a.status == "running" ? 2 : 3
             let bp = pinned.contains(b.id) ? 0 : b.status == "waiting" ? 1 : b.status == "running" ? 2 : 3
@@ -731,12 +854,17 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         displayThreads = applyFilters(allThreads)
         observeCompletions(allThreads)
         observeWaiting(allThreads)
+        if !containsPet(selected) { selected = "agent-pet" }
         updateStatusMenu()
-        if !OriginalPets.contains(selected) { selected = "agent-pet" }
         view.clampScroll(); resizeToList(); view.needsDisplay = true
         panel.invalidateCursorRects(for: view)
         view.setAccessibilityLabel("Agent Pet. " + displayThreads.map { "\($0.agentName), \($0.title): \(Self.statusText($0, language: language))" }.joined(separator: ". "))
         savePreferences()
+        let addPetRequest = directory.appendingPathComponent("desktop-add-pet-request")
+        if FileManager.default.fileExists(atPath: addPetRequest.path) {
+            try? FileManager.default.removeItem(at: addPetRequest)
+            DispatchQueue.main.async { self.addCustomPet() }
+        }
     }
     func resizeToList() {
         guard !view.resizing && !view.moving else { return }
@@ -862,13 +990,24 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         statusItem?.button?.toolTip = "Agent Pet · " + text("Hide/show with ⌃⌥⌘P")
         updateStatusMenu()
         var event = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, context in
-            guard let context else { return OSStatus(eventNotHandledErr) }
-            Unmanaged<DesktopPet>.fromOpaque(context).takeUnretainedValue().togglePresentation()
+        let installed = InstallEventHandler(GetApplicationEventTarget(), { _, event, context in
+            guard let event, let context else { return OSStatus(eventNotHandledErr) }
+            var identifier = EventHotKeyID()
+            guard GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &identifier) == noErr,
+                  identifier.signature == 0x43505450 else { return OSStatus(eventNotHandledErr) }
+            Unmanaged<DesktopPet>.fromOpaque(context).takeUnretainedValue().handleHotKey(identifier.id)
             return noErr
         }, 1, &event, Unmanaged.passUnretained(self).toOpaque(), &hotKeyHandler)
-        _ = RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey | cmdKey), EventHotKeyID(signature: 0x43505450, id: 1), GetApplicationEventTarget(), 0, &hotKey)
+        guard installed == noErr else { updateStatusMenu(); return }
+        if !CommandLine.arguments.contains("--attention-hotkey-self-test") {
+            _ = RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey | cmdKey), EventHotKeyID(signature: 0x43505450, id: 1), GetApplicationEventTarget(), 0, &hotKey)
+        }
+        _ = RegisterEventHotKey(UInt32(kVK_ANSI_N), UInt32(controlKey | optionKey | cmdKey), EventHotKeyID(signature: 0x43505450, id: 2), GetApplicationEventTarget(), 0, &nextWaitingHotKey)
         updateStatusMenu()
+    }
+    func handleHotKey(_ id: UInt32) {
+        if id == 1 { togglePresentation() }
+        else if id == 2 { openNextWaiting() }
     }
     func updateStatusMenu() {
         if let statusItem {
@@ -905,13 +1044,36 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         savePreferences(); refresh(); updateStatusMenu()
     }
     @objc func toggleSleep() { sleeping.toggle(); sleepAt = Date().timeIntervalSince1970 * 1000; savePreferences(); step(); updateStatusMenu() }
-    @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String, OriginalPets.contains(id) { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react(); updateStatusMenu() } }
+    @objc func choosePet(_ item: NSMenuItem) { if let id = item.representedObject as? String, containsPet(id) { selected = id; selectedAt = Date().timeIntervalSince1970 * 1000; savePreferences(); refresh(); react(); updateStatusMenu() } }
+    @objc func addCustomPet() { openCustomPetEditor(pet: nil) }
+    @objc func editCustomPet() { guard let pet = customPets.pet(selected) else { return }; openCustomPetEditor(pet: pet) }
+    @objc func repairCustomPet(_ item: NSMenuItem) {
+        guard let id = item.representedObject as? String, let pet = customPets.pet(id) else { return }
+        openCustomPetEditor(pet: pet)
+    }
+    func openCustomPetEditor(pet: CustomPet?) {
+        if let editor = customPetEditor { editor.present(); return }
+        let editor = CustomPetEditor(library: customPets, pet: pet, language: language)
+        editor.onSaved = { [weak self] pet in
+            guard let self else { return }
+            self.selected = pet.id; self.selectedAt = Date().timeIntervalSince1970 * 1000
+            self.savePreferences(); self.refresh(); self.react()
+        }
+        editor.onRemoved = { [weak self] id in
+            guard let self else { return }
+            if self.selected == id { self.selected = "agent-pet"; self.selectedAt = Date().timeIntervalSince1970 * 1000 }
+            self.savePreferences(); self.refresh()
+        }
+        editor.onClosed = { [weak self] in self?.customPetEditor = nil }
+        customPetEditor = editor; editor.present()
+    }
     @objc func openCode() {
         let config = NSWorkspace.OpenConfiguration(); config.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"), configuration: config)
     }
     func threadURL(_ id: String, live: [Snapshot]) -> URL? {
-        let claude = id.hasPrefix("claude:"), session = claude ? String(id.dropFirst(7)) : id
+        let claude = id.hasPrefix("claude:"), antigravity = id.hasPrefix("antigravity:")
+        let session = claude ? String(id.dropFirst(7)) : antigravity ? String(id.dropFirst(12)) : id
         guard UUID(uuidString: session) != nil else { return nil }
         var thread = displayThreads.first { $0.id == id } ?? allThreads.first { $0.id == id } ?? retained[id]
         if let workspace = workspaceOverrides[id] { thread?.workspace = workspace }
@@ -926,28 +1088,47 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let terminal = thread?.isTerminal == true
         for snapshot in candidates.sorted(by: { $0.updatedAt > $1.updatedAt }) {
             guard let routes = snapshot.navigation,
-                  var parts = URLComponents(string: terminal ? routes.terminal ?? "" : claude ? routes.claude : routes.codex),
+                  var parts = URLComponents(string: terminal ? routes.terminal ?? "" : claude ? routes.claude : antigravity ? routes.antigravity ?? "" : routes.codex),
                   ["vscode", "vscode-insiders"].contains(parts.scheme ?? ""),
-                  parts.host == (terminal || claude ? snapshot.extensionId ?? "local.codex-pet-panel" : "openai.chatgpt"),
-                  parts.path == (terminal ? "/terminal" : claude ? "/claude" : "/local/"),
+                  parts.host == (terminal || claude || antigravity ? snapshot.extensionId ?? "local.codex-pet-panel" : "openai.chatgpt"),
+                  parts.path == (terminal ? "/terminal" : claude ? "/claude" : antigravity ? "/antigravity" : "/local/"),
                   parts.user == nil, parts.password == nil, parts.port == nil, parts.fragment == nil else { continue }
             let query = parts.queryItems ?? []
             guard query.count == 1, query[0].name == "windowId", let windowID = query[0].value,
                   !windowID.isEmpty, windowID.allSatisfy({ $0.isASCII && $0.isNumber }) else { continue }
             if terminal { parts.queryItems = query + [URLQueryItem(name: "thread", value: id)] }
-            else if claude { parts.queryItems = query + [URLQueryItem(name: "session", value: session)] }
+            else if claude || antigravity { parts.queryItems = query + [URLQueryItem(name: "session", value: session)] }
             else { parts.path += session }
             return parts.url
         }
         return nil
     }
-    func openThread(_ id: String) {
+    @discardableResult func openThread(_ id: String) -> Bool {
         guard let url = threadURL(id, live: snapshots()) else {
+            navigationNoticeText = "Open this workspace in VS Code, then try again."
             if !testing { navigationNoticeUntil = Date.timeIntervalSinceReferenceDate + 6; view.needsDisplay = true }
+            return false
+        }
+        if testing { testOpenedURL = url.absoluteString; return true }
+        return NSWorkspace.shared.open(url)
+    }
+    func nextWaitingThread(live: [Snapshot]) -> ThreadActivity? {
+        let candidates = allThreads.filter { $0.needsReply && (workspaceFilter.isEmpty || $0.workspace?.id == workspaceFilter) && threadURL($0.id, live: live) != nil }.sorted {
+            let a = $0.waitingStartedAt ?? Double.greatestFiniteMagnitude, b = $1.waitingStartedAt ?? Double.greatestFiniteMagnitude
+            return a == b ? $0.id < $1.id : a < b
+        }
+        guard !candidates.isEmpty else { return nil }
+        if let previous = candidates.firstIndex(where: { $0.id == lastWaitingChatID }) { return candidates[(previous + 1) % candidates.count] }
+        return candidates.first
+    }
+    @objc func openNextWaiting() {
+        refresh()
+        guard let next = nextWaitingThread(live: snapshots()) else {
+            navigationNoticeText = allThreads.contains { $0.needsReply && (workspaceFilter.isEmpty || $0.workspace?.id == workspaceFilter) } ? "Open this workspace in VS Code, then try again." : "No chats waiting in this workspace."
+            navigationNoticeUntil = Date.timeIntervalSinceReferenceDate + 6; view.needsDisplay = true
             return
         }
-        if testing { testOpenedURL = url.absoluteString; return }
-        NSWorkspace.shared.open(url)
+        if openThread(next.id) { lastWaitingChatID = next.id }
     }
     @objc func closeAll() {
         try? Data().write(to: directory.appendingPathComponent("desktop-hidden"))
@@ -977,6 +1158,17 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         if let thread {
             let heading = NSMenuItem(title: thread.title, action: nil, keyEquivalent: "")
             heading.isEnabled = false; menu.addItem(heading)
+            let detail = NSMenuItem(title: Self.statusExplanation(thread, language: language), action: nil, keyEquivalent: "")
+            detail.isEnabled = false; menu.addItem(detail)
+            if thread.lastEventAt > 0 {
+                let elapsed = Self.elapsedText(since: thread.lastEventAt, until: Date().timeIntervalSince1970 * 1000, language: language)
+                let activity = NSMenuItem(title: String(format: text("Last activity %@ ago"), elapsed), action: nil, keyEquivalent: "")
+                activity.isEnabled = false; menu.addItem(activity)
+            }
+            if thread.needsReply {
+                let wait = NSMenuItem(title: String(format: text("Waiting for your reply: %@"), Self.waitingDurationText(thread, language: language)), action: nil, keyEquivalent: "")
+                wait.isEnabled = false; menu.addItem(wait)
+            }
             action(pinned.contains(thread.id) ? text("Unpin chat") : text("Pin chat"), #selector(togglePinned(_:)), in: menu, value: thread.id)
             let assignment = NSMenuItem(title: text("Assign workspace"), action: nil, keyEquivalent: "")
             let choices = NSMenu(); assignment.submenu = choices; menu.addItem(assignment)
@@ -992,6 +1184,11 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             action(text("Remove from list"), #selector(dismissMenuRow(_:)), in: menu, value: thread.id)
             menu.addItem(.separator())
         }
+        let nextWaiting = action(text("Open next waiting chat"), #selector(openNextWaiting), in: menu)
+        nextWaiting.keyEquivalent = "n"; nextWaiting.keyEquivalentModifierMask = [.control, .option, .command]
+        nextWaiting.isEnabled = nextWaitingThread(live: snapshots()) != nil
+        nextWaiting.toolTip = text(nextWaitingHotKey == nil ? "Next-chat shortcut in use; use this menu." : "Next waiting chat with ⌃⌥⌘N")
+        menu.addItem(.separator())
         let characterVisibility = action(panelOnly ? text("Show pet") : text("Hide pet"), #selector(togglePanelOnly), in: menu)
         characterVisibility.toolTip = text("Keep the chat panel visible.")
         let panelVisibility = action(panelHidden ? text("Show panel") : text("Hide panel"), #selector(toggleChatPanel), in: menu)
@@ -1007,6 +1204,18 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             let item = action(asset.name, #selector(choosePet(_:)), in: petsMenu, value: asset.id)
             item.state = asset.id == selected ? .on : .off
         }
+        petsMenu.addItem(.separator())
+        for pet in customPets.pets {
+            let item = action(pet.name, #selector(choosePet(_:)), in: petsMenu, value: pet.id)
+            item.state = pet.id == selected ? .on : .off
+            if !customPets.available(pet.id) {
+                item.action = #selector(repairCustomPet(_:))
+                item.toolTip = text("Normal image unavailable; click to repair or delete this pet.")
+            }
+        }
+        if !customPets.pets.isEmpty { petsMenu.addItem(.separator()) }
+        action(text("Add custom pet…"), #selector(addCustomPet), in: petsMenu)
+        if customPets.pet(selected) != nil { action(text("Edit custom pet…"), #selector(editCustomPet), in: petsMenu) }
         petsMenu.addItem(.separator())
         action(sleeping ? text("Wake up") : text("Sleep"), #selector(toggleSleep), in: petsMenu)
 
@@ -1174,6 +1383,116 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     func capture(_ name: String) {
         view.display()
         if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) { view.cacheDisplay(in: view.bounds, to: bitmap); if let png = bitmap.representation(using: .png, properties: [:]) { try? png.write(to: directory.appendingPathComponent(name)) } }
+    }
+    func testCustomPets() -> Bool {
+        let savedLibrary = customPets, savedSelection = selected, savedAt = selectedAt, savedThreads = allThreads
+        let savedSleep = sleeping, savedTick = tick, savedReaction = reactionUntil, savedCelebration = celebrationUntil
+        let root = directory.appendingPathComponent("custom-pet-test-" + UUID().uuidString)
+        customPets = CustomPetLibrary(root: root)
+        defer {
+            customPets = savedLibrary; selected = savedSelection; selectedAt = savedAt; allThreads = savedThreads
+            sleeping = savedSleep; tick = savedTick; reactionUntil = savedReaction; celebrationUntil = savedCelebration
+            try? FileManager.default.removeItem(at: root); resizeToList(); view.needsDisplay = true
+        }
+        func fixture(_ color: NSColor) -> Data? {
+            let image = NSImage(size: NSSize(width: 96, height: 104)); image.lockFocus()
+            color.setFill(); NSBezierPath(roundedRect: NSRect(x: 8, y: 8, width: 64, height: 80), xRadius: 15, yRadius: 15).fill()
+            NSColor.white.setFill(); NSBezierPath(ovalIn: NSRect(x: 50, y: 54, width: 12, height: 12)).fill()
+            image.unlockFocus()
+            return image.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }
+        }
+        func captureEditor(_ editor: CustomPetEditor, _ name: String) {
+            guard CommandLine.arguments.contains("--custom-pet-previews") else { return }
+            guard let window = editor.window else { return }
+            window.center(); window.orderFrontRegardless(); window.display()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+            // System controls use compositor layers; capture the actual editor window.
+            let screenshot = Process(); screenshot.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            screenshot.arguments = ["-x", "-o", "-l", String(window.windowNumber), directory.appendingPathComponent(name).path]
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+            do { try screenshot.run(); screenshot.waitUntilExit() }
+            catch { NSLog("Editor screenshot failed: %@", error.localizedDescription) }
+            window.orderOut(nil)
+        }
+        func render(_ id: String, status: String, asleep: Bool = false, at tick: Int = 0, reducedMotion: Bool = true) -> Data? {
+            let image = NSImage(size: NSSize(width: 112, height: 121)); image.lockFocus()
+            let drawn = customPets.draw(id: id, in: NSRect(x: 0, y: 0, width: 112, height: 121), tick: tick,
+                                       status: status, sleeping: asleep, reacting: false, reducedMotion: reducedMotion)
+            image.unlockFocus()
+            return drawn ? image.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) } : nil
+        }
+        do {
+            guard let normal = fixture(.systemPurple), let running = fixture(.systemTeal) else { return false }
+            let input = root.appendingPathComponent("user-upload.png")
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            try normal.write(to: input)
+            let editor = CustomPetEditor(library: customPets, pet: nil, language: .english)
+            editor.nameField.stringValue = "Luna"
+            do { _ = try editor.commit(); return false } catch CustomPetError.missingNormal {} catch { return false }
+            try editor.importPNG(input, pose: .normal)
+            try FileManager.default.removeItem(at: input)
+            editor.sizeSlider.doubleValue = 1.25; editor.mirrorButton.state = .on; editor.motionButton.state = .off
+            editor.updatePreview(); captureEditor(editor, "custom-pet-editor-en.png")
+            let first = try editor.commit()
+            var valid = first.name == "Luna" && first.mirrored && !first.motion && first.scale == 1.25
+            let reloaded = CustomPetLibrary(root: root)
+            valid = valid && reloaded.pet(first.id)?.name == "Luna" && reloaded.available(first.id)
+            valid = valid && reloaded.image(first, pose: .running) == nil && reloaded.image(first, pose: .sleeping) == nil
+            let item = NSMenuItem(); item.representedObject = first.id; choosePet(item); refresh(); refresh()
+            valid = valid && selected == first.id && abs(view.spriteRect.width - 112 * petScale * 1.25) < 0.01
+            let menu = petMenu(thread: nil)
+            let petsMenu = menu.items.first { $0.title == "Pets" }?.submenu
+            valid = valid && petsMenu?.items.contains { $0.representedObject as? String == first.id && $0.state == .on } == true
+            valid = valid && petsMenu?.items.contains { $0.action == #selector(editCustomPet) } == true
+            allThreads = []; sleeping = false; reactionUntil = 0; celebrationUntil = 0; tick = 12
+            capture("custom-pet-normal.png")
+            for pose in CustomPetPose.allCases {
+                valid = render(first.id, status: pose == .normal || pose == .sleeping ? "idle" : pose.rawValue, asleep: pose == .sleeping) != nil && valid
+            }
+            valid = valid && render(first.id, status: "idle", at: 1, reducedMotion: false) == render(first.id, status: "idle", at: 30, reducedMotion: false)
+            // Cancelling an editor and clearing a draft never edits the saved pet.
+            let draft = CustomPetEditor(library: customPets, pet: first, language: .turkish)
+            draft.nameField.stringValue = "Unsaved name"; draft.poses.removeValue(forKey: .normal)
+            draft.cancel(); valid = valid && customPets.pet(first.id)?.name == "Luna" && customPets.available(first.id)
+            let edit = CustomPetEditor(library: customPets, pet: first, language: .turkish)
+            edit.poses[.running] = running; edit.nameField.stringValue = "Ay ışığı"; edit.sizeSlider.doubleValue = 1.5
+            edit.mirrorButton.state = .off; edit.motionButton.state = .on
+            edit.posePicker.selectItem(at: 1); edit.updatePreview(); captureEditor(edit, "custom-pet-editor-tr.png")
+            let second = try edit.commit()
+            valid = valid && first.id == second.id && first.revision != second.revision && customPets.pets.count == 1
+            valid = valid && customPets.image(second, pose: .running) != nil && customPets.image(second, pose: .waiting) == nil
+            let restarted = CustomPetLibrary(root: root)
+            valid = valid && restarted.pet(second.id)?.name == "Ay ışığı" && restarted.pet(second.id)?.scale == 1.5
+            valid = valid && restarted.pet(second.id)?.motion == true && restarted.pet(second.id)?.mirrored == false
+            valid = valid && render(second.id, status: "idle", at: 1) == render(second.id, status: "idle", at: 30)
+            valid = valid && render(second.id, status: "idle", at: 1, reducedMotion: false) != render(second.id, status: "idle", at: 30, reducedMotion: false)
+            valid = valid && render(second.id, status: "idle") != render(second.id, status: "running")
+            // Invalid imports leave the previous draft image and committed revision intact.
+            let invalid = root.appendingPathComponent("invalid.png"); try Data("bad png".utf8).write(to: invalid)
+            let before = edit.poses[.normal]
+            do { try edit.importPNG(invalid, pose: .normal); return false } catch CustomPetError.invalidImage {} catch { return false }
+            valid = valid && edit.poses[.normal] == before
+            do { _ = try customPets.save(id: second.id, name: "Broken", poses: [.normal: normal, .ready: Data()], scale: 1, mirrored: false, motion: true); return false } catch {}
+            valid = valid && CustomPetLibrary(root: root).pet(second.id)?.revision == second.revision
+            valid = valid && CustomPetPose.resolve(status: "running", sleeping: false, reacting: true) == .running
+            valid = valid && CustomPetPose.resolve(status: "waiting", sleeping: false, reacting: true) == .waiting
+            valid = valid && CustomPetPose.resolve(status: "running", sleeping: true, reacting: true) == .sleeping
+            valid = valid && CustomPetPose.resolve(status: "idle", sleeping: false, reacting: true) == .ready
+            // A missing optional image falls back; missing normal art falls back to Byte.
+            try FileManager.default.removeItem(at: root.appendingPathComponent(second.id).appendingPathComponent(second.revision).appendingPathComponent("running.png"))
+            customPets.reload(); valid = valid && customPets.available(second.id) && customPets.image(second, pose: .running) == nil
+            try FileManager.default.removeItem(at: root.appendingPathComponent(second.id).appendingPathComponent(second.revision).appendingPathComponent("normal.png"))
+            customPets.reload(); refresh(); valid = valid && selected == "agent-pet"
+            let brokenMenu = petMenu(thread: nil).items.first { $0.title == "Pets" }?.submenu
+            valid = valid && brokenMenu?.items.contains { $0.representedObject as? String == second.id && $0.action == #selector(repairCustomPet(_:)) } == true
+            try customPets.remove(second.id); valid = valid && CustomPetLibrary(root: root).pets.isEmpty
+            valid = valid && !FileManager.default.fileExists(atPath: root.appendingPathComponent(second.id).path)
+            try Data("invalid index".utf8).write(to: root.appendingPathComponent("library.json"))
+            let damaged = CustomPetLibrary(root: root)
+            do { _ = try damaged.save(id: nil, name: "New", poses: [.normal: normal], scale: 1, mirrored: false, motion: true); return false } catch CustomPetError.invalidLibrary {} catch { return false }
+            valid = valid && (try? Data(contentsOf: root.appendingPathComponent("library.json"))) == Data("invalid index".utf8)
+            return valid
+        } catch { NSLog("Custom pet test failed: %@", error.localizedDescription); return false }
     }
     func testOriginalPets() -> Bool {
         let saved = selected, savedAt = selectedAt, savedThreads = allThreads, savedSleep = sleeping, savedTick = tick
@@ -1518,7 +1837,99 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && Self.statusText("quiet", language: .turkish) == "Yeni etkinlik bekleniyor"
         return valid
     }
+    func testAttentionFeatures() -> Bool {
+        let savedAll = allThreads, savedDisplay = displayThreads, savedRetained = retained, savedOrder = order, savedObserved = lastObserved
+        let savedWorkspace = workspaceFilter, savedStatus = statusFilter, savedLanguage = language, savedLast = lastWaitingChatID
+        let savedHidden = presentationHidden, savedOpened = testOpenedURL
+        let sampleFile = directory.appendingPathComponent("client-attention-test.json")
+        defer {
+            try? FileManager.default.removeItem(at: sampleFile)
+            retained = savedRetained; order = savedOrder; lastObserved = savedObserved
+            workspaceFilter = savedWorkspace; statusFilter = savedStatus; language = savedLanguage; lastWaitingChatID = savedLast
+            presentationHidden = savedHidden; testOpenedURL = savedOpened
+            allThreads = savedAll; displayThreads = savedDisplay; navigationNoticeUntil = 0
+            refresh(); applyVisibility()
+        }
+        let now = Date().timeIntervalSince1970 * 1000
+        let a = WorkspaceInfo(id: "attention-a", name: "Attention"), b = WorkspaceInfo(id: "attention-b", name: "Closed workspace")
+        let first = ThreadActivity(id: "claude:99999999-1111-4111-8111-111111111111", title: "Approve the next step", status: "waiting", changedAt: now - 60000, lastEventAt: now - 1000, startedAt: now - 180000, workspace: a, replyPending: true, replyRequestedAt: now - 60000, waitingSince: now - 120000, statusReason: "awaiting_reply")
+        let second = ThreadActivity(id: "99999999-2222-4222-8222-222222222222", title: "Choose an option", status: "running", changedAt: now - 180000, lastEventAt: now - 1000, startedAt: now - 180000, workspace: a, replyPending: true, replyRequestedAt: now - 30000, surface: "terminal", waitingSince: now - 30000, statusReason: "question_pending")
+        let closed = ThreadActivity(id: "claude:99999999-3333-4333-8333-333333333333", title: "Disconnected", status: "waiting", changedAt: now - 240000, lastEventAt: now - 240000, workspace: b)
+        let routes = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=77", claude: "vscode://merttalhayener.agent-pet/claude?windowId=77", terminal: "vscode://merttalhayener.agent-pet/terminal?windowId=77")
+        let live = Snapshot(extensionId: "merttalhayener.agent-pet", navigation: routes, protocolVersion: 15, workspace: a, updatedAt: now, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "waiting", active: 1, threads: [first, second], trackingDisabled: false), pets: [])
+        guard let data = try? JSONEncoder().encode(live) else { return false }
+        do { try data.write(to: sampleFile, options: .atomic) } catch { return false }
+        language = .english; workspaceFilter = ""; statusFilter = "running"; lastWaitingChatID = nil
+        allThreads = [second, closed, first]; displayThreads = [second]
+        var valid = Self.waitingDurationText(first, now: now) == "2 min" && Self.durationText(first, now: now) == "3 min"
+        valid = valid && Self.waitingDurationText(first, language: .turkish, now: now) == "2 dk"
+        valid = valid && threadTooltip(first, now: now).contains("Waiting for your reply: 2 min")
+        valid = valid && nextWaitingThread(live: [live])?.id == first.id
+        lastWaitingChatID = first.id; valid = valid && nextWaitingThread(live: [live])?.id == second.id
+        lastWaitingChatID = second.id; valid = valid && nextWaitingThread(live: [live])?.id == first.id
+        workspaceFilter = b.id; valid = valid && nextWaitingThread(live: [live]) == nil
+        workspaceFilter = a.id; lastWaitingChatID = nil; presentationHidden = true; applyVisibility()
+        handleHotKey(2)
+        valid = valid && testOpenedURL?.contains("session=99999999-1111-4111-8111-111111111111") == true && presentationHidden && !panel.isVisible
+        handleHotKey(2)
+        valid = valid && testOpenedURL?.contains("/terminal?") == true && testOpenedURL?.contains("thread=99999999-2222-4222-8222-222222222222") == true && presentationHidden
+        var resolved = first; resolved.status = "ready"; resolved.replyPending = false
+        allThreads = [resolved, second]; lastWaitingChatID = nil
+        valid = valid && nextWaitingThread(live: [live])?.id == second.id
+        let disconnected = Self.displayThread(second, now: now, connected: false)
+        let disabled = Self.displayThread(second, now: now, connected: true, trackingDisabled: true)
+        valid = valid && disconnected.status == "unknown" && disconnected.statusReason == "window_disconnected" && !disconnected.needsReply
+        valid = valid && Self.statusText(disconnected, language: .turkish) == "Bağlantı kesildi"
+        valid = valid && disabled.statusReason == "tracking_disabled" && Self.statusExplanation(disabled).contains("turned off")
+        var reconnect = disconnected; reconnect.statusReason = "awaiting_activity"
+        valid = valid && Self.statusText(reconnect) == "Reconnecting" && Self.statusExplanation(reconnect).contains("fresh activity")
+        valid = valid && Self.displayThread(resolved, now: now, connected: false).status == "ready"
+        if let encoded = try? JSONEncoder().encode(first), let decoded = try? JSONDecoder().decode(ThreadActivity.self, from: encoded) {
+            valid = valid && decoded.waitingSince == first.waitingSince && decoded.statusReason == "awaiting_reply"
+        } else { valid = false }
+        allThreads = [first, second]; displayThreads = allThreads; presentationHidden = false; language = .turkish
+        applyVisibility(); resizeToList(); capture("dashboard-attention-test.png")
+        valid = valid && petMenu(thread: first).items.contains { $0.title == "Sıradaki yanıt bekleyen sohbeti aç" }
+        return valid
+    }
+    func testAntigravityFeatures() -> Bool {
+        let savedAll = allThreads, savedDisplay = displayThreads, savedRetained = retained
+        let savedLast = lastWaitingChatID, savedLanguage = language
+        defer { allThreads = savedAll; displayThreads = savedDisplay; retained = savedRetained; lastWaitingChatID = savedLast; language = savedLanguage }
+        let now = Date().timeIntervalSince1970 * 1000
+        let workspace = WorkspaceInfo(id: "antigravity-workspace", name: "Antigravity project")
+        let session = "77777777-7777-4777-8777-777777777777"
+        let thread = ThreadActivity(id: "antigravity:" + session, title: "Review Antigravity changes", status: "waiting", changedAt: now - 60000, lastEventAt: now - 1000, startedAt: now - 120000, workspace: workspace, replyPending: true, replyRequestedAt: now - 60000, waitingSince: now - 60000, statusReason: "awaiting_reply")
+        allThreads = [thread]; displayThreads = [thread]; retained = [thread.id: thread]; language = .english
+        let routes = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=88", claude: "vscode://merttalhayener.agent-pet/claude?windowId=88", antigravity: "vscode://merttalhayener.agent-pet/antigravity?windowId=88")
+        var snapshot = Snapshot(extensionId: "merttalhayener.agent-pet", navigation: routes, protocolVersion: 16, workspace: workspace, updatedAt: now, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false, activity: Activity(status: "waiting", active: 0, threads: [thread], trackingDisabled: false), pets: [])
+        var valid = thread.agentName == "Antigravity" && thread.sessionID == session
+        valid = valid && threadURL(thread.id, live: [snapshot])?.absoluteString == "vscode://merttalhayener.agent-pet/antigravity?windowId=88&session=" + session
+        let savedWorkspaceFilter = workspaceFilter; workspaceFilter = ""
+        let savedStatusFilter = statusFilter; statusFilter = ""
+        lastWaitingChatID = nil
+        valid = valid && nextWaitingThread(live: [snapshot])?.id == thread.id
+        workspaceFilter = savedWorkspaceFilter; statusFilter = savedStatusFilter
+        valid = valid && rowSubtitle(thread).hasPrefix("Antigravity") && threadTooltip(thread, now: now).contains("1 min")
+        snapshot.navigation?.antigravity = nil; valid = valid && threadURL(thread.id, live: [snapshot]) == nil
+        snapshot.navigation?.antigravity = "vscode://merttalhayener.agent-pet/claude?windowId=88"; valid = valid && threadURL(thread.id, live: [snapshot]) == nil
+        snapshot.navigation?.antigravity = "https://example.com/antigravity?windowId=88"; valid = valid && threadURL(thread.id, live: [snapshot]) == nil
+        snapshot.navigation?.antigravity = "vscode://merttalhayener.agent-pet/antigravity?windowId=88&prompt=unwanted"; valid = valid && threadURL(thread.id, live: [snapshot]) == nil
+        snapshot.navigation = routes; snapshot.workspace = WorkspaceInfo(id: "other-workspace", name: "Other")
+        valid = valid && threadURL(thread.id, live: [snapshot]) == nil
+        let codex = ThreadActivity(id: session, title: "Codex", status: "ready", changedAt: now, lastEventAt: now)
+        let claude = ThreadActivity(id: "claude:" + session, title: "Claude", status: "ready", changedAt: now, lastEventAt: now)
+        let combined = Snapshot(extensionId: snapshot.extensionId, navigation: routes, protocolVersion: 16, workspace: workspace,
+                                updatedAt: now, selectedAt: 0, sleepAt: 0, selected: "agent-pet", sleeping: false,
+                                activity: Activity(status: "waiting", active: 0, threads: [thread, codex, claude], trackingDisabled: false), pets: [])
+        valid = valid && mergeThreads([combined]).count == 3
+        allThreads = [thread, codex, claude]; displayThreads = allThreads
+        resizeToList(); capture("dashboard-antigravity-test.png")
+        return valid
+    }
     func featureTests() -> [String: Any] {
+        let antigravityFeaturesWork = testAntigravityFeatures()
+        let attentionFeaturesWork = testAttentionFeatures()
         let quietAndTerminalStatesWork = testQuietAndTerminalStates()
         let dashboardControlsWork = dashboardControlTests()
         celebrationUntil = 0
@@ -1623,7 +2034,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil]
+        return ["antigravityFeaturesWork": antigravityFeaturesWork, "attentionFeaturesWork": attentionFeaturesWork, "statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil, "nextWaitingHotKeyRegistered": nextWaitingHotKey != nil]
     }
     func testBundleRemoval() -> Bool {
         let fm = FileManager.default, base = directory.appendingPathComponent("bundle-removal-" + UUID().uuidString)
@@ -1773,13 +2184,13 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             reopenedChatStaysAfterCompletion = restored && displayThreads.contains { $0.id == sample.id && $0.status == "ready" }
         }
         let raw = initial.map { ["id": $0.id, "title": $0.title, "subtitle": rowSubtitle($0), "status": $0.status, "indicator": $0.status == "running" ? "spinner" : $0.status == "ready" ? "check" : "other"] }
-        let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "builtinPet": OriginalPets.contains(selected), "originalPets": assets.map { $0.id }, "originalPetsWork": testOriginalPets(), "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
+        let result: [String: Any] = ["windowCount": windowCount, "appActive": NSApp.isActive, "visible": panel.isVisible, "floating": panel.level == .floating, "transparent": !panel.isOpaque, "hidesOnDeactivate": panel.hidesOnDeactivate, "builtinPet": OriginalPets.contains(selected), "originalPets": assets.map { $0.id }, "originalPetsWork": testOriginalPets(), "customPetsWork": testCustomPets(), "rows": raw, "visibleRows": view.visibleCount, "scrollReachesLast": scrollReachesLast, "removeKeepsOther": removeKeepsOther, "restoredCount": displayThreads.count, "sleepWorks": sleepWorks]
         let clicks: [String: Any] = ["reopenedChatStaysAfterCompletion": reopenedChatStaysAfterCompletion, "dismissedSameTurnStaysHidden": dismissedSameTurnStaysHidden, "bottomCornersStay": bottomCornersStay, "listChangeKeepsCorner": listChangeKeepsCorner, "refreshDoesNotMoveDrag": refreshDoesNotMoveDrag, "cornerResizeWorks": cornerResizeWorks, "refreshPreservesSize": refreshPreservesSize, "minimumWorks": minimumWorks, "maximumWorks": maximumWorks, "rowClickOpensChat": rowClickOpensChat, "dragDoesNotOpen": dragDoesNotOpen, "removeDoesNotOpen": removeDoesNotOpen, "changedRowDoesNotOpen": changedRowDoesNotOpen]
         let features = featureTests()
         if let data = try? JSONSerialization.data(withJSONObject: result.merging(clicks) { _, new in new }.merging(features) { _, new in new }, options: [.prettyPrinted, .sortedKeys]) { try? data.write(to: directory.appendingPathComponent("dashboard-test.json")); print(String(data: data, encoding: .utf8)!) }
         NSApp.terminate(nil)
     }
-    func applicationWillTerminate(_ notification: Notification) { animation?.invalidate(); polling?.invalidate(); savePosition(); if let hotKey { UnregisterEventHotKey(hotKey) }; if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }; if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }; if lockFD >= 0 {
+    func applicationWillTerminate(_ notification: Notification) { animation?.invalidate(); polling?.invalidate(); savePosition(); if let hotKey { UnregisterEventHotKey(hotKey) }; if let nextWaitingHotKey { UnregisterEventHotKey(nextWaitingHotKey) }; if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }; if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }; if lockFD >= 0 {
             if ownsLock { try? FileManager.default.removeItem(at: directory.appendingPathComponent("helper-health.json")) }
             if ownsLock && (!testing || CommandLine.arguments.contains("--lifecycle-test")) { HelperLifetime.removeUninstalledBundle(Bundle.main.bundleURL) }
             flock(lockFD, LOCK_UN); Darwin.close(lockFD)

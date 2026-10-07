@@ -15,9 +15,12 @@ function applyClaudeEvent(s, r) {
   if (typeof named === 'string' && clean(named) && priority >= (s.titlePriority || 0)) { s.title = clean(named); s.titlePriority = priority; }
   const at = Date.parse(r.timestamp);
   if (!Number.isFinite(at)) return;
+  // Delayed records from an older turn cannot overwrite a newer start/finish.
+  if (at < Math.max(s.changedAt || 0, s.startedAt || 0, s.finishedAt || 0)) return;
   const m = r.message || {}, content = Array.isArray(m.content) ? m.content : [];
-  const progress = () => { s.lastEventAt = at; s.progressVersion = (s.progressVersion || 0) + 1; };
-  const finish = status => { s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.pendingTools = new Set(); progress(); };
+  const progress = () => { s.lastEventAt = Math.max(s.lastEventAt || 0, at); s.progressVersion = (s.progressVersion || 0) + 1; };
+  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); };
+  const finish = status => { s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); progress(); };
   if (r.type === 'progress') {
     // Only progress belonging to an unfinished foreground call confirms activity.
     // Late background-server/subagent updates must not resurrect a finished turn.
@@ -28,26 +31,35 @@ function applyClaudeEvent(s, r) {
   if (r.type === 'user') {
     const results = content.filter(c => c.type === 'tool_result');
     if (results.length) {
-      for (const c of results) {
+      // Background/subagent results (including metadata and duplicate results)
+      // are not new turns. Only an outstanding foreground call proves progress.
+      const matched = s.status === 'running' ? results.filter(c => c.tool_use_id && s.pendingTools?.has(c.tool_use_id)) : [];
+      if (!matched.length) return;
+      for (const c of matched) {
         delete s.pendingInputs?.[c.tool_use_id];
         s.pendingTools?.delete(c.tool_use_id);
       }
-      s.status = 'running'; s.finishedAt = undefined; progress(); return;
+      progress(); return;
     }
     if (r.isMeta) return;
     const message = typeof m.content === 'string' ? m.content : content.filter(c => c.type === 'text').map(c => c.text || '').join(' ');
     if (!message.trim()) return;
     if (/^\[Request interrupted by user/.test(message)) { finish('idle'); return; }
     if (!s.titlePriority) { s.title = clean(message); s.titlePriority = 1; }
-    s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.pendingTools = new Set(); progress();
+    start(); progress();
   } else if (r.type === 'assistant') {
     if (r.isAbortedMidStream) { finish('idle'); return; }
     s.pendingInputs ||= {};
     const calls = content.filter(c => c.type === 'tool_use');
+    if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) { finish('ready'); return; }
+    // The parent can genuinely resume after an asynchronous subagent report.
+    // Publish a newer lifecycle so the panel can supersede its retained finish.
+    if (s.status !== 'running') start();
     s.pendingTools ||= new Set();
     for (const c of calls) if (c.id) s.pendingTools.add(c.id);
-    for (const c of calls) if (['AskUserQuestion', 'ExitPlanMode'].includes(c.name) && c.id) s.pendingInputs[c.id] = true;
-    if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) { finish('ready'); return; }
+    for (const c of calls) if (['AskUserQuestion', 'ExitPlanMode'].includes(c.name) && c.id && !s.pendingInputs[c.id]) {
+      s.pendingInputs[c.id] = { requestedAt: at }; s.lastQuestionAt = at;
+    }
     s.status = 'running'; s.finishedAt = undefined; progress();
   } else if (r.type === 'result') {
     if (r.is_error === true) finish('failed');

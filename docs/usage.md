@@ -2,13 +2,25 @@
 
 ## Setup, connections and diagnostics
 
-The **Get Started** guide opens automatically once in the first focused VS Code window. You can close the tab and return with **Agent Pet: Get Started**. Completed setups are skipped; closing the guide prevents automatic reopening on later launches. Version 0.16.1 also opens it for users who missed the old notification and have not completed setup. The guide checks installed Codex / Claude Code extensions, opens the desktop companion, and optionally requests waiting-notification permission. Sign in within each agent’s own UI; installed does not mean authenticated.
+The **Get Started** guide opens automatically once in the first focused VS Code window. You can close the tab and return with **Agent Pet: Get Started**. Completed setups are skipped; closing the guide prevents automatic reopening on later launches. Version 0.16.1 also opens it for users who missed the old notification and have not completed setup. The guide checks installed Codex / Claude Code / Google Antigravity extensions, opens the desktop companion, and optionally requests waiting-notification permission. Sign in within each agent’s own UI; installed does not mean authenticated.
 
 Run **Agent Pet: Connections** or use **Connections & diagnostics** in the paw menu. Each row is a VS Code extension-host connection, with its workspace, version, tracking setting, chat count and last heartbeat. A heartbeat under 15 seconds is connected. Recently disconnected windows remain visible for up to ten minutes while the support screen is open. This is separate from a conversation’s running, waiting or completed status. Multiple windows require Agent Pet to be installed and enabled in each applicable profile.
 
 Run **Agent Pet: Diagnostics** to compare the extension version loaded in this window, the package installed on disk, and the pet actually reporting health. An old loaded version means that window still needs a safe reload after active work finishes. Helper health is refreshed independently of chat activity; missing health from an older running helper is reported as unavailable. Notification permission and local record-directory readability are shown too.
 
 **Copy diagnostics** puts JSON on the clipboard; it does not send anything. The report includes versions, OS/VS Code details, per-window connection/tracking booleans and chat counts, and recent helper/support error codes recorded in this window. It omits transcript text, titles, workspace names/paths, client IDs and raw exception messages. It is not a complete agent log. The support screen follows the pet’s English/Türkçe language setting and works without external web resources.
+
+## Custom pets
+
+Choose **Pets → Add custom pet…** (Türkçe: **Petler → Kendi petini ekle…**) in the desktop or paw menu, or run **Agent Pet: Add Custom Pet** in VS Code. **Agent Pet: Choose Pet** also lists locally saved custom pets and an add action.
+
+Enter a name (1–60 characters) and choose a **normal / idle** PNG. The **running**, **waiting for your reply**, **completed / happy**, and **sleeping** images are optional. The preview selector lets you check every pose; a missing pose uses normal. Status badges remain visible on the desktop even with a single image. Sleep takes priority, followed by waiting, running and completion/reaction. Errors use the normal image with a red badge.
+
+Use static PNGs up to **10 MB** and **4096 × 4096 pixels** per pose. Transparent backgrounds and identical canvas sizes/character alignment give the most consistent results. Animated PNGs and sprite sheets are not supported. Imports preserve transparency and resize large images to at most 1024 pixels. Agent Pet does not remove backgrounds or generate missing artwork.
+
+Set the pet's size (50–150%), flip horizontally, and enable or disable gentle movement. These preferences belong to each custom pet; its size multiplies **Appearance → Pet size**. macOS Reduce Motion also disables movement. **Save pet** adds and selects it. **Cancel** or closing the window discards the draft. Images are copied into local extension storage, so the original uploads may be moved or deleted afterward. They stay on this Mac and survive restarts and extension updates.
+
+Select the custom pet, then **Pets → Edit custom pet…** (Türkçe: **Özel peti düzenle…**) to change its name, images or preferences. **Clear** removes a draft pose; normal must be present before saving. **Delete pet…** asks for confirmation and removes that pet's local copies, returning to Byte if selected. Missing optional files use normal; if normal is unreadable, Byte is shown instead. Click that pet's name in **Pets** to repair its images or delete it. Sharing/export and an online gallery are not included.
 
 ## Views
 
@@ -33,6 +45,14 @@ Right-click a row → **Assign workspace** to pick a known workspace. This overr
 Codex can ask a non-blocking question and keep working. Agent Pet counts that chat as **running**, keeps its spinner and timer, and shows **Running · question pending** (Türkçe: **Çalışıyor · açık soru var**). The extra label is visible even when optional status labels are off. The **Waiting for me** filter includes these open questions, but the waiting counter counts only chats actually waiting.
 
 A blocking question, or a completed turn with an unanswered question, shows **Waiting for your reply**. Answering every pending question clears the question indicator; partial replies keep it. Notifications can still alert you to a new question while work continues. Finishing that same turn does not repeat the alert. After reload, an unfinished turn still needs fresh progress to be counted as running. For Claude plugins, matching tool-progress records also count. If Claude does not write progress while a tool is running, confirmation must wait for the next assistant or tool-result record.
+
+## Reply time and next waiting chat
+
+Chats needing a reply show a yellow **Wait** duration below the turn duration. It measures the oldest outstanding question, independently of the most recent question timestamp used for notification deduplication. Partial replies advance it only when the oldest request has been answered; reconnecting preserves recorded timestamps. Older extension hosts use the available question or waiting-state timestamp as a fallback.
+
+Hover over a row or right-click it to see why it has its status. Tooltips include reply time, turn time and time since the last recorded activity. Reconnecting, unavailable local records, a disconnected window and disabled tracking have distinct explanations. Time since activity does not mark a silent turn complete.
+
+Use **Ctrl + Option + Cmd + N** or **Open next waiting chat** in the paw menu to cycle through chats needing a reply, starting with the longest wait. Both blocking questions and questions asked while an agent works are eligible. The selected workspace filter applies; the status filter and collapsed groups do not prevent navigation. Dismissed chats and destinations without a valid live window route are excluded. The action also works while the panel is hidden. If another application owns the shortcut, use the menu action.
 
 ## Waiting notifications
 
@@ -81,3 +101,11 @@ This release targets Apple Silicon and macOS 26+. The original source and artwor
 ## Pet and panel visibility
 
 **Hide pet / Show pet** controls only the character, keeping chats, workspace groups and notifications available. **Hide panel / Show panel** controls only the chat list; the pet can stay visible and can still be moved or resized. **Hide all / Show all** and **Ctrl + Option + Cmd + P** control the entire window while preserving the chosen layout. If both parts were hidden individually, **Show all** restores both. Notifications pause only when everything is hidden. The VS Code command is now **Agent Pet: Hide Panel**; its existing command ID is retained.
+
+## Google Antigravity
+
+Install the official [Google Antigravity extension for VS Code](https://antigravity.google/docs/ide/extensions/vscode/) (`google.google-antigravity`), sign in and open its panel to start the local backend. Agent Pet follows its local conversation summary stream automatically while activity tracking is enabled. Antigravity rows open the exact conversation in their owning VS Code window.
+
+Questions and approval requests show a waiting duration and are included in waiting notifications and Ctrl + Option + Cmd + N. Nested subagents, archived chats, cloud sessions and other workspaces are excluded. The parent remains active while the backend reports background work or active children. On reconnect, historical running summaries need fresh activity; existing explicit waiting requests remain visible. Missing local backends become unknown instead of remaining running.
+
+This adapter supports the official VS Code extension, verified against version 1.7.0. It does not monitor the standalone Antigravity app, Antigravity IDE, CLI or remote backends. If no rows appear, open Antigravity’s own panel, confirm its backend starts, and check **Agent Pet: Diagnostics**. Its local integration API is not a stable public SDK and may change between releases.

@@ -26,8 +26,10 @@ function applyEvent(state, record) {
     if (p.type === 'function_call' && /(?:^|\.)request_user_input(?:_async)?$/.test(p.name || '')) {
       state.pendingInputs ||= {};
       let args; try { args = JSON.parse(p.arguments); } catch {}
-      state.lastQuestionAt = at || state.lastQuestionAt;
-      state.pendingInputs[p.call_id] = { async: p.name.endsWith('_async'), remaining: Array.from({ length: Math.max(1, args?.questions?.length || 0) }, (_, i) => i) };
+      if (!state.pendingInputs[p.call_id]) {
+        state.lastQuestionAt = at || state.lastQuestionAt;
+        state.pendingInputs[p.call_id] = { async: p.name.endsWith('_async'), requestedAt: at, remaining: Array.from({ length: Math.max(1, args?.questions?.length || 0) }, (_, i) => i) };
+      }
       state.lastEventAt = at || state.lastEventAt;
     } else if (p.type === 'function_call_output' && state.pendingInputs?.[p.call_id]) {
       let output; try { output = typeof p.output === 'string' ? JSON.parse(p.output) : p.output; } catch {}
@@ -245,9 +247,14 @@ class ActivityMonitor {
       const blocked = pending.some(input => input?.async !== true);
       const status = pending.length && (blocked || s.status === 'ready') ? 'waiting'
         : s.status === 'running' && s.liveConfirmed === false ? 'unknown' : s.status;
+      const requested = pending.map(input => input?.requestedAt).filter(at => Number.isFinite(at) && at > 0);
+      const statusReason = status === 'unknown' ? (s.status === 'running' ? 'awaiting_activity' : 'no_turn_evidence')
+        : status === 'idle' ? (s.finishedAt ? 'turn_interrupted' : 'no_turn_evidence')
+        : ({ running: pending.length ? 'question_pending' : 'turn_in_progress', waiting: 'awaiting_reply', ready: 'turn_completed', failed: 'turn_failed' })[status];
       this.seenThreads.set(s.id, {
         id: s.id, cwd: s.cwd, title: this.titles.get(s.id) || `${path.basename(s.cwd)} · ${s.id.slice(-6)}`,
         status, replyPending: pending.length > 0, replyRequestedAt: pending.length ? s.lastQuestionAt : undefined,
+        waitingSince: pending.length ? (requested.length ? Math.min(...requested) : s.lastQuestionAt) : undefined, statusReason,
         changedAt: s.changedAt, lastEventAt: s.lastEventAt, startedAt: s.startedAt, finishedAt: s.finishedAt,
         ...(this.terminals.has(s.id) ? { surface: 'terminal' } : {})
       });
@@ -257,7 +264,7 @@ class ActivityMonitor {
       ...t, title: this.titles.get(t.id) || t.title,
       // A confirmed open turn can be silent during reasoning or a long tool.
       // Only lifecycle evidence ends it; losing its source makes it unknown.
-      status: ['running', 'waiting'].includes(t.status) && !readableIds.has(t.id) ? 'unknown' : t.status
+      ...(['running', 'waiting', 'unknown'].includes(t.status) && !readableIds.has(t.id) ? { status: 'unknown', statusReason: 'source_unavailable' } : {})
     })).sort((a, b) => a.id.localeCompare(b.id));
     const activeCount = threads.filter(t => t.status === 'running').length;
     if (threads.some(t => t.status === 'waiting')) return { status: 'waiting', active: activeCount, threads };

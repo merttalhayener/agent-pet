@@ -12,7 +12,8 @@ with tempfile.TemporaryDirectory(prefix="agent-pet-media-") as temporary:
     source = "import ImageIO\n" + source.replace("    func selfTest() {", "    func selfTest() { exportFeatureDemos() }\n" + (root / "scripts/feature-demos.swiftpart").read_text() + "\n    func baselineSelfTest() {")
     (work / "main.swift").write_text(source)
     flags = [compiler, "-sdk", sdk, "-target", "arm64-apple-macos26.0", "-module-cache-path", cache, "-O"]
-    subprocess.run(flags + [str(root / "src/native/OriginalPets.swift"), str(work / "main.swift"), "-o", str(work / "demo")], check=True)
+    sources = sorted(p for p in (root / "src/native").glob("*.swift") if p.name != "DesktopPet.swift")
+    subprocess.run(flags + list(map(str, sources)) + [str(work / "main.swift"), "-o", str(work / "demo")], check=True)
     subprocess.run([str(work / "demo"), "--state-dir", str(work), "--self-test"], check=True, timeout=60)
     for name in ["status", "workspaces", "panel-only", "pets"]:
         shutil.copyfile(work / "output" / (name + ".gif"), root / "docs/media" / (name + ".gif"))

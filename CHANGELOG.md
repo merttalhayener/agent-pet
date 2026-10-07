@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.19.0 — Add your own custom pets
+
+- Add a local custom pet library with native English/Türkçe import and editing screens.
+- Accept one required normal PNG and optional running, waiting, happy and sleeping poses, with normal-pose fallback and status badges.
+- Preview poses and customize each pet's name, size, horizontal flip and gentle movement; respect macOS Reduce Motion.
+- Keep imported images and choices across restarts and extension updates; validate files and save complete revisions atomically.
+- Add **Agent Pet: Add Custom Pet**, custom choices in **Choose Pet**, and confirmed deletion from the pet editor.
+- Verify import, editing, cancellation, persistence, fallback and deletion in an isolated native test library.
+
+## 0.18.0 — Follow Google Antigravity in VS Code
+
+- Follow the official Google Antigravity VS Code extension’s local conversation summary stream without hooks, account keys or a bridge installation.
+- Add Antigravity labels, workspace matching, exact conversation navigation, waiting time, notifications and next-waiting-chat support.
+- Handle all initial summary batches, deletions, reconnects, token rotation and workspace changes; keep old running records unconfirmed until fresh activity arrives.
+- Exclude archived, cloud, foreign-workspace and nested subagent records; preserve parent completion against delayed updates.
+- Distinguish background work from a fully idle agent, and withdraw active evidence when the local backend is unavailable.
+- Include Antigravity in setup and diagnostics. This adapter covers the official VS Code extension; standalone app, IDE, CLI and remote backends are outside its scope.
+
+## 0.17.0 — Explain status and follow waiting chats
+
+- Explain each chat's recorded status in its tooltip and context menu, with distinct labels for reconnecting, unreadable records, disconnected windows and disabled tracking.
+- Show reply-waiting time separately from turn duration, using the oldest unanswered request across partial replies and reconnects.
+- Add Ctrl + Option + Cmd + N and a menu action to cycle through reachable chats needing a reply, oldest first and within the selected workspace.
+- Keep async questions eligible while their agents continue working; preserve notification deduplication independently of waiting time.
+
+- Preserve completed, interrupted and failed Claude chats when late subagent or background tool results arrive.
+- Require results to match outstanding foreground calls; ignore duplicate and previous-turn results while preserving blocking-question replies.
+- Publish a newer start when the parent really resumes after a subagent hand-back, so the panel and elapsed time follow that work.
+- Ignore older lifecycle records and keep activity timestamps from moving backwards.
+- Add regression coverage for subagent hand-backs, reload, nested subagent activity, delayed events and unmatched results.
+
 ## 0.16.6 — Make terminal support easier to find
 
 - Highlight VS Code integrated-terminal support in the README introduction and a dedicated section.

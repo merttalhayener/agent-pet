@@ -23,7 +23,13 @@ output.parent.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix="codex-pet-swift-") as cache:
     main = Path(cache) / "main.swift"
     main.write_bytes((root / "src/native/DesktopPet.swift").read_bytes())
-    subprocess.run([str(compiler), "-sdk", str(sdk), "-target", "arm64-apple-macos26.0", "-module-cache-path", cache, "-O", str(root / "src/native/OriginalPets.swift"), str(main), "-o", str(output)], check=True)
+    sources = []
+    for source in sorted((root / "src/native").glob("*.swift")):
+        if source.name == "DesktopPet.swift": continue
+        snapshot = Path(cache) / source.name
+        shutil.copyfile(source, snapshot)
+        sources.append(snapshot)
+    subprocess.run([str(compiler), "-sdk", str(sdk), "-target", "arm64-apple-macos26.0", "-module-cache-path", cache, "-O", *map(str, sources), str(main), "-o", str(output)], check=True)
 output.chmod(0o755)
 version = json.loads((root / "src/package.json").read_text())["version"]
 (bundle / "Contents/Info.plist").write_bytes(plistlib.dumps({

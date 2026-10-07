@@ -17,7 +17,8 @@ async function main() {
   await fs.writeFile(path.join(dir, 'client-one.json'), JSON.stringify({ ...base, updatedAt: now - 100, activity: { status: 'running', active: 1, threads: [a, b, ...extra] } }));
   // More recent heartbeat but older chat events must not override chat state.
   await fs.writeFile(path.join(dir, 'client-two.json'), JSON.stringify({ ...base, updatedAt: now, activity: { status: 'running', active: 1, threads: [{ ...a, status: 'ready', changedAt: now - 5000, lastEventAt: now - 4000 }, { ...b, status: 'running', startedAt: now - 180000, changedAt: now - 6000, lastEventAt: now - 5000 }] } }));
-  const { stdout } = await run(path.join(root, 'src', 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'), ['--state-dir', dir, '--self-test', ...(process.argv.includes('--hotkey') ? ['--hotkey-self-test'] : [])], { timeout: 15000 });
+  const { stdout, stderr } = await run(path.join(root, 'src', 'bin', 'Agent Pet.app', 'Contents', 'MacOS', 'codex-desktop-pet'), ['--state-dir', dir, '--self-test', ...(process.argv.includes('--hotkey') ? ['--hotkey-self-test'] : []), ...(process.argv.includes('--attention-hotkey') ? ['--attention-hotkey-self-test'] : []), ...(process.argv.includes('--custom-pet-previews') ? ['--custom-pet-previews'] : [])], { timeout: 15000 });
+  if (stderr) console.error(stderr);
   const result = JSON.parse(await fs.readFile(path.join(dir, 'dashboard-test.json'), 'utf8'));
   assert.equal(result.windowCount, 1);
   assert.equal(result.rows.find(w => w.id === '11111111-1111-4111-8111-111111111111').indicator, 'spinner');
@@ -28,8 +29,10 @@ async function main() {
   assert.equal(result.appActive, false);
   assert.deepEqual(result.originalPets, ['agent-pet', 'miso', 'fern']);
   assert.ok(result.originalPetsWork);
-  for (const key of ['statusMenuRefreshWorks','visibilityMenuWorks','marketplaceRoutingWorks','quietAndTerminalStatesWork','dashboardControlsWork','workspaceOwnershipWorks','panelOnlyWorks','windowRoutingWorks','workspaceViewWorks','claudeLinkWorks','invalidLinkRejected','languageWorks','reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
+  assert.ok(result.customPetsWork, 'Custom pet import, preview, persistence, selection, fallback, editing and removal');
+  for (const key of ['antigravityFeaturesWork','attentionFeaturesWork','statusMenuRefreshWorks','visibilityMenuWorks','marketplaceRoutingWorks','quietAndTerminalStatesWork','dashboardControlsWork','workspaceOwnershipWorks','panelOnlyWorks','windowRoutingWorks','workspaceViewWorks','claudeLinkWorks','invalidLinkRejected','languageWorks','reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
   if (process.argv.includes('--hotkey')) assert.ok(result.hotKeyRegistered);
+  if (process.argv.includes('--attention-hotkey')) assert.ok(result.nextWaitingHotKeyRegistered);
   assert.ok(result.reopenedChatStaysAfterCompletion); assert.ok(result.dismissedSameTurnStaysHidden);
   assert.ok(result.bottomCornersStay); assert.ok(result.listChangeKeepsCorner); assert.ok(result.refreshDoesNotMoveDrag);
   assert.ok(result.cornerResizeWorks); assert.ok(result.refreshPreservesSize); assert.ok(result.minimumWorks); assert.ok(result.maximumWorks);

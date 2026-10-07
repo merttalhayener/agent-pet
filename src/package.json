@@ -1,8 +1,8 @@
 {
   "name": "agent-pet",
   "displayName": "Agent Pet",
-  "description": "See Codex and Claude Code chats from VS Code extensions and integrated terminals in one floating panel, and click one to bring its window to the front.",
-  "version": "0.16.6",
+  "description": "Follow Codex, Claude Code and Google Antigravity chats in one floating macOS panel. Click a chat to open its VS Code window or integrated terminal.",
+  "version": "0.19.0",
   "publisher": "merttalhayener",
   "license": "MIT",
   "engines": {
@@ -32,6 +32,12 @@
         "title": "Choose Pet",
         "category": "Agent Pet",
         "icon": "$(symbol-color)"
+      },
+      {
+        "command": "agentPet.addCustomPet",
+        "title": "Add Custom Pet",
+        "category": "Agent Pet",
+        "icon": "$(add)"
       },
       {
         "command": "codexPet.showDesktop",
@@ -76,7 +82,7 @@
         "codexPet.followActivity": {
           "type": "boolean",
           "default": true,
-          "description": "Follow local Codex and Claude Code session status in the open workspace. No transcript content is displayed or sent anywhere."
+          "description": "Follow local Codex, Claude Code and Google Antigravity session status in the open workspace. No transcript content is displayed or sent anywhere."
         },
         "codexPet.desktopEnabled": {
           "type": "boolean",
@@ -104,6 +110,7 @@
     "codex",
     "claude-code",
     "claude",
+    "antigravity",
     "agent",
     "ai",
     "multi-window",
@@ -126,7 +133,7 @@
     "virtualWorkspaces": false,
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "Agent Pet reads local agent session files for this workspace."
+      "description": "Agent Pet reads local agent session files and Antigravity status summaries for this workspace."
     }
   },
   "scripts": {

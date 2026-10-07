@@ -41,6 +41,7 @@ test('support actions whitelist commands, completion persists, and disposal prev
  const f=await fixture();try{
   await f.support.action({action:'executeCommand',command:'workbench.action.closeWindow'});await f.support.action({action:'openExternal',url:'https://bad.example'});assert.equal(f.calls.length,0);
   await f.support.action({action:'claude'});assert.deepEqual(f.calls[0],['workbench.extensions.search','@id:anthropic.claude-code']);
+  await f.support.action({action:'antigravity'});assert.deepEqual(f.calls[1],['workbench.extensions.search','@id:google.google-antigravity']);
   await f.support.action({action:'notifications'});assert.ok(await fs.stat(path.join(f.directory,'desktop-notifications-request')));
   await f.support.action({action:'complete'});assert.equal(f.state.get('setupCompleted'),true);
   f.support.dispose();const before=f.calls.length;await f.support.action({action:'showPet'});assert.equal(f.calls.length,before);
