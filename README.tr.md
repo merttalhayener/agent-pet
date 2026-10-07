@@ -36,7 +36,7 @@ Birkaç projede birden ajan mı çalıştırıyorsun? Agent Pet, sohbetlerini di
 
 **Byte**, **Miso** veya **Fern** ile tanış—istersen kendi karakterini ekle.
 
-<img src="docs/images/characters.png" alt="Robot Byte, kedi Miso ve filiz Fern ile tanış" width="720">
+[<img src="docs/images/characters.png" alt="Byte, Miso veya Fern’i seç; artı işaretli kartla kendi karakterini ekle" width="960">](docs/usage.md#custom-pets)
 
 **Petler → Kendi petini ekle…** menüsünü aç, bir isim ver ve PNG görselini seç. Çalışma, yanıt bekleme, kutlama ve uyku için farklı pozlar da ekleyebilirsin. Pozları önizle, boyutu ayarla, karakteri çevir ve hareket edip etmeyeceğini seç.
 

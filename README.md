@@ -36,7 +36,7 @@ Running agents across several projects? Agent Pet keeps their chats together in 
 
 Choose **Byte**, **Miso** or **Fern**—or bring your own character.
 
-<img src="docs/images/characters.png" alt="Meet Byte the robot, Miso the cat and Fern the sprout" width="720">
+[<img src="docs/images/characters.png" alt="Choose Byte, Miso or Fern, or use the plus card to add your own character" width="960">](docs/usage.md#custom-pets)
 
 Open **Pets → Add custom pet…**, give it a name and choose a PNG. Add optional poses for running, waiting, celebrating and sleeping. Preview the poses, adjust the size, flip the character and choose whether it moves.
 
