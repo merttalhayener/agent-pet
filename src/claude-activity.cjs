@@ -15,12 +15,51 @@ function applyClaudeEvent(s, r) {
   if (typeof named === 'string' && clean(named) && priority >= (s.titlePriority || 0)) { s.title = clean(named); s.titlePriority = priority; }
   const at = Date.parse(r.timestamp);
   if (!Number.isFinite(at)) return;
+  // A queued-command attachment carries the submission time, which can be
+  // older than the preceding completion. Retain only human delivery IDs until
+  // the queue records actual consumption; enqueue/cancel/background reports
+  // must never start a turn or retain prompt text.
+  if (r.type === 'attachment' && r.attachment?.type === 'queued_command') {
+    const a = r.attachment;
+    if (a.commandMode === 'prompt' && (a.origin?.kind === 'human' || a.humanTurn === true)) {
+      const ids = [a.delivery_id, a.source_uuid].filter(id => typeof id === 'string' && id.length > 0 && id.length <= 128);
+      if (ids.length) {
+        s.queuedHumanCommands ||= new Map();
+        const command = { ids };
+        for (const id of ids) s.queuedHumanCommands.set(id, command);
+        while (s.queuedHumanCommands.size > 256) s.queuedHumanCommands.delete(s.queuedHumanCommands.keys().next().value);
+      }
+    }
+    return;
+  }
+  let consumedHuman = false;
+  if (r.type === 'queue-operation' && r.operation === 'remove') {
+    const command = s.queuedHumanCommands?.get(r.deliveryId) || s.queuedHumanCommands?.get(r.commandUuid);
+    if (command) {
+      for (const id of command.ids) s.queuedHumanCommands.delete(id);
+      consumedHuman = r.reason === 'absorbed_mid_turn';
+    }
+  }
   // Delayed records from an older turn cannot overwrite a newer start/finish.
   if (at < Math.max(s.changedAt || 0, s.startedAt || 0, s.finishedAt || 0)) return;
   const m = r.message || {}, content = Array.isArray(m.content) ? m.content : [];
+  if (r.type === 'assistant' && s.settledMessages?.has(m.id)) return;
   const progress = () => { s.lastEventAt = Math.max(s.lastEventAt || 0, at); s.progressVersion = (s.progressVersion || 0) + 1; };
   const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); };
-  const finish = status => { s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); progress(); };
+  const finish = status => {
+    if (r.type === 'assistant' && typeof m.id === 'string' && m.id.length <= 128) {
+      s.settledMessages ||= new Set(); s.settledMessages.add(m.id);
+      while (s.settledMessages.size > 128) s.settledMessages.delete(s.settledMessages.values().next().value);
+    }
+    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); progress();
+  };
+  if (r.type === 'queue-operation') {
+    if (consumedHuman) {
+      if (s.status !== 'running') start();
+      progress();
+    }
+    return;
+  }
   if (r.type === 'progress') {
     // Only progress belonging to an unfinished foreground call confirms activity.
     // Late background-server/subagent updates must not resurrect a finished turn.

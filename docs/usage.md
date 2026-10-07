@@ -26,7 +26,7 @@ Select the custom pet, then **Pets → Edit custom pet…** (Türkçe: **Özel p
 
 Use **Appearance → Panel only** to hide the character and its empty space. The chat list stays visible. Drag its header to move it and the top-right handle to resize it. Uncheck the option to restore the character.
 
-Use **▤** or **Appearance → Extended · Workspaces** to group chats. Click a group header to fold or expand it. Switch back with **Appearance → Compact list**. View, folded groups, and other preferences survive restart.
+**Extended · Workspaces** is the default view when no saved layout preference exists. Use **▤** or **Appearance → Extended · Workspaces** to group chats. Click a group header to fold or expand it. Switch back with **Appearance → Compact list**. Your saved layout, folded groups, and other preferences survive restart and updates.
 
 Multi-root workspace files form one group. If the same project is open separately, ownership prefers the deepest matching folder, then the workspace with fewer folders. This is a folder-based rule, not proof of which window created the chat. Older records without workspace information stay under **Other chats** until their workspace reports them again.
 
@@ -85,6 +85,8 @@ Run Codex CLI or Claude Code in VS Code’s integrated terminal. Its chat appear
 Click **Agent Pet** in VS Code’s status bar or run **Agent Pet: Show Desktop Pet**. While the helper is running, use the menu bar paw or **Ctrl + Option + Cmd + P** to hide or restore it. Hiding everything also pauses completion feedback.
 
 ## Status looks stuck
+
+Queued prompts do not count as running just because they were submitted. When the agent starts the next prompt, the chat returns to running and its work timer starts for that turn. A steering prompt consumed during existing work keeps that turn's timer. Claude distinguishes consumed human prompts from cancelled queue items and background-agent reports; Codex matches completion events to the current turn.
 
 After reconnecting, Agent Pet waits for new activity before showing a chat as running. Once confirmed, an unfinished turn keeps its spinner and elapsed time during long reasoning or tool calls. Silence alone does not change its status. **No update** and a question mark remain for unconfirmed or disconnected sessions and unreadable/removed session files. Only an explicit completion record produces a checkmark, and older window snapshots cannot undo that completion.
 

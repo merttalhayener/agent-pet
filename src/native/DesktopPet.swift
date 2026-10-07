@@ -556,7 +556,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var panelOnly = false
     var panelHidden = false
     var allHidden: Bool { presentationHidden || (panelOnly && panelHidden) }
-    var grouped = false
+    var grouped = true
     var foldedWorkspaces: Set<String> = []
     var collapsed = false, snapEnabled = true, completionAnimation = true, soundEnabled = false
     var presentationHidden = false
@@ -661,7 +661,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             language = PetLanguage(preference: defaults.string(forKey: "language"))
             panelOnly = defaults.bool(forKey: "panelOnly")
             panelHidden = defaults.bool(forKey: "panelHidden")
-            grouped = defaults.bool(forKey: "grouped")
+            grouped = defaults.object(forKey: "grouped") == nil || defaults.bool(forKey: "grouped")
             foldedWorkspaces = Set(defaults.stringArray(forKey: "foldedWorkspaces") ?? [])
             collapsed = defaults.bool(forKey: "collapsed"); soundEnabled = defaults.bool(forKey: "soundEnabled")
             snapEnabled = defaults.object(forKey: "snapEnabled") == nil || defaults.bool(forKey: "snapEnabled")
@@ -744,13 +744,20 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
                     // A newer heartbeat or helper protocol is not a newer turn.
                     // Keep an explicit terminal event until there is newer lifecycle evidence.
                     let terminalAt = previous.finishedAt ?? previous.changedAt
+                    let previousStart = previous.startedAt ?? previous.changedAt
+                    let nextStart = thread.startedAt ?? thread.changedAt
+                    // The next queued turn can start in the same millisecond
+                    // that the previous one finished. Its new start is evidence;
+                    // a late update belonging to the old start is not.
+                    let newStart = thread.startedAt != nil && nextStart > previousStart && nextStart >= terminalAt
                     if ["ready", "idle", "failed"].contains(previous.status), ["unknown", "quiet", "running"].contains(thread.status),
-                       max(thread.changedAt, thread.startedAt ?? 0, thread.finishedAt ?? 0) <= terminalAt { continue }
+                       max(thread.changedAt, thread.startedAt ?? 0, thread.finishedAt ?? 0) <= terminalAt && !newStart { continue }
                     let previousLifecycle = max(previous.changedAt, previous.startedAt ?? 0, previous.finishedAt ?? 0)
                     let nextLifecycle = max(thread.changedAt, thread.startedAt ?? 0, thread.finishedAt ?? 0)
                     if previousLifecycle > nextLifecycle { continue }
+                    if previousLifecycle == nextLifecycle && nextStart < previousStart { continue }
                     if previousLifecycle == nextLifecycle, !["ready", "idle", "failed"].contains(thread.status),
-                       max(previous.lastEventAt, previous.changedAt) > max(thread.lastEventAt, thread.changedAt) { continue }
+                       max(previous.lastEventAt, previous.changedAt) > max(thread.lastEventAt, thread.changedAt) && !newStart { continue }
                     // Another live window can still confirm activity while one reconnects.
                     if protocolByID[thread.id] != nil, ["running", "quiet", "waiting"].contains(previous.status), thread.status == "unknown",
                        max(previous.lastEventAt, previous.changedAt) == max(thread.lastEventAt, thread.changedAt) { continue }
@@ -1822,6 +1829,11 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         retained = [done.id: done]
         var valid = mergeThreads([snapshot(old, protocolVersion: 99)]).first?.status == "ready"
         valid = valid && mergeThreads([snapshot(next, protocolVersion: 8)]).first?.status == "running"
+        let handoff = ThreadActivity(id: done.id, title: done.title, status: "running", changedAt: 200, lastEventAt: 200, startedAt: 200)
+        valid = valid && mergeThreads([snapshot(handoff, protocolVersion: 8)]).first?.status == "running"
+        retained = [handoff.id: handoff]
+        valid = valid && mergeThreads([snapshot(done, protocolVersion: 99)]).first?.status == "running"
+        retained = [done.id: done]
         retained = [:]
         valid = valid && mergeThreads([snapshot(done, protocolVersion: 8), snapshot(old, protocolVersion: 99)]).first?.status == "ready"
         valid = valid && mergeThreads([snapshot(old, protocolVersion: 8), snapshot(done, protocolVersion: 99)]).first?.status == "ready"
@@ -2099,6 +2111,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         return routed && health["connections"] as? Int == snapshots().count && health["version"] as? String == Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String && health["activity"] == nil && health["workspace"] == nil
     }
     func selfTest() {
+        // The initial interaction fixture exercises compact row coordinates;
+        // testWorkspaceView separately covers the default grouped layout.
+        grouped = false; resizeToList()
         precondition(testWorkingWithQuestion(), "Running/question labels, counters, filtering or notifications failed")
         precondition(testSupportCenter(), "Support routing or health report failed")
         precondition(testBundleRemoval(), "Bundle removal scope/metadata guards failed")

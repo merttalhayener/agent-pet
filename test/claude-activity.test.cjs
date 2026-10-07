@@ -137,6 +137,87 @@ const handback = (at = Date.now()) => record('user', {
   isMeta: true, message: { content: '[Subagent hand-back] Synthetic final report' }
 }, at);
 
+const queued = (id, at, extra = {}) => record('attachment', {
+  attachment: { type: 'queued_command', commandMode: 'prompt', origin: { kind: 'human' },
+    source_uuid: id, delivery_id: `delivery-${id}`, timestamp: new Date(at).toISOString(), prompt: 'Private queued prompt', ...extra }
+}, at);
+const consumed = (id, at, extra = {}) => record('queue-operation', {
+  operation: 'remove', reason: 'absorbed_mid_turn', commandUuid: id, deliveryId: `delivery-${id}`, ...extra
+}, at);
+
+test('a same-millisecond Claude queue handoff ignores the previous assistant completion replay', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  const done = record('assistant', { message: { id: 'answer-first', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done' }] } }, at + 1000);
+  apply(user(at)); apply(queued('next', at + 500)); apply(done); apply(consumed('next', at + 1000));
+  assert.equal(state.status, 'running'); assert.equal(state.startedAt, at + 1000); assert.equal(state.finishedAt, undefined);
+  apply(done);
+  assert.equal(state.status, 'running'); assert.equal(state.finishedAt, undefined);
+  apply(record('assistant', { message: { id: 'answer-second', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done' }] } }, at + 2000));
+  assert.equal(state.status, 'ready'); assert.equal(state.finishedAt, at + 2000);
+});
+
+test('a queued human prompt starts at consumption after completion, including a backdated attachment and reload', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + assistant('end_turn', undefined, at + 1000));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick(); assert.equal(snapshot.threads[0].status, 'ready');
+    // Claude stores the enqueue timestamp on the attachment, then records when
+    // it actually consumes it. The old timestamp must not hide this new turn.
+    await fs.appendFile(file, queued('next', at + 500)); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready');
+    await fs.appendFile(file, consumed('next', at + 2000)); await monitor.tick();
+    assert.equal(snapshot.active, 1); assert.equal(snapshot.threads[0].status, 'running');
+    assert.equal(snapshot.threads[0].startedAt, at + 2000); assert.equal(snapshot.threads[0].finishedAt, undefined);
+    assert.ok(!JSON.stringify([...monitor.files.values()]).includes('Private queued prompt'));
+    const reload = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+    try {
+      await reload.tick(); assert.equal(snapshot.threads[0].status, 'unknown');
+      await fs.appendFile(file, assistant(null, undefined, at + 3000)); await reload.tick();
+      assert.equal(snapshot.active, 1); assert.equal(snapshot.threads[0].startedAt, at + 2000);
+    } finally { reload.dispose(); }
+    await fs.appendFile(file, assistant('end_turn', undefined, at + 4000)); await monitor.tick();
+    const done = snapshot.threads[0];
+    await fs.appendFile(file, consumed('next', at + 5000)); await monitor.tick();
+    assert.deepEqual(snapshot.threads[0], done, 'A duplicated delivery cannot restart a completed turn');
+  } finally { monitor.dispose(); }
+}));
+
+test('steering consumption keeps the active timer and foreground tools while enqueueing alone is quiet', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + pluginCall('active-call'));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick(); assert.equal(snapshot.threads[0].status, 'unknown');
+    await fs.appendFile(file, record('queue-operation', { operation: 'enqueue', content: 'Private queued prompt' }, at + 500));
+    await monitor.tick(); assert.equal(snapshot.threads[0].status, 'unknown');
+    await fs.appendFile(file, queued('steer', at + 1000) + consumed('steer', Date.now() + 1)); await monitor.tick();
+    assert.equal(snapshot.active, 1); assert.equal(snapshot.threads[0].startedAt, at);
+    assert.ok(monitor.files.get(file).pendingTools.has('active-call'));
+  } finally { monitor.dispose(); }
+}));
+
+test('cancelled, unmatched, foreign and background queue deliveries cannot resurrect completed work', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  apply(user(at)); apply(assistant('end_turn', undefined, at + 100));
+  const version = state.progressVersion;
+  apply(record('queue-operation', { operation: 'dequeue' }, at + 200));
+  apply(queued('cancelled', at + 10)); apply(consumed('cancelled', at + 300, { reason: 'cancelled' }));
+  apply(consumed('cancelled', at + 400)); apply(consumed('unmatched', at + 400));
+  apply(queued('background', at + 200, { commandMode: 'task-notification', origin: { kind: 'task-notification' } }));
+  apply(consumed('background', at + 500));
+  for (const extra of [{ sessionId: OTHER }, { isSidechain: true }]) {
+    apply(record('attachment', { ...JSON.parse(queued('foreign', at + 1000)), ...extra }, at + 1000));
+    apply(consumed('foreign', at + 1001));
+  }
+  assert.equal(state.status, 'ready'); assert.equal(state.finishedAt, at + 100);
+  assert.equal(state.progressVersion, version);
+});
+
 test('late subagent results preserve completion, interruption and failure, including after reload', async () => fixture(async ({ projects, file }) => {
   const at = Date.now() - 10000;
   const endings = [

@@ -8,7 +8,7 @@ const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
 
 function progress(state, at) {
-  state.lastEventAt = at || state.lastEventAt || 0;
+  state.lastEventAt = Math.max(state.lastEventAt || 0, at || 0);
   state.progressVersion = (state.progressVersion || 0) + 1;
 }
 
@@ -21,6 +21,7 @@ function applyEvent(state, record) {
     return;
   }
   const p = record.payload || {};
+  if (at && at < Math.max(state.changedAt || 0, state.startedAt || 0, state.finishedAt || 0)) return;
   if (record.type === 'response_item') {
     if (p.type !== 'message' || p.role === 'assistant') progress(state, at);
     if (p.type === 'function_call' && /(?:^|\.)request_user_input(?:_async)?$/.test(p.name || '')) {
@@ -56,8 +57,13 @@ function applyEvent(state, record) {
     } catch { /* Incomplete reply records are ignored. */ }
   }
   if (status) {
+    if (!at) return;
+    const turnId = typeof p.turn_id === 'string' && p.turn_id.length <= 128 ? p.turn_id : undefined;
+    // Queue handoffs can deliver a previous turn's terminal event late. Match
+    // the explicit turn identity before ending current work, even at equal times.
+    if (turnId && state.turnId && (type === 'task_started' ? turnId === state.turnId : turnId !== state.turnId)) return;
     state.status = status; state.changedAt = at;
-    if (type === 'task_started') { state.startedAt = at; state.finishedAt = undefined; state.pendingInputs = {}; state.lastQuestionAt = undefined; }
+    if (type === 'task_started') { state.turnId = turnId; state.startedAt = at; state.finishedAt = undefined; state.pendingInputs = {}; state.lastQuestionAt = undefined; }
     else { state.finishedAt = at; if (status !== 'ready') state.pendingInputs = {}; }
   }
   if (status || ['token_count', 'agent_message', 'agent_reasoning'].includes(type)) progress(state, at);
@@ -182,9 +188,9 @@ class ActivityMonitor {
           const record = JSON.parse(line);
           if (record.type !== 'event_msg' || !['task_started', 'task_complete', 'task_completed', 'turn_aborted', 'task_failed'].includes(record.payload?.type)) continue;
           const lastEventAt = state.lastEventAt;
-          if (!state.changedAt) { state.status = { task_started: 'running', task_complete: 'ready', task_completed: 'ready', turn_aborted: 'idle', task_failed: 'failed' }[record.payload.type]; state.changedAt = Date.parse(record.timestamp) || 0; if (state.status !== 'running') state.finishedAt = state.changedAt; }
+          if (!state.changedAt) { state.status = { task_started: 'running', task_complete: 'ready', task_completed: 'ready', turn_aborted: 'idle', task_failed: 'failed' }[record.payload.type]; state.turnId = record.payload.turn_id; state.changedAt = Date.parse(record.timestamp) || 0; if (state.status !== 'running') state.finishedAt = state.changedAt; }
           state.lastEventAt = Math.max(lastEventAt, Date.parse(record.timestamp) || 0);
-          if (record.payload.type === 'task_started') { state.startedAt = Date.parse(record.timestamp) || 0; return; }
+          if (record.payload.type === 'task_started' && (!state.turnId || !record.payload.turn_id || state.turnId === record.payload.turn_id)) { state.turnId ||= record.payload.turn_id; state.startedAt = Date.parse(record.timestamp) || 0; return; }
         } catch {}
       }
       end = start;

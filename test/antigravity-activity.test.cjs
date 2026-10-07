@@ -117,6 +117,16 @@ test('a genuine parent resume and a new user turn supersede retained completion'
   assert.equal(summaryState(session, summary(now + 300, { lastUserInputTime: iso(now - 10000) }), ['/project'], next, now + 300), next);
 });
 
+test('Antigravity queued input preserves current work time and starts its timer after the idle handoff', () => {
+  const initial = summaryState(session, summary(now), ['/project'], undefined, now);
+  const queued = summaryState(session, summary(now + 100, { lastUserInputTime: iso(now + 50) }), ['/project'], initial, now + 100);
+  assert.equal(queued.status, 'running'); assert.equal(queued.startedAt, initial.startedAt);
+  const done = summaryState(session, summary(now + 200, { status: 'CASCADE_RUN_STATUS_IDLE', lastUserInputTime: iso(now + 50) }), ['/project'], queued, now + 200);
+  assert.equal(done.status, 'ready'); assert.equal(done.finishedAt, now + 200);
+  const next = summaryState(session, summary(now + 300, { lastUserInputTime: iso(now + 50) }), ['/project'], done, now + 300);
+  assert.equal(next.status, 'running'); assert.equal(next.startedAt, now + 300); assert.equal(next.finishedAt, undefined);
+});
+
 test('disconnect and token rotation withdraw evidence and ignore callbacks from old streams', async () => {
   const f = fixture(); try {
     await f.monitor.tick(); f.send({ updates: { [session]: summary(now - 1000) } }); f.send({ updates: { [session]: summary(now) } });

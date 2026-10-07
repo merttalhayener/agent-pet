@@ -28,7 +28,7 @@ Birkaç projede birden ajan mı çalıştırıyorsun? Agent Pet, sohbetlerini di
 
 - **Seni bekleyen işleri gör.** Çalışan, yanıt bekleyen ve tamamlanan sohbetleri; çalışma ve yanıt bekleme sürelerini ayrı ayrı takip et.
 - **Doğrudan sohbete dön.** Sohbete tıklayıp VS Code penceresini veya terminalini aç. **Ctrl + Option + Cmd + N** ile sıradaki yanıt bekleyen sohbete geç.
-- **Projelerini düzenle.** Sohbetleri çalışma alanına göre grupla, projeleri daralt ve takip etmek istediğin işleri filtrele.
+- **Projelerini düzenle.** Sohbetler varsayılan olarak çalışma alanına göre gruplanır. Projeleri daralt ve takip etmek istediğin işleri filtrele.
 - **Doğru zamanda geri dön.** Yanıt bildirimlerini aç veya menü çubuğundan çalışan ve bekleyen sohbet sayılarına bak.
 - **Çalışma alanına uydur.** Paneli taşı, boyutlandır, görünümünü değiştir veya petsiz kullan. Ekran paylaşırken **Ctrl + Option + Cmd + P** ile her şeyi gizle.
 

@@ -1,20 +1,17 @@
-# Agent Pet v0.19.1 — Your AI agents, at a glance
+# Agent Pet v0.19.2 — Keep queued work in view
 
-A customizable desktop companion for Codex, Claude Code and Google Antigravity in VS Code.
+## What’s new
 
-## What’s included
+- **Workspace groups by default.** New setups open in Extended · Workspaces. Your saved view preference is preserved.
+- **Claude queue and steering fixes.** A consumed human prompt brings a completed chat back to running. Enqueued, cancelled and background-agent messages do not. Steering keeps the current work timer.
+- **Safer queue handoffs.** Codex ignores a previous turn’s delayed completion; Antigravity measures new work from the observed handoff. The desktop panel accepts a new turn even when it starts in the same millisecond as the previous completion.
 
-- **One view for your agents.** See running, waiting and completed chats across VS Code windows, with project groups, filters and separate work and reply-waiting timers.
-- **Quick return to work.** Click a chat to open its conversation or integrated terminal. Use **Ctrl + Option + Cmd + N** to reach the next chat needing a reply.
-- **Your own companion.** Choose Byte, Miso or Fern, or add a custom pet with PNG poses, a name, size, direction and movement preferences.
-- **Optional reply alerts.** Enable waiting notifications or keep an eye on the menu bar counter.
-
-This patch refreshes the English and Turkish product pages and the packaged Marketplace description. It includes all features and fixes from 0.19.0; agent tracking behavior is unchanged.
+Includes custom pets and the shared chat panel for Codex, Claude Code and the official Google Antigravity VS Code extension.
 
 ## Install
 
-Download `agent-pet-marketplace-0.19.1-darwin-arm64.vsix` below. In VS Code, choose **Extensions → … → Install from VSIX…**, then reload the window when your active work has finished.
+Download `agent-pet-marketplace-0.19.2-darwin-arm64.vsix` below. In VS Code, choose **Extensions → … → Install from VSIX…**, then reload the window when your active work has finished.
 
 Requires **Apple Silicon, macOS 26+ and VS Code 1.96.2+**.
 
-[User guide](https://github.com/merttalhayener/agent-pet/blob/v0.19.1/docs/usage.md) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/v0.19.1/README.tr.md) · [Full changelog](https://github.com/merttalhayener/agent-pet/blob/v0.19.1/CHANGELOG.md)
+[User guide](https://github.com/merttalhayener/agent-pet/blob/v0.19.2/docs/usage.md) · [Türkçe](https://github.com/merttalhayener/agent-pet/blob/v0.19.2/README.tr.md) · [Full changelog](https://github.com/merttalhayener/agent-pet/blob/v0.19.2/CHANGELOG.md)

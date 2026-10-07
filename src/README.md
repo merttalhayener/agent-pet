@@ -29,7 +29,7 @@ Running agents across several projects? Agent Pet keeps their chats together in 
 
 - **See what needs you.** Running, waiting and completed chats, with separate work and reply-waiting timers.
 - **Go straight to the conversation.** Click a chat to open its VS Code window or terminal. **Ctrl + Option + Cmd + N** takes you to the next chat needing a reply.
-- **Keep projects organized.** Group chats by workspace, collapse projects and filter for the work you want to follow.
+- **Keep projects organized.** Chats are grouped by workspace by default. Collapse projects and filter for the work you want to follow.
 - **Know when to come back.** Enable reply notifications, or watch the running and waiting counts in your menu bar.
 - **Fit your workspace.** Move and resize the panel, change its appearance or use it without a pet. **Ctrl + Option + Cmd + P** hides everything for screen sharing.
 

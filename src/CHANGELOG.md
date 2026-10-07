@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.19.2 — Follow queued prompts and default to workspace groups
+
+- Default to **Extended · Workspaces** when no saved view preference exists; keep an explicitly saved compact layout.
+- Follow Claude's consumed human queue deliveries, including backdated prompt attachments, while ignoring enqueue-only events, cancellation, duplicate deliveries and subagent reports.
+- Preserve the active turn's timer and foreground calls when a steering prompt is consumed.
+- Match Codex completion to its turn ID so a late previous result cannot finish the next queued turn; ignore older lifecycle records and replayed starts.
+- Start Antigravity's next work timer at the observed handoff instead of the prompt's earlier queue submission time.
+- Accept a genuine new turn that starts in the same millisecond as the previous completion, while rejecting older snapshots of that completed turn.
+
 ## 0.19.1 — A clearer introduction to Agent Pet
 
 - Refresh the English and Turkish product pages with a shorter introduction, visual demo, key features and three-step setup.

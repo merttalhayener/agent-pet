@@ -101,8 +101,8 @@ function summaryState(session, summary, roots, previous, now = Date.now()) {
   // an open turn needs a newer lifecycle/activity update before claiming running.
   const liveConfirmed = waiting.length > 0 || previous?.liveConfirmed === true || Boolean(previous && (at > previous.lastEventAt || inputAt > previous.inputAt || status !== previous.rawStatus));
   let startedAt = inputAt || timestamp(summary.createdTime) || at;
-  if (previous?.finishedAt && ['running', 'waiting'].includes(status) && at > previous.finishedAt && startedAt <= (previous.startedAt || 0)) startedAt = at;
-  else if (previous?.startedAt && inputAt === previous.inputAt) startedAt = previous.startedAt;
+  if (previous?.finishedAt && ['running', 'waiting'].includes(status) && at > previous.finishedAt && startedAt <= previous.finishedAt) startedAt = at;
+  else if (previous?.startedAt && (inputAt === previous.inputAt || (!previous.finishedAt && ['running', 'waiting'].includes(previous.rawStatus) && ['running', 'waiting'].includes(status)))) startedAt = previous.startedAt;
   const changedAt = previous && status === previous.rawStatus && startedAt === previous.startedAt && waitingSince === previous.waitingSince ? previous.changedAt : (waiting.length ? waitingSince : at);
   // Jetbox keys identify conversations; trajectoryId identifies their current
   // execution trajectory and can differ from the conversation's routing UUID.

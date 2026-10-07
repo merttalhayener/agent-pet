@@ -3,8 +3,27 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { ActivityMonitor, inWorkspace } = require('../src/activity.cjs');
+const { ActivityMonitor, applyEvent, inWorkspace } = require('../src/activity.cjs');
 const event = (type) => JSON.stringify({ type: 'event_msg', timestamp: new Date().toISOString(), payload: { type } }) + '\n';
+
+test('Codex queue handoff matches turn IDs and ignores a delayed previous completion', () => {
+  const at = Date.now(), state = {};
+  const apply = (type, time, turn_id) => applyEvent(state, { type: 'event_msg', timestamp: new Date(time).toISOString(), payload: { type, turn_id } });
+  apply('task_started', at, 'first');
+  apply('task_complete', at + 100, 'first');
+  apply('task_started', at + 100, 'second');
+  assert.equal(state.status, 'running'); assert.equal(state.startedAt, at + 100); assert.equal(state.finishedAt, undefined);
+  apply('task_complete', at + 200, 'first');
+  assert.equal(state.status, 'running'); assert.equal(state.finishedAt, undefined);
+  apply('user_message', at + 300, 'second'); // steering is input to the existing turn
+  assert.equal(state.startedAt, at + 100);
+  apply('task_complete', at + 400, 'second');
+  apply('task_started', at + 500, 'second'); // replayed start for the completed turn
+  assert.equal(state.status, 'ready'); assert.equal(state.finishedAt, at + 400);
+  apply('task_started', at + 600, 'third');
+  apply('task_complete', at + 550); // legacy lifecycle without an ID is still ordered
+  assert.equal(state.status, 'running'); assert.equal(state.startedAt, at + 600);
+});
 
 test('pending questions survive async acceptance and completion, resolve per answer, and preserve turn duration', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pet-wait-'));
