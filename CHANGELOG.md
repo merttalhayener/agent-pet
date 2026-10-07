@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.1 — A clearer introduction to Agent Pet
+
+- Refresh the English and Turkish product pages with a shorter introduction, visual demo, key features and three-step setup.
+- Present Codex, Claude Code and Google Antigravity together; keep integration details and troubleshooting in the user guide.
+- Highlight built-in companions and custom pets, and generate the Marketplace README from the same source as GitHub.
+
 ## 0.19.0 — Add your own custom pets
 
 - Add a local custom pet library with native English/Türkçe import and editing screens.
