@@ -1,0 +1,47 @@
+{
+ "protocolVersion": 12,
+ "clientId": "client-1-fixture0001.json",
+ "extensionId": "merttalhayener.agent-pet",
+ "updatedAt": 1791458888610,
+ "selectedAt": 0,
+ "sleepAt": 0,
+ "selected": "byte",
+ "sleeping": false,
+ "navigation": {
+  "codex": "vscode://openai.chatgpt/",
+  "claude": "vscode://merttalhayener.agent-pet/claude?windowId=1"
+ },
+ "workspace": {
+  "id": "fixture",
+  "name": "sample-app"
+ },
+ "activity": {
+  "status": "running",
+  "active": 1,
+  "threads": [
+   {
+    "id": "claude:11111111-1111-4111-8111-111111111111",
+    "agent": "claude",
+    "title": "Build a sample feature",
+    "status": "running",
+    "lastEventAt": 1791458888610,
+    "startedAt": 1791458828610
+   },
+   {
+    "id": "claude:22222222-2222-4222-8222-222222222222",
+    "agent": "claude",
+    "title": "Review the sample tests",
+    "status": "waiting",
+    "lastEventAt": 1791458887610
+   },
+   {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "agent": "codex",
+    "title": "Refactor sample module",
+    "status": "ready",
+    "lastEventAt": 1791458886610
+   }
+  ]
+ },
+ "pets": []
+}

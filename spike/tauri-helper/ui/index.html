@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- THROWAWAY SPIKE UI: transparent panel, drawn pet, chat rows from snapshots. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; font: 12px -apple-system, "Segoe UI", sans-serif; color: #e8eaf0; overflow: hidden; }
+  .panel { position: absolute; inset: 0 0 0 96px; background: rgba(23, 25, 35, 0.92); border-radius: 14px; display: flex; flex-direction: column; }
+  header { padding: 8px 12px; font-weight: 600; cursor: grab; user-select: none; }
+  ul { list-style: none; margin: 0; padding: 0 6px 8px; overflow: auto; }
+  li { padding: 6px; border-radius: 8px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+  li:hover { background: rgba(255, 255, 255, 0.08); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .running { background: #6aa9ff; } .waiting { background: #f5c451; } .ready { background: #5fd38d; } .unknown, .idle, .failed { background: #8a8fa3; }
+  small { color: #9aa0b4; display: block; }
+  canvas { position: absolute; left: 0; bottom: 0; }
+</style>
+</head>
+<body>
+<canvas id="pet" width="96" height="104"></canvas>
+<div class="panel">
+  <header data-tauri-drag-region>Agent Pet · <span id="count">0</span> chats</header>
+  <ul id="rows"></ul>
+</div>
+<script>
+const { invoke } = window.__TAURI__.core;
+const canvas = document.getElementById('pet'), g = canvas.getContext('2d');
+let blink = 0;
+function drawPet(t) {
+  g.clearRect(0, 0, 96, 104);
+  const bob = Math.sin(t / 400) * 2;
+  g.fillStyle = '#6c7cff'; g.beginPath(); g.roundRect(14, 30 + bob, 68, 60, 18); g.fill();
+  g.fillStyle = '#ffffff'; const eye = (blink = (blink + 1) % 180) < 6 ? 2 : 10;
+  g.fillRect(32, 54 + bob, 8, eye); g.fillRect(56, 54 + bob, 8, eye);
+  g.strokeStyle = '#6c7cff'; g.lineWidth = 3; g.beginPath(); g.moveTo(48, 30 + bob); g.lineTo(48, 18 + bob); g.stroke();
+  g.fillStyle = '#f5c451'; g.beginPath(); g.arc(48, 15 + bob, 5, 0, Math.PI * 2); g.fill();
+  requestAnimationFrame(drawPet);
+}
+requestAnimationFrame(drawPet);
+
+function threads(snapshots) {
+  const byId = new Map();
+  for (const s of snapshots) for (const t of s.activity?.threads || []) {
+    const old = byId.get(t.id);
+    if (!old || (t.lastEventAt || 0) > (old.thread.lastEventAt || 0)) byId.set(t.id, { thread: t, snapshot: s });
+  }
+  return [...byId.values()];
+}
+function url({ thread, snapshot }) {
+  const base = snapshot.navigation?.claude;
+  if (!base || !thread.id.startsWith('claude:')) return null;
+  const u = new URL(base); u.searchParams.set('session', thread.id.slice(7)); return u.toString();
+}
+async function refresh() {
+  const rows = threads(await invoke('snapshots'));
+  document.getElementById('count').textContent = rows.length;
+  const list = document.getElementById('rows'); list.replaceChildren();
+  for (const row of rows) {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="dot ${row.thread.status}"></span><span><span class="title"></span><small>${row.thread.agent || 'codex'} · ${row.thread.status}</small></span>`;
+    li.querySelector('.title').textContent = row.thread.title || row.thread.id;
+    li.onclick = () => { const target = url(row); if (target) invoke('open_url', { url: target }); };
+    list.append(li);
+  }
+  return rows;
+}
+(async () => {
+  const rows = await refresh();
+  setInterval(refresh, 1500);
+  const first = rows.find(url);
+  if (first) await invoke('open_url', { url: url(first) });
+  await invoke('report', { key: 'ui', value: { rows: rows.length, background: getComputedStyle(document.body).backgroundColor, canvas: !!g, userAgent: navigator.userAgent } });
+})();
+</script>
+</body>
+</html>

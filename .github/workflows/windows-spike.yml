@@ -1,0 +1,69 @@
+# THROWAWAY SPIKE: cross-compile the Tauri helper on macOS, run it on Windows.
+name: windows-spike
+on:
+  push:
+    branches: [windows-support]
+    paths: [spike/**, .github/workflows/windows-spike.yml]
+  workflow_dispatch:
+jobs:
+  cross-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross toolchain
+        run: |
+          brew install llvm lld
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
+          rustup target add x86_64-pc-windows-msvc aarch64-pc-windows-msvc
+          cargo install --locked cargo-xwin
+      - name: Build Windows x64 and ARM64 on macOS
+        working-directory: spike/tauri-helper
+        run: |
+          for target in x86_64-pc-windows-msvc aarch64-pc-windows-msvc; do
+            cargo xwin build --release --target "$target"
+            ls -l "target/$target/release/agent-pet-helper-spike.exe"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: helper-exe
+          path: spike/tauri-helper/target/*-pc-windows-msvc/release/agent-pet-helper-spike.exe
+  run-on-windows:
+    needs: cross-build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: windows-latest, target: x86_64-pc-windows-msvc }
+          - { runner: windows-11-arm, target: aarch64-pc-windows-msvc }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: helper-exe, path: exe }
+      - name: Self-test and screenshot
+        shell: pwsh
+        run: |
+          $exe = "exe/${{ matrix.target }}/release/agent-pet-helper-spike.exe"
+          $state = Join-Path $env:RUNNER_TEMP "state"
+          New-Item -ItemType Directory -Force $state | Out-Null
+          Copy-Item spike/tauri-helper/fixtures/*.json $state
+          Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" -ErrorAction SilentlyContinue | Select-Object pv
+          $p = Start-Process $exe -ArgumentList "--state-dir", $state, "--self-test", "--hold", "12" -PassThru
+          Start-Sleep 8
+          $second = Start-Process $exe -ArgumentList "--state-dir", $state -PassThru -Wait
+          "second instance exit code: $($second.ExitCode)"
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save((Join-Path $env:RUNNER_TEMP "screen.png"))
+          $p.WaitForExit(30000) | Out-Null
+          "helper exit code: $($p.ExitCode)"
+          Get-Content (Join-Path $state "spike-report.json")
+          (Get-Item $exe).Length
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screen-${{ matrix.target }}
+          path: ${{ runner.temp }}/screen.png

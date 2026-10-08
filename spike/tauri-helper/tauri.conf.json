@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Agent Pet",
+  "version": "0.0.0",
+  "identifier": "local.agent-pet.helper-spike",
+  "build": { "frontendDist": "ui" },
+  "app": { "withGlobalTauri": true, "macOSPrivateApi": true, "windows": [], "security": { "csp": null } },
+  "bundle": { "active": false, "icon": ["icons/icon.png", "icons/icon.ico"] }
+}
