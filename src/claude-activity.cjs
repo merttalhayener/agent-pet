@@ -5,6 +5,17 @@ const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const clean = text => text.replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+const textOf = content => typeof content === 'string' ? content : Array.isArray(content) ? content.filter(c => c?.type === 'text').map(c => c.text || '').join(' ') : '';
+
+// Claude reports each background agent or workflow back to the parent with a
+// task notification naming the launching call. Only that report retires it.
+function settleBackground(s, text) {
+  if (!s.backgroundTasks?.size) return;
+  for (const block of text.split('<task-notification>').slice(1)) {
+    const body = block.split('</task-notification>')[0], id = body.match(/<tool-use-id>([^<]{1,128})<\/tool-use-id>/)?.[1];
+    if (id && /<status>[a-z_]+<\/status>/.test(body)) s.backgroundTasks.delete(id);
+  }
+}
 
 function applyClaudeEvent(s, r) {
   if (r.isSidechain || (r.sessionId && r.sessionId !== s.sessionId)) return;
@@ -21,6 +32,7 @@ function applyClaudeEvent(s, r) {
   // must never start a turn or retain prompt text.
   if (r.type === 'attachment' && r.attachment?.type === 'queued_command') {
     const a = r.attachment;
+    if (a.commandMode === 'task-notification') settleBackground(s, textOf(a.prompt));
     if (a.commandMode === 'prompt' && (a.origin?.kind === 'human' || a.humanTurn === true)) {
       const ids = [a.delivery_id, a.source_uuid].filter(id => typeof id === 'string' && id.length > 0 && id.length <= 128);
       if (ids.length) {
@@ -78,19 +90,32 @@ function applyClaudeEvent(s, r) {
         delete s.pendingInputs?.[c.tool_use_id];
         s.pendingTools?.delete(c.tool_use_id);
       }
+      // Background shells can outlive the work (servers); agents and workflows report back.
+      if (matched.length === 1 && r.toolUseResult?.status === 'async_launched') {
+        (s.backgroundTasks ||= new Map()).set(matched[0].tool_use_id, at);
+        while (s.backgroundTasks.size > 64) s.backgroundTasks.delete(s.backgroundTasks.keys().next().value);
+      }
       progress(); return;
     }
     if (r.isMeta) return;
-    const message = typeof m.content === 'string' ? m.content : content.filter(c => c.type === 'text').map(c => c.text || '').join(' ');
+    const message = textOf(m.content);
     if (!message.trim()) return;
     if (/^\[Request interrupted by user/.test(message)) { finish('idle'); return; }
-    if (!s.titlePriority) { s.title = clean(message); s.titlePriority = 1; }
+    if (r.origin?.kind === 'task-notification') {
+      settleBackground(s, message);
+      // A report into work that is still open continues it; the timer keeps running.
+      if (s.status === 'running') { progress(); return; }
+    } else if (!s.titlePriority) { s.title = clean(message); s.titlePriority = 1; }
     start(); progress();
   } else if (r.type === 'assistant') {
     if (r.isAbortedMidStream) { finish('idle'); return; }
     s.pendingInputs ||= {};
     const calls = content.filter(c => c.type === 'tool_use');
-    if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) { finish('ready'); return; }
+    if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) {
+      if (!s.backgroundTasks?.size) { finish('ready'); return; }
+      // Claude resumes this chat itself when its background work reports back.
+      s.pendingTools = new Set(); progress(); return;
+    }
     // The parent can genuinely resume after an asynchronous subagent report.
     // Publish a newer lifecycle so the panel can supersede its retained finish.
     if (s.status !== 'running') start();

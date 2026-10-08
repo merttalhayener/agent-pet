@@ -376,3 +376,59 @@ test('Claude waiting duration starts at the question, survives reload and advanc
     assert.equal(snapshot.threads[0].statusReason, 'turn_completed');
   } finally { monitor.dispose(); }
 }));
+
+const launched = (id, toolUseResult, at = Date.now()) => record('user', {
+  message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'Launched in background' }] }, toolUseResult
+}, at);
+const notification = (id, at = Date.now(), status = 'completed') => `<task-notification>\n<task-id>task-${id}</task-id>\n<tool-use-id>${id}</tool-use-id>\n<status>${status}</status>\n<summary>Synthetic report</summary>\n</task-notification>`;
+
+test('background agents and workflows keep the parent running until each reports back', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + assistant('tool_use', [
+    { type: 'tool_use', id: 'workflow', name: 'Workflow', input: {} }, { type: 'tool_use', id: 'agent', name: 'Agent', input: {} }
+  ], at + 1));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick();
+    await fs.appendFile(file, launched('workflow', { status: 'async_launched', taskId: 'w1', taskType: 'local_workflow' }, at + 2) +
+      launched('agent', { status: 'async_launched', isAsync: true, agentId: 'a1' }, at + 3) + assistant('end_turn', undefined, at + 4));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'running', 'Claude resumes this chat itself when background work reports back');
+    assert.equal(snapshot.threads[0].startedAt, at); assert.equal(snapshot.threads[0].finishedAt, undefined);
+    assert.equal(monitor.snapshot(Date.now() + 3600000).threads[0].status, 'running', 'Silent background work is not completion');
+    await fs.appendFile(file, record('attachment', { attachment: { type: 'queued_command', commandMode: 'task-notification', prompt: notification('agent') } }, at + 5));
+    await fs.appendFile(file, record('user', { origin: { kind: 'task-notification' }, message: { content: notification('workflow') } }, at + 6) + assistant('end_turn', undefined, at + 7));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready'); assert.equal(snapshot.threads[0].startedAt, at); assert.equal(snapshot.threads[0].finishedAt, at + 7);
+  } finally { monitor.dispose(); }
+}));
+
+test('one finished background task cannot complete a parent whose other task is still running', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  apply(user(at)); apply(assistant('tool_use', [{ type: 'tool_use', id: 'first', name: 'Agent', input: {} }, { type: 'tool_use', id: 'second', name: 'Agent', input: {} }], at + 1));
+  apply(launched('first', { status: 'async_launched', isAsync: true }, at + 2)); apply(launched('second', { status: 'async_launched', isAsync: true }, at + 3));
+  apply(assistant('end_turn', undefined, at + 4));
+  apply(record('user', { origin: { kind: 'task-notification' }, message: { content: notification('first', at + 5, 'failed') } }, at + 5));
+  apply(assistant('end_turn', undefined, at + 6));
+  assert.equal(state.status, 'running'); assert.equal(state.startedAt, at);
+  apply(record('user', { origin: { kind: 'task-notification' }, message: { content: notification('second', at + 7, 'stopped') } }, at + 7));
+  apply(assistant('end_turn', undefined, at + 8));
+  assert.equal(state.status, 'ready'); assert.equal(state.finishedAt, at + 8);
+});
+
+test('background shells, unrelated notifications and quoted notifications do not hold a turn open', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  apply(user(at)); apply(assistant('tool_use', [{ type: 'tool_use', id: 'server', name: 'Bash', input: {} }], at + 1));
+  apply(launched('server', { stdout: '', stderr: '', backgroundTaskId: 'b1' }, at + 2));
+  apply(assistant('end_turn', undefined, at + 3));
+  assert.equal(state.status, 'ready', 'A long-lived background shell is not agent work');
+  apply(user(at + 4)); apply(assistant('tool_use', [{ type: 'tool_use', id: 'agent', name: 'Agent', input: {} }, { type: 'tool_use', id: 'read', name: 'Read', input: {} }], at + 5));
+  apply(launched('agent', { status: 'async_launched', isAsync: true }, at + 6));
+  apply(record('user', { message: { content: [{ type: 'tool_result', tool_use_id: 'read', content: notification('agent') }] } }, at + 7));
+  apply(user(at + 8).replace('Build a sample feature', notification('agent').replace(/\n/g, '\\n')));
+  apply(assistant('end_turn', undefined, at + 9));
+  assert.equal(state.status, 'running', 'Only Claude task notifications retire a background task');
+});

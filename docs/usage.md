@@ -88,6 +88,8 @@ Click **Agent Pet** in VS Code’s status bar or run **Agent Pet: Show Desktop P
 
 Queued prompts do not count as running just because they were submitted. When the agent starts the next prompt, the chat returns to running and its work timer starts for that turn. A steering prompt consumed during existing work keeps that turn's timer. Claude distinguishes consumed human prompts from cancelled queue items and background-agent reports; Codex matches completion events to the current turn.
 
+When Claude Code starts background agents or a workflow, its chat keeps running after the reply that announces them. It completes once every background task has reported back and Claude ends its final reply. Background shell commands, such as development servers, do not keep a chat running.
+
 After reconnecting, Agent Pet waits for new activity before showing a chat as running. Once confirmed, an unfinished turn keeps its spinner and elapsed time during long reasoning or tool calls. Silence alone does not change its status. **No update** and a question mark remain for unconfirmed or disconnected sessions and unreadable/removed session files. Only an explicit completion record produces a checkmark, and older window snapshots cannot undo that completion.
 
 The app reads recorded agent lifecycle events; it cannot tell whether the chat UI is receiving messages or detect a backend failure that leaves no event while the monitor stays connected. Some permission dialogs are not detected.

@@ -2,7 +2,7 @@
   "name": "agent-pet",
   "displayName": "Agent Pet",
   "description": "Your AI agents, at a glance. A customizable desktop pet and live chat panel for Codex, Claude Code and Google Antigravity in VS Code.",
-  "version": "0.19.2",
+  "version": "0.19.3",
   "publisher": "merttalhayener",
   "license": "MIT",
   "engines": {

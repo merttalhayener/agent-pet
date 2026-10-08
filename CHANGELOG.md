@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.19.3 — Keep Claude background work running
+
+- Keep a Claude Code chat running after it launches background agents or workflows and ends its message; it completes only after every background task reports back and Claude finishes its final reply.
+- Retire each background task only from Claude's own task notification for that call, including notifications queued during active work; quoted notifications and tool output are ignored.
+- Keep the work timer running when a background report continues an open chat.
+- Long-running background shell commands, such as development servers, still do not keep a chat running.
+
 ## 0.19.2 — Follow queued prompts and default to workspace groups
 
 - Default to **Extended · Workspaces** when no saved view preference exists; keep an explicitly saved compact layout.
