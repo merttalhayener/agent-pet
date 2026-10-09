@@ -432,3 +432,60 @@ test('background shells, unrelated notifications and quoted notifications do not
   apply(assistant('end_turn', undefined, at + 9));
   assert.equal(state.status, 'running', 'Only Claude task notifications retire a background task');
 });
+
+const agentCall = (id, input = {}, name = 'Agent') => ({ type: 'tool_use', id, name, input: { prompt: 'Private agent prompt', ...input } });
+
+test('a running foreground subagent is named until its result arrives', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + assistant('tool_use', [agentCall('review', { description: 'Review Task 3 (spec + quality)', subagent_type: 'general-purpose' })], at + 1));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick(); await fs.appendFile(file, record('progress', { parentToolUseID: 'review' }, at + 2)); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'running');
+    assert.deepEqual(snapshot.threads[0].agents, [{ kind: 'agent', label: 'Review Task 3 (spec + quality)' }]);
+    assert.ok(!JSON.stringify([...monitor.files.values()], (k, v) => v instanceof Map ? [...v] : v).includes('Private agent prompt'));
+    await fs.appendFile(file, toolResult('review', { toolUseResult: { status: 'completed', agentType: 'general-purpose' } }, at + 3)); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'running'); assert.equal(snapshot.threads[0].agents, undefined);
+  } finally { monitor.dispose(); }
+}));
+
+test('background agents and workflows stay named until each reports back', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  const batches = [0, 1, 2].map(i => agentCall(`batch-${i}`, { description: `VR allocation check batch ${i}`, run_in_background: true }));
+  await fs.writeFile(file, user(at) + assistant('tool_use', [...batches, agentCall('audit', { script: 'Private workflow script' }, 'Workflow')], at + 1));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick();
+    await fs.appendFile(file, [0, 1, 2].map(i => launched(`batch-${i}`, { status: 'async_launched', isAsync: true, description: `VR allocation check batch ${i}`, prompt: 'Private agent prompt' }, at + 2)).join('') +
+      launched('audit', { status: 'async_launched', taskType: 'local_workflow', workflowName: 'vh-trace-audit', summary: 'Private summary' }, at + 3) + assistant('end_turn', undefined, at + 4));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'running');
+    assert.deepEqual(snapshot.threads[0].agents, [
+      { kind: 'agent', label: 'VR allocation check batch 0' }, { kind: 'agent', label: 'VR allocation check batch 1' },
+      { kind: 'agent', label: 'VR allocation check batch 2' }, { kind: 'workflow', label: 'vh-trace-audit' }
+    ]);
+    const retained = JSON.stringify([...monitor.files.values()], (k, v) => v instanceof Map ? [...v] : v);
+    for (const secret of ['Private agent prompt', 'Private workflow script', 'Private summary']) assert.ok(!retained.includes(secret), secret);
+    await fs.appendFile(file, record('user', { origin: { kind: 'task-notification' }, message: { content: notification('batch-0') + notification('audit') } }, at + 5));
+    await monitor.tick();
+    assert.deepEqual(snapshot.threads[0].agents.map(a => a.label), ['VR allocation check batch 1', 'VR allocation check batch 2']);
+    await fs.appendFile(file, record('user', { origin: { kind: 'task-notification' }, message: { content: notification('batch-1') + notification('batch-2') } }, at + 6) + assistant('end_turn', undefined, at + 7));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready'); assert.equal(snapshot.threads[0].agents, undefined);
+  } finally { monitor.dispose(); }
+}));
+
+test('subagent labels are short plain text; other tools and settled turns list no agents', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  apply(user(at));
+  apply(assistant('tool_use', [agentCall('long', { description: 'Line\none\t' + 'x'.repeat(200) }), agentCall('blank', { description: 42 }, 'Task'), { type: 'tool_use', id: 'shell', name: 'Bash', input: { description: 'List files' } }], at + 1));
+  const [long, blank] = [...state.agents.values()];
+  assert.equal(state.agents.size, 2); assert.equal(long.label, ('Line one ' + 'x'.repeat(200)).slice(0, 60)); assert.deepEqual(blank, { kind: 'agent' });
+  apply(record('user', { message: { content: '[Request interrupted by user]' } }, at + 2));
+  assert.equal(state.status, 'idle'); assert.equal(state.agents.size, 0);
+  apply(user(at + 3)); apply(assistant('tool_use', [agentCall('next', { description: 'Next agent' })], at + 4)); apply(assistant('end_turn', undefined, at + 5));
+  assert.equal(state.status, 'ready'); assert.equal(state.agents.size, 0);
+});

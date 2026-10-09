@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.19.4 — See what Claude is running
+
+- Show which subagent or workflow a running Claude Code chat is waiting on: `Agent: Review changes`, `Workflow: release-audit` or `6 agents · Check batch 5`.
+- List the newest running agents in the row tooltip.
+- Show this detail even when status labels are off; a pending question still takes priority.
+- Keep only each agent's short description or workflow name (up to 60 characters) while it runs; prompts, scripts and summaries are never stored.
+
 ## 0.19.3 — Keep Claude background work running
 
 - Keep a Claude Code chat running after it launches background agents or workflows and ends its message; it completes only after every background task reports back and Claude finishes its final reply.

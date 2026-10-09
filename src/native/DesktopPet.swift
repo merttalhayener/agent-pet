@@ -11,6 +11,14 @@ enum PetLanguage: String, CaseIterable {
     private static let translations: [String: String] = [
         "Stopped": "Durduruldu",
         "Running · question pending": "Çalışıyor · açık soru var",
+        "Agent: %@": "Ajan: %@",
+        "Agent running": "Ajan çalışıyor",
+        "Workflow running": "Workflow çalışıyor",
+        "%d agents": "%d ajan",
+        "%d workflows": "%d workflow",
+        "%d agents · %@": "%d ajan · %@",
+        "%d workflows · %@": "%d workflow · %@",
+        "Running agents: %@": "Çalışan ajanlar: %@",
         "Question pending": "Yanıtlanmamış soru var",
         "Wait %@": "Yanıt %@",
         "Waiting for your reply: %@": "Yanıtın bekleniyor: %@",
@@ -171,6 +179,10 @@ struct DashboardEntry {
     var count = 0
     var running = 0
 }
+struct RunningAgent: Codable, Equatable {
+    let kind: String
+    var label: String? = nil
+}
 struct ThreadActivity: Codable, Equatable {
     let id: String
     var isClaude: Bool { id.hasPrefix("claude:") }
@@ -191,6 +203,8 @@ struct ThreadActivity: Codable, Equatable {
     var surface: String? = nil
     var waitingSince: Double? = nil
     var statusReason: String? = nil
+    var agents: [RunningAgent]? = nil
+    var runningAgents: [RunningAgent] { status == "running" ? agents ?? [] : [] }
     var needsReply: Bool { status == "waiting" || (status == "running" && replyPending == true) }
     var waitingStartedAt: Double? {
         guard needsReply else { return nil }
@@ -537,6 +551,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     var counterText: String { String(format: text("%d running · %d waiting"), allThreads.filter { $0.status == "running" }.count, allThreads.filter { $0.status == "waiting" }.count) }
     func rowSubtitle(_ thread: ThreadActivity) -> String {
+        if thread.replyPending != true, let detail = Self.agentSummary(thread, language: language) { return thread.agentName + " · " + detail }
         guard statusLabels || (thread.status == "running" && thread.replyPending == true) else { return thread.agentName }
         let status = thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread, language: language)
         return thread.agentName + " · " + status
@@ -578,6 +593,18 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         if thread.status == "unknown", let label = ["awaiting_activity": "Reconnecting", "source_unavailable": "Source unavailable", "window_disconnected": "Disconnected", "tracking_disabled": "Tracking off"][thread.statusReason ?? ""] { return language.text(label) }
         return statusText(thread.status, language: language)
     }
+    // Names the newest subagent; the tooltip lists the rest.
+    static func agentSummary(_ thread: ThreadActivity, language: PetLanguage = .english) -> String? {
+        let agents = thread.runningAgents
+        guard let latest = agents.last else { return nil }
+        let workflows = agents.allSatisfy { $0.kind == "workflow" }
+        if agents.count == 1 {
+            if let label = latest.label { return String(format: language.text(workflows ? "Workflow: %@" : "Agent: %@"), label) }
+            return language.text(workflows ? "Workflow running" : "Agent running")
+        }
+        if let label = latest.label { return String(format: language.text(workflows ? "%d workflows · %@" : "%d agents · %@"), agents.count, label) }
+        return String(format: language.text(workflows ? "%d workflows" : "%d agents"), agents.count)
+    }
     static func statusExplanation(_ thread: ThreadActivity, language: PetLanguage = .english) -> String {
         let fallback = thread.status == "idle" && thread.finishedAt != nil ? "turn_interrupted" : ["running": thread.replyPending == true ? "question_pending" : "turn_in_progress", "waiting": "awaiting_reply", "ready": "turn_completed", "failed": "turn_failed"][thread.status] ?? "no_turn_evidence"
         let explanations = [
@@ -599,6 +626,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     func threadTooltip(_ thread: ThreadActivity, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
         var lines = [thread.title + " · " + thread.agentName, Self.statusExplanation(thread, language: language)]
+        let labels = thread.runningAgents.reversed().compactMap { $0.label }
+        if !labels.isEmpty { lines.append(String(format: text("Running agents: %@"), (labels.prefix(3) + (labels.count > 3 ? ["+\(labels.count - 3)"] : [])).joined(separator: ", "))) }
         if thread.needsReply { lines.append(String(format: text("Waiting for your reply: %@"), Self.waitingDurationText(thread, language: language, now: now))) }
         if thread.startedAt != nil { lines.append(String(format: text("Turn time: %@"), Self.durationText(thread, language: language, now: now))) }
         if thread.lastEventAt > 0 { lines.append(String(format: text("Last activity %@ ago"), Self.elapsedText(since: thread.lastEventAt, until: now, language: language))) }
@@ -1756,6 +1785,18 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && rowSubtitle(stopped) == "Codex · Stopped"
         language = .turkish; valid = valid && rowSubtitle(stopped) == "Codex · Durduruldu"
         language = .english; statusLabels = false; valid = valid && rowSubtitle(stopped) == "Codex"
+        var reviewing = waiting; reviewing.status = "running"; reviewing.agents = [RunningAgent(kind: "agent", label: "Review Task 3")]
+        valid = valid && rowSubtitle(reviewing) == "Claude Code · Agent: Review Task 3"
+        reviewing.agents = (0..<5).map { RunningAgent(kind: "agent", label: "Batch \($0)") }
+        valid = valid && rowSubtitle(reviewing) == "Claude Code · 5 agents · Batch 4"
+        valid = valid && threadTooltip(reviewing).contains("Running agents: Batch 4, Batch 3, Batch 2, +2")
+        reviewing.agents = [RunningAgent(kind: "workflow", label: "vh-trace-audit")]; statusLabels = true
+        valid = valid && rowSubtitle(reviewing) == "Claude Code · Workflow: vh-trace-audit"
+        reviewing.agents = [RunningAgent(kind: "workflow"), RunningAgent(kind: "agent")]
+        language = .turkish; valid = valid && rowSubtitle(reviewing) == "Claude Code · 2 ajan"
+        language = .english; reviewing.replyPending = true; valid = valid && rowSubtitle(reviewing) == "Claude Code · Running · question pending"
+        reviewing.replyPending = nil; reviewing.status = "ready"; valid = valid && rowSubtitle(reviewing) == "Claude Code · Completed" && !threadTooltip(reviewing).contains("Running agents")
+        statusLabels = false
         statusLabels = true; displayThreads = allThreads
         workspaceOverrides[running.id] = b
         let encoded = try? JSONEncoder().encode(workspaceOverrides)

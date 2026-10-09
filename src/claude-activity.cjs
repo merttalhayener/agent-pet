@@ -5,6 +5,10 @@ const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const clean = text => text.replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+// A subagent is shown by its short description or workflow name only; prompts,
+// scripts and summaries are never retained.
+const agentLabel = text => typeof text === 'string' && clean(text).slice(0, 60) || undefined;
+const AGENT_TOOLS = new Set(['Agent', 'Task', 'Workflow']);
 const textOf = content => typeof content === 'string' ? content : Array.isArray(content) ? content.filter(c => c?.type === 'text').map(c => c.text || '').join(' ') : '';
 
 // Claude reports each background agent or workflow back to the parent with a
@@ -13,7 +17,7 @@ function settleBackground(s, text) {
   if (!s.backgroundTasks?.size) return;
   for (const block of text.split('<task-notification>').slice(1)) {
     const body = block.split('</task-notification>')[0], id = body.match(/<tool-use-id>([^<]{1,128})<\/tool-use-id>/)?.[1];
-    if (id && /<status>[a-z_]+<\/status>/.test(body)) s.backgroundTasks.delete(id);
+    if (id && /<status>[a-z_]+<\/status>/.test(body)) { s.backgroundTasks.delete(id); s.agents?.delete(id); }
   }
 }
 
@@ -56,14 +60,16 @@ function applyClaudeEvent(s, r) {
   if (at < Math.max(s.changedAt || 0, s.startedAt || 0, s.finishedAt || 0)) return;
   const m = r.message || {}, content = Array.isArray(m.content) ? m.content : [];
   if (r.type === 'assistant' && s.settledMessages?.has(m.id)) return;
+  // Foreground subagents end with their turn; background ones wait for their report.
+  const settleForeground = () => { for (const id of s.agents?.keys() || []) if (!s.backgroundTasks?.has(id)) s.agents.delete(id); };
   const progress = () => { s.lastEventAt = Math.max(s.lastEventAt || 0, at); s.progressVersion = (s.progressVersion || 0) + 1; };
-  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); };
+  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); settleForeground(); };
   const finish = status => {
     if (r.type === 'assistant' && typeof m.id === 'string' && m.id.length <= 128) {
       s.settledMessages ||= new Set(); s.settledMessages.add(m.id);
       while (s.settledMessages.size > 128) s.settledMessages.delete(s.settledMessages.values().next().value);
     }
-    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); progress();
+    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); settleForeground(); progress();
   };
   if (r.type === 'queue-operation') {
     if (consumedHuman) {
@@ -86,14 +92,20 @@ function applyClaudeEvent(s, r) {
       // are not new turns. Only an outstanding foreground call proves progress.
       const matched = s.status === 'running' ? results.filter(c => c.tool_use_id && s.pendingTools?.has(c.tool_use_id)) : [];
       if (!matched.length) return;
+      const launch = matched.length === 1 && r.toolUseResult?.status === 'async_launched' ? r.toolUseResult : undefined;
       for (const c of matched) {
         delete s.pendingInputs?.[c.tool_use_id];
         s.pendingTools?.delete(c.tool_use_id);
+        if (!launch) s.agents?.delete(c.tool_use_id);
       }
       // Background shells can outlive the work (servers); agents and workflows report back.
-      if (matched.length === 1 && r.toolUseResult?.status === 'async_launched') {
-        (s.backgroundTasks ||= new Map()).set(matched[0].tool_use_id, at);
+      if (launch) {
+        const id = matched[0].tool_use_id, workflow = launch.taskType === 'local_workflow' || typeof launch.workflowName === 'string';
+        (s.backgroundTasks ||= new Map()).set(id, at);
         while (s.backgroundTasks.size > 64) s.backgroundTasks.delete(s.backgroundTasks.keys().next().value);
+        const known = s.agents?.get(id), label = agentLabel(workflow ? launch.workflowName : launch.description) || known?.label;
+        (s.agents ||= new Map()).set(id, { kind: workflow ? 'workflow' : 'agent', ...(label ? { label } : {}) });
+        while (s.agents.size > 64) s.agents.delete(s.agents.keys().next().value);
       }
       progress(); return;
     }
@@ -114,13 +126,18 @@ function applyClaudeEvent(s, r) {
     if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) {
       if (!s.backgroundTasks?.size) { finish('ready'); return; }
       // Claude resumes this chat itself when its background work reports back.
-      s.pendingTools = new Set(); progress(); return;
+      s.pendingTools = new Set(); settleForeground(); progress(); return;
     }
     // The parent can genuinely resume after an asynchronous subagent report.
     // Publish a newer lifecycle so the panel can supersede its retained finish.
     if (s.status !== 'running') start();
     s.pendingTools ||= new Set();
     for (const c of calls) if (c.id) s.pendingTools.add(c.id);
+    for (const c of calls) if (c.id && AGENT_TOOLS.has(c.name)) {
+      const label = agentLabel(c.name === 'Workflow' ? c.input?.name : c.input?.description);
+      (s.agents ||= new Map()).set(c.id, { kind: c.name === 'Workflow' ? 'workflow' : 'agent', ...(label ? { label } : {}) });
+      while (s.agents.size > 64) s.agents.delete(s.agents.keys().next().value);
+    }
     for (const c of calls) if (['AskUserQuestion', 'ExitPlanMode'].includes(c.name) && c.id && !s.pendingInputs[c.id]) {
       s.pendingInputs[c.id] = { requestedAt: at }; s.lastQuestionAt = at;
     }
@@ -161,7 +178,7 @@ class ClaudeActivityMonitor extends ActivityMonitor {
         s = { sessionId, id: `claude:${sessionId}`, source: 'vscode', status: 'unknown', offset: 0, ino: stat.ino, partial: '', changedAt: 0, lastEventAt: 0, liveConfirmed: false, initializing: true };
         this.files.set(file, s);
         // Read the beginning for workspace/title metadata, then attach to the tail.
-        // Never retain message bodies or tool arguments.
+        // Never retain message bodies or tool arguments (beyond short subagent labels).
         if (stat.size > WINDOW) {
           const head = Buffer.alloc(WINDOW); const { bytesRead } = await handle.read(head, 0, WINDOW, 0);
           for (const line of head.subarray(0, bytesRead).toString('utf8').split('\n')) {
@@ -191,8 +208,11 @@ class ClaudeActivityMonitor extends ActivityMonitor {
     } finally { await handle.close(); }
   }
   snapshot(now = Date.now()) {
-    const result = super.snapshot(now);
-    return { ...result, threads: result.threads.map(t => ({ ...t, agent: 'claude' })) };
+    const result = super.snapshot(now), states = new Map([...this.files.values()].map(s => [s.id, s]));
+    return { ...result, threads: result.threads.map(t => {
+      const agents = t.status === 'running' ? [...(states.get(t.id)?.agents?.values() || [])].map(a => ({ ...a })) : [];
+      return { ...t, agent: 'claude', ...(agents.length ? { agents } : {}) };
+    }) };
   }
 }
 module.exports = { ClaudeActivityMonitor, applyClaudeEvent };
