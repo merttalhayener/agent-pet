@@ -2,7 +2,7 @@
 
 ## 0.20.1 — Easier to read finished chats
 
-- Raise the contrast of finished chats: they still recede behind running and waiting chats, but their title, `Done … ago` subtitle and color mark stay easy to read.
+- Keep the agent color mark at full strength on every chat, brighten what each chat is doing in its subtitle, and raise finished chats' contrast; the ✓ and spinner tell finished from running.
 
 ## 0.20.0 — Follow workflows and subagents
 

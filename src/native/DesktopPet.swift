@@ -549,10 +549,11 @@ final class DashboardView: NSView {
                 let pinned = owner?.pinned.contains(thread.id) ?? false
                 // Settled chats recede so running and waiting ones stand out.
                 let settled = ["ready", "idle"].contains(thread.status)
-                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: NSColor.white.withAlphaComponent(settled ? 0.75 : 1))
-                let mark = thread.isClaude ? NSColor.systemOrange : thread.isAntigravity ? NSColor.systemBlue : NSColor.white.withAlphaComponent(0.55)
-                mark.withAlphaComponent(settled ? 0.8 : 0.95).setFill(); NSBezierPath(ovalIn: NSRect(x: 37, y: rect.midY - 8.5, width: 5, height: 5)).fill()
-                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.52 : 0.62))
+                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: NSColor.white.withAlphaComponent(settled ? 0.82 : 1))
+                // The agent's color mark stays at full strength; it is the row's only agent cue.
+                let mark = thread.isClaude ? NSColor.systemOrange : thread.isAntigravity ? NSColor.systemBlue : NSColor.white.withAlphaComponent(0.7)
+                mark.setFill(); NSBezierPath(ovalIn: NSRect(x: 36.5, y: rect.midY - 9, width: 6, height: 6)).fill()
+                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.62 : 0.82))
                 let expandable = thread.hasAgentDetails && !thread.needsReply
                 label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply || expandable ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
                 if thread.needsReply {
