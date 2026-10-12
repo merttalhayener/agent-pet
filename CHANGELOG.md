@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.0 — Follow workflows and subagents
+
+- Expand a running Claude Code chat with its chevron to see every subagent: workflow phases with finished counts, then each agent's status, model, tokens and time. Click a line to open the chat.
+- Show progress squares under the duration (or `9/10` for larger runs), and name the current phase and running agent in the subtitle: `Fix · verify · 9/10 agents` or `2/6 agents · Batch 5`.
+- Keep finished agents listed as done until the chat's turn ends.
+- Fix a background workflow or agent stopped with TaskStop keeping its chat running and counted; Claude sends no completion report for stopped work.
+- Agent Pet reads each workflow's journal and each subagent's transcript tail locally and keeps only labels, phase names, model, token counts and times; prompts, results and scripts are never stored.
+
 ## 0.19.4 — See what Claude is running
 
 - Show which subagent or workflow a running Claude Code chat is waiting on: `Agent: Review changes`, `Workflow: release-audit` or `6 agents · Check batch 5`.

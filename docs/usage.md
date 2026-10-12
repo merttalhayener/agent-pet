@@ -92,6 +92,8 @@ When Claude Code starts background agents or a workflow, its chat keeps running 
 
 While Claude Code waits on subagents or a workflow, the row names them instead of just "Running": `Agent: Review changes`, `Workflow: release-audit`, or `6 agents · Check batch 5` for several. Hover the row for the newest agents. Agent Pet keeps only the short agent description or workflow name while it runs.
 
+Click the chevron next to a running chat's timer to expand its agents. Workflows list each phase with its finished count; every agent shows ✓ or ◌, its label, model, tokens and time. Squares under the timer fill as agents finish (larger runs show `9/10`). Finished agents stay listed until the chat's turn ends. Click any line to open the chat. Agent Pet reads each workflow's journal and each subagent's transcript locally and keeps only labels, phase names, model, token counts and times.
+
 After reconnecting, Agent Pet waits for new activity before showing a chat as running. Once confirmed, an unfinished turn keeps its spinner and elapsed time during long reasoning or tool calls. Silence alone does not change its status. **No update** and a question mark remain for unconfirmed or disconnected sessions and unreadable/removed session files. Only an explicit completion record produces a checkmark, and older window snapshots cannot undo that completion.
 
 The app reads recorded agent lifecycle events; it cannot tell whether the chat UI is receiving messages or detect a backend failure that leaves no event while the monitor stays connected. Some permission dialogs are not detected.
