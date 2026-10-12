@@ -26,11 +26,17 @@ Kim çalışıyor, kim seni bekliyor, hangi iş bitti? Masaüstündeki küçük 
 
 Birkaç projede birden ajan mı çalıştırıyorsun? Agent Pet, sohbetlerini diğer uygulamaların üzerinde duran tek bir panelde toplar.
 
-- **Seni bekleyen işleri gör.** Çalışan, yanıt bekleyen ve tamamlanan sohbetleri; çalışma ve yanıt bekleme sürelerini ayrı ayrı takip et.
+- **Her sohbetin ne yaptığını gör.** Çalışan sohbetler ne üzerinde çalıştığını, yanıt bekleyenler sorularını, bitenler ne zaman bittiğini söyler; çalışma ve yanıt bekleme süreleri ayrı tutulur.
 - **Doğrudan sohbete dön.** Sohbete tıklayıp VS Code penceresini veya terminalini aç. **Ctrl + Option + Cmd + N** ile sıradaki yanıt bekleyen sohbete geç.
 - **Projelerini düzenle.** Sohbetler varsayılan olarak çalışma alanına göre gruplanır. Projeleri daralt ve takip etmek istediğin işleri filtrele.
 - **Doğru zamanda geri dön.** Yanıt bildirimlerini aç veya menü çubuğundan çalışan ve bekleyen sohbet sayılarına bak.
 - **Çalışma alanına uydur.** Paneli taşı, boyutlandır, görünümünü değiştir veya petsiz kullan. Ekran paylaşırken **Ctrl + Option + Cmd + P** ile her şeyi gizle.
+
+## Workflow’ları ve alt ajanları takip et
+
+VS Code’daki Claude paneli bir workflow’un ya da alt ajanlarının ne yaptığını göstermez. Agent Pet gösterir: ajanlar bittikçe çubuk dolar, **Ajanlar** butonu workflow’un fazlarını ve her alt ajanı modeli, token’ı ve süresiyle açar.
+
+<img src="docs/media/agents.gif" alt="Bir Claude Code sohbeti açılarak workflow fazlarını ve her alt ajanın durumunu, modelini, token’ını ve süresini gösterir" width="720">
 
 ## Kendi karakterini seç
 
