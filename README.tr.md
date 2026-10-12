@@ -34,7 +34,7 @@ Birkaç projede birden ajan mı çalıştırıyorsun? Agent Pet, sohbetlerini di
 
 ## Workflow’ları ve alt ajanları takip et
 
-VS Code’daki Claude paneli bir workflow’un ya da alt ajanlarının ne yaptığını göstermez. Agent Pet gösterir: ajanlar bittikçe çubuk dolar, **Ajanlar** butonu workflow’un fazlarını ve her alt ajanı modeli, token’ı ve süresiyle açar.
+Bir Claude Code workflow’unu çalışırken izle: ajanlar bittikçe çubuk dolar, **Ajanlar** butonu fazlarını ve her alt ajanı modeli, token’ı ve süresiyle açar.
 
 <img src="docs/media/agents.gif" alt="Bir Claude Code sohbeti açılarak workflow fazlarını ve her alt ajanın durumunu, modelini, token’ını ve süresini gösterir" width="720">
 

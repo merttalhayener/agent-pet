@@ -2,7 +2,7 @@
 
 ## What’s new
 
-- **See inside the work.** VS Code's Claude panel doesn't show workflow progress, so Agent Pet does. Open **Agents** on a running chat to see its workflow phases and every subagent with its status, model, tokens and time.
+- **See inside the work.** Open **Agents** on a running chat to see its workflow phases and every subagent with its status, model, tokens and time.
 - **Know what each chat is doing.** Instead of "Running", the subtitle says `Run unit tests`, `Editing Hero.tsx` or `Fix · verify · 9/10 agents`. Waiting chats name their question; finished chats say when they finished.
 - **A calmer list.** A small color mark replaces the repeated agent name, finished chats recede while staying easy to read, and empty running counts disappear.
 - **More reliable status.** Background work survives a window reload, stopped work no longer lingers, and reports written while a window closes no longer restart finished chats.

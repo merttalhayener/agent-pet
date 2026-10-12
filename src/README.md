@@ -35,7 +35,7 @@ Running agents across several projects? Agent Pet keeps their chats together in 
 
 ## Follow workflows and subagents
 
-VS Code’s Claude panel doesn’t show what a workflow or its subagents are doing. Agent Pet does: a bar fills as agents finish, and **Agents** opens the workflow’s phases and every subagent with its model, tokens and time.
+Watch a Claude Code workflow while it runs: a bar fills as agents finish, and **Agents** opens its phases and every subagent with its model, tokens and time.
 
 <img src="https://raw.githubusercontent.com/merttalhayener/agent-pet/main/docs/media/agents.gif" alt="A Claude Code chat expands to show its workflow phases and each subagent’s status, model, tokens and time" width="720">
 
