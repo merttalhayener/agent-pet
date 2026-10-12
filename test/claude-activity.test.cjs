@@ -592,3 +592,31 @@ test('plain subagents find their transcript by agentId or meta toolUseId; unsafe
     assert.ok(!JSON.stringify(snapshot).includes('Private'));
   } finally { monitor.dispose(); }
 }));
+
+test('after reload, background work launched before the tail window is recovered only while its files stay active', async () => fixture(async ({ projects, dir, file }) => {
+  const at = Date.now() - 3600000, filler = record('attachment', { attachment: { data: 'x'.repeat(400 * 1024) } }, at + 5);
+  const subagents = path.join(dir, ID, 'subagents'), run = path.join(subagents, 'workflows', RUN);
+  await fs.mkdir(run, { recursive: true });
+  await fs.writeFile(path.join(run, 'journal.jsonl'), journalLine({ type: 'started', key: 'k1', agentId: agentId(1), label: 'plan', phase: 'Plan' }));
+  await fs.writeFile(path.join(run, `agent-${agentId(1)}.jsonl`), usage(1));
+  await fs.writeFile(path.join(subagents, `agent-${agentId(2)}.jsonl`), usage(2));
+  const old = new Date(Date.now() - 3600000); await fs.utimes(path.join(subagents, `agent-${agentId(2)}.jsonl`), old, old);
+  await fs.writeFile(file, user(at) + assistant('tool_use', [agentCall('stale', { description: 'Stale agent', run_in_background: true }), agentCall('done', { description: 'Done agent', run_in_background: true })], at + 1) +
+    launched('stale', { status: 'async_launched', isAsync: true, agentId: agentId(2), description: 'Stale agent' }, at + 2) +
+    launched('done', { status: 'async_launched', isAsync: true, agentId: agentId(3), description: 'Done agent' }, at + 2) +
+    workflowLaunch('wf', 'w33ckb1cf', at + 3).join('') + assistant('end_turn', undefined, at + 4) +
+    record('user', { origin: { kind: 'task-notification' }, message: { content: notification('done') } }, at + 5) + assistant('end_turn', undefined, at + 5) +
+    filler + user(at + 6) + assistant('end_turn', undefined, at + 7));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  monitor.setTrackedIds(new Set(['claude:' + ID]));
+  try {
+    await monitor.tick();
+    const state = monitor.files.get(file);
+    assert.deepEqual([...state.backgroundTasks.keys()], ['wf'], 'Only the workflow with fresh files is still running');
+    assert.equal(state.status, 'running');
+    await fs.appendFile(path.join(run, `agent-${agentId(1)}.jsonl`), usage(3)); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'running', 'Subagent activity confirms the chat is live');
+    assert.deepEqual(snapshot.threads[0].agents.map(a => [a.kind, a.label, a.total]), [['workflow', 'trace-review-workspace', 1]]);
+  } finally { monitor.dispose(); }
+}));

@@ -37,16 +37,20 @@ function feed(t, text, onLine) {
 async function follow(file, t, fromStart, onLine, onReset = () => {}) {
   const stat = await fs.stat(file).catch(() => null);
   if (!stat?.isFile()) return null;
-  if (t.ino !== stat.ino || stat.size < t.offset) {
+  const attached = t.ino !== stat.ino || stat.size < t.offset;
+  if (attached) {
     Object.assign(t, { ino: stat.ino, offset: fromStart ? 0 : Math.max(0, stat.size - WINDOW), partial: '', decoder: new StringDecoder('utf8') });
     t.skipping = t.offset > 0; onReset();
   }
+  t.grew = false;
   if (t.offset < stat.size) {
     const handle = await fs.open(file, 'r');
     try {
       const buffer = Buffer.alloc(Math.min(WINDOW, stat.size - t.offset));
       const { bytesRead } = await handle.read(buffer, 0, buffer.length, t.offset);
       t.offset += bytesRead; feed(t, t.decoder.write(buffer.subarray(0, bytesRead)), onLine);
+      // Bytes appended after attaching are live evidence; history is not.
+      t.grew = !attached && bytesRead > 0;
     } finally { await handle.close(); }
   }
   return stat;
@@ -127,16 +131,30 @@ async function readSubagents(file, s, now = Date.now()) {
   if (now - (s.metaScanAt || 0) >= 5000 && [...s.agents.values()].some(a => a.kind === 'agent' && !a.agentId && !a.done)) {
     s.metaScanAt = now; await resolveMeta(base, s);
   }
-  let budget = 32;
+  let budget = 32, grew = false;
   for (const a of [...s.agents.values()].reverse()) {
-    if (a.kind === 'agent' && a.agentId && budget-- > 0) a.stats = await followAgent(path.join(base, `agent-${a.agentId}.jsonl`), a.stats);
+    if (a.kind === 'agent' && a.agentId && budget-- > 0) { a.stats = await followAgent(path.join(base, `agent-${a.agentId}.jsonl`), a.stats); grew ||= a.stats.grew; }
     if (a.kind !== 'workflow' || !a.runId) continue;
     const dir = path.join(base, 'workflows', a.runId);
-    a.journal = await followJournal(path.join(dir, 'journal.jsonl'), a.journal);
+    a.journal = await followJournal(path.join(dir, 'journal.jsonl'), a.journal); grew ||= a.journal.grew;
     for (const run of [...a.journal.runs.values()].reverse()) {
-      if (run.agentId && budget-- > 0) run.stats = await followAgent(path.join(dir, `agent-${run.agentId}.jsonl`), run.stats);
+      if (run.agentId && budget-- > 0) { run.stats = await followAgent(path.join(dir, `agent-${run.agentId}.jsonl`), run.stats); grew ||= run.stats.grew; }
     }
   }
+  return Boolean(grew);
+}
+
+// Whether a recovered launch still writes its own files; Claude reports work
+// cut off by a closed window to no one, so silence ends it.
+async function activeSince(file, s, agent, since) {
+  const base = path.join(path.dirname(file), s.sessionId, 'subagents');
+  let files = [];
+  if (agent.kind === 'workflow' && agent.runId) {
+    const dir = path.join(base, 'workflows', agent.runId);
+    files = (await fs.readdir(dir).catch(() => [])).filter(n => n === 'journal.jsonl' || /^agent-a[0-9a-f]{16}\.jsonl$/.test(n)).map(n => path.join(dir, n));
+  } else if (agent.agentId) files = [path.join(base, `agent-${agent.agentId}.jsonl`)];
+  for (const f of files) if ((await fs.stat(f).catch(() => null))?.mtimeMs >= since) return true;
+  return false;
 }
 
 const exportStats = st => ({
@@ -162,4 +180,4 @@ function exportAgents(agents) {
   });
 }
 
-module.exports = { readSubagents, exportAgents, agentLabel, validId, AGENT_ID, RUN_ID, TASK_ID };
+module.exports = { readSubagents, activeSince, exportAgents, agentLabel, validId, AGENT_ID, RUN_ID, TASK_ID };

@@ -1,7 +1,8 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { ActivityMonitor, inWorkspace } = require('./activity.cjs');
-const { readSubagents, exportAgents, agentLabel, validId, AGENT_ID, RUN_ID, TASK_ID } = require('./subagent-progress.cjs');
+const { StringDecoder } = require('node:string_decoder');
+const { readSubagents, activeSince, exportAgents, agentLabel, validId, AGENT_ID, RUN_ID, TASK_ID } = require('./subagent-progress.cjs');
 const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
@@ -18,6 +19,29 @@ function settleBackground(s, text) {
     const body = block.split('</task-notification>')[0], id = body.match(/<tool-use-id>([^<]{1,128})<\/tool-use-id>/)?.[1];
     if (id && /<status>[a-z_]+<\/status>/.test(body) && s.backgroundTasks.delete(id)) { const agent = s.agents?.get(id); if (agent) agent.done = true; }
   }
+}
+
+// Background shells can outlive the work (servers); agents and workflows report back.
+function registerLaunch(s, id, launch, at) {
+  const workflow = launch.taskType === 'local_workflow' || typeof launch.workflowName === 'string';
+  (s.backgroundTasks ||= new Map()).set(id, at);
+  while (s.backgroundTasks.size > 64) s.backgroundTasks.delete(s.backgroundTasks.keys().next().value);
+  const known = s.agents?.get(id), label = agentLabel(workflow ? launch.workflowName : launch.description) || known?.label;
+  const taskId = validId(launch.taskId, TASK_ID), agentId = validId(launch.agentId, AGENT_ID), runId = workflow ? validId(launch.runId, RUN_ID) : undefined;
+  // A resumed run reuses its journal and replaces the launch it continues.
+  if (runId) for (const [other, agent] of s.agents || []) if (other !== id && agent.runId === runId) { s.agents.delete(other); s.backgroundTasks.delete(other); }
+  (s.agents ||= new Map()).set(id, { kind: workflow ? 'workflow' : 'agent', ...(label ? { label } : {}), ...(taskId ? { taskId } : {}), ...(agentId ? { agentId } : {}), ...(runId ? { runId } : {}) });
+  while (s.agents.size > 64) s.agents.delete(s.agents.keys().next().value);
+}
+
+// Replays only launches, reports and stops from history before the tail, in order.
+function recoverRecord(s, r) {
+  if (r.isSidechain || (r.sessionId && r.sessionId !== s.sessionId)) return;
+  const content = Array.isArray(r.message?.content) ? r.message.content : [], results = r.type === 'user' ? content.filter(c => c?.type === 'tool_result') : [];
+  if (results.length === 1 && results[0].tool_use_id && r.toolUseResult?.status === 'async_launched') registerLaunch(s, results[0].tool_use_id, r.toolUseResult, Date.parse(r.timestamp) || 0);
+  else if (results.length === 1 && results[0].is_error !== true && /^Successfully stopped task/.test(r.toolUseResult?.message || '')) retireStopped(s, r.toolUseResult.task_id);
+  else if (r.type === 'user' && r.origin?.kind === 'task-notification') settleBackground(s, textOf(r.message?.content));
+  else if (r.type === 'attachment' && r.attachment?.type === 'queued_command' && r.attachment.commandMode === 'task-notification') settleBackground(s, textOf(r.attachment.prompt));
 }
 
 // Claude sends no notification for work it stops itself.
@@ -110,18 +134,7 @@ function applyClaudeEvent(s, r) {
         if (agent) { agent.done = true; if (matched.length === 1) agent.agentId ||= validId(r.toolUseResult?.agentId, AGENT_ID); }
         if (s.pendingStops?.delete(c.tool_use_id) && matched.length === 1 && c.is_error !== true) retireStopped(s, r.toolUseResult?.task_id);
       }
-      // Background shells can outlive the work (servers); agents and workflows report back.
-      if (launch) {
-        const id = matched[0].tool_use_id, workflow = launch.taskType === 'local_workflow' || typeof launch.workflowName === 'string';
-        (s.backgroundTasks ||= new Map()).set(id, at);
-        while (s.backgroundTasks.size > 64) s.backgroundTasks.delete(s.backgroundTasks.keys().next().value);
-        const known = s.agents?.get(id), label = agentLabel(workflow ? launch.workflowName : launch.description) || known?.label;
-        const taskId = validId(launch.taskId, TASK_ID), agentId = validId(launch.agentId, AGENT_ID), runId = workflow ? validId(launch.runId, RUN_ID) : undefined;
-        // A resumed run reuses its journal and replaces the launch it continues.
-        if (runId) for (const [other, agent] of s.agents || []) if (other !== id && agent.runId === runId) { s.agents.delete(other); s.backgroundTasks.delete(other); }
-        (s.agents ||= new Map()).set(id, { kind: workflow ? 'workflow' : 'agent', ...(label ? { label } : {}), ...(taskId ? { taskId } : {}), ...(agentId ? { agentId } : {}), ...(runId ? { runId } : {}) });
-        while (s.agents.size > 64) s.agents.delete(s.agents.keys().next().value);
-      }
+      if (launch) registerLaunch(s, matched[0].tool_use_id, launch, at);
       progress(); return;
     }
     if (r.isMeta) return;
@@ -187,8 +200,33 @@ class ClaudeActivityMonitor extends ActivityMonitor {
   async read(file) {
     await this.readTranscript(file);
     const s = this.files.get(file);
-    // Subagent files grow independently of the parent transcript.
-    if (s?.status === 'running' && s.agents?.size && this.tracks(s)) await readSubagents(file, s).catch(() => {});
+    // Subagent files grow independently of the parent transcript, and their
+    // growth shows that a quiet chat's background work is still live.
+    if (s?.status === 'running' && s.agents?.size && this.tracks(s) && await readSubagents(file, s).catch(() => false)) {
+      s.liveConfirmed = true; s.lastEventAt = Math.max(s.lastEventAt || 0, Date.now()); s.progressVersion = (s.progressVersion || 0) + 1;
+    }
+  }
+  // Attaching to the tail would forget background work launched earlier in a
+  // long chat. Scan the skipped history once for launches still writing files.
+  async recoverBackground(handle, file, s, end) {
+    const decoder = new StringDecoder('utf8');
+    let position = 0, partial = '';
+    while (position < end) {
+      const buffer = Buffer.alloc(Math.min(4 * WINDOW, end - position));
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+      if (!bytesRead) break;
+      position += bytesRead;
+      const lines = (partial + decoder.write(buffer.subarray(0, bytesRead))).split('\n'); partial = lines.pop();
+      if (partial.length > MAX_LINE) partial = '';
+      for (const line of lines) {
+        if (!line.includes('async_launched') && !line.includes('<task-notification>') && !line.includes('Successfully stopped task')) continue;
+        try { recoverRecord(s, JSON.parse(line)); } catch {}
+      }
+    }
+    const since = Date.now() - 15 * 60 * 1000;
+    for (const [id, agent] of s.agents || []) {
+      if (agent.done || !s.backgroundTasks?.has(id) || !await activeSince(file, s, agent, since)) { s.agents.delete(id); s.backgroundTasks?.delete(id); }
+    }
   }
   async readTranscript(file) {
     const handle = await fs.open(file, 'r');
@@ -214,6 +252,8 @@ class ClaudeActivityMonitor extends ActivityMonitor {
           }
         }
         s.offset = Math.max(0, stat.size - WINDOW); s.skipFirst = s.offset > 0;
+        s.source = s.entrypoint === 'claude-vscode' ? 'vscode' : 'unsupported';
+        if (s.offset > 0 && this.tracks(s)) await this.recoverBackground(handle, file, s, s.offset);
       }
       if (s.offset === stat.size) return;
       const buffer = Buffer.alloc(Math.min(WINDOW, stat.size - s.offset));
