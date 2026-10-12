@@ -27,6 +27,23 @@ enum PetLanguage: String, CaseIterable {
         "Hide agents": "Ajanları gizle",
         "Agent": "Ajan",
         "Agents": "Ajanlar",
+        "Done %@ ago": "%@ önce bitti",
+        "Asks: %@": "Soruyor: %@",
+        "Plan ready for review": "Plan onayını bekliyor",
+        "Thinking…": "Düşünüyor…",
+        "Writing a reply": "Yanıt yazıyor",
+        "Running a command": "Komut çalıştırıyor",
+        "Editing %@": "%@ düzenleniyor",
+        "Editing files": "Dosyalar düzenleniyor",
+        "Reading %@": "%@ okunuyor",
+        "Reading files": "Dosyalar okunuyor",
+        "Searching code": "Kodda arıyor",
+        "Searching the web": "Web'de arıyor",
+        "Updating the plan": "Planı güncelliyor",
+        "Starting an agent": "Ajan başlatıyor",
+        "Using %@": "%@ kullanıyor",
+        "%d chats": "%d sohbet",
+        "%d chat": "%d sohbet",
         "All finished": "Hepsi bitti",
         "Question pending": "Yanıtlanmamış soru var",
         "Wait %@": "Yanıt %@",
@@ -216,6 +233,15 @@ struct RunningAgent: Codable, Equatable {
     var phases: [WorkflowPhase]? = nil
     var run: AgentRun { AgentRun(label: label, done: done, model: model, tokens: tokens, startedAt: startedAt, lastAt: lastAt) }
 }
+// What a running chat is doing: a tool plus a short description or file name.
+struct ThreadStep: Codable, Equatable {
+    let tool: String
+    var target: String? = nil
+}
+struct PendingQuestion: Codable, Equatable {
+    var header: String? = nil
+    var plan: Bool? = nil
+}
 // One expanded line under a chat: a workflow header, an agent, or hidden agents.
 struct AgentDetail: Equatable {
     let threadID: String
@@ -247,6 +273,8 @@ struct ThreadActivity: Codable, Equatable {
     var waitingSince: Double? = nil
     var statusReason: String? = nil
     var agents: [RunningAgent]? = nil
+    var step: ThreadStep? = nil
+    var question: PendingQuestion? = nil
     var runningAgents: [RunningAgent] { status == "running" ? agents ?? [] : [] }
     // Finished and total agents; a single workflow counts its own agents.
     // A lone agent or a label-only workflow (older windows) has no progress.
@@ -509,7 +537,7 @@ final class DashboardView: NSView {
                     NSColor.white.withAlphaComponent(0.07).setFill(); NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 2), xRadius: 5, yRadius: 5).fill()
                     label(owner?.foldedWorkspaces.contains(workspace.id) == true ? "›" : "⌄", in: NSRect(x: 14, y: rect.midY - 8, width: 15, height: 18), size: 13, color: .systemTeal)
                     label(workspace.name == "No workspace" ? text("No workspace") : workspace.name, in: NSRect(x: 34, y: rect.midY - 7, width: bounds.width - 170, height: 17), size: 11, color: .systemTeal)
-                    let summary = String(format: text(item.count == 1 ? "%d running · %d chat" : "%d running · %d chats"), item.running, item.count)
+                    let summary = owner?.workspaceSummary(running: item.running, count: item.count) ?? ""
                     label(summary, in: NSRect(x: bounds.width - 130, y: rect.midY - 6, width: 115, height: 15), size: 9, color: NSColor.white.withAlphaComponent(0.6))
                     continue
                 }
@@ -519,8 +547,12 @@ final class DashboardView: NSView {
                 indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
                 let size = owner?.textSize ?? 11.5
                 let pinned = owner?.pinned.contains(thread.id) ?? false
-                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: .white)
-                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 132, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : thread.isAntigravity ? NSColor.systemBlue.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
+                // Settled chats recede so running and waiting ones stand out.
+                let settled = ["ready", "idle"].contains(thread.status)
+                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: NSColor.white.withAlphaComponent(settled ? 0.62 : 1))
+                let mark = thread.isClaude ? NSColor.systemOrange : thread.isAntigravity ? NSColor.systemBlue : NSColor.white.withAlphaComponent(0.55)
+                mark.withAlphaComponent(settled ? 0.55 : 0.95).setFill(); NSBezierPath(ovalIn: NSRect(x: 37, y: rect.midY - 8.5, width: 5, height: 5)).fill()
+                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.4 : 0.62))
                 let expandable = thread.hasAgentDetails && !thread.needsReply
                 label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply || expandable ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
                 if thread.needsReply {
@@ -701,11 +733,40 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         return byID.values.sorted { $0.name == $1.name ? $0.id < $1.id : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
     var counterText: String { String(format: text("%d running · %d waiting"), allThreads.filter { $0.status == "running" }.count, allThreads.filter { $0.status == "waiting" }.count) }
-    func rowSubtitle(_ thread: ThreadActivity) -> String {
-        if thread.replyPending != true, let detail = Self.agentSummary(thread, language: language) { return thread.agentName + " · " + detail }
+    // One fact per state; the agent is shown by the row's color mark.
+    func rowSubtitle(_ thread: ThreadActivity, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
+        if thread.replyPending != true, let detail = Self.agentSummary(thread, language: language) { return detail }
         guard statusLabels || (thread.status == "running" && thread.replyPending == true) else { return thread.agentName }
-        let status = thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread, language: language)
-        return thread.agentName + " · " + status
+        if thread.needsReply {
+            if thread.question?.plan == true { return text("Plan ready for review") }
+            if let header = thread.question?.header { return String(format: text("Asks: %@"), header) }
+        }
+        if thread.status == "running", thread.replyPending != true, let step = thread.step { return Self.stepText(step, language: language) }
+        if thread.status == "ready", let finished = thread.finishedAt, finished > 0 { return String(format: text("Done %@ ago"), Self.elapsedText(since: finished, until: now, language: language)) }
+        return thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread, language: language)
+    }
+    static func stepText(_ step: ThreadStep, language: PetLanguage = .english) -> String {
+        let target = step.target
+        switch step.tool {
+        case "thinking": return language.text("Thinking…")
+        case "writing": return language.text("Writing a reply")
+        case "Bash": return target ?? language.text("Running a command")
+        case "Edit", "MultiEdit", "Write", "NotebookEdit": return target.map { String(format: language.text("Editing %@"), $0) } ?? language.text("Editing files")
+        case "Read": return target.map { String(format: language.text("Reading %@"), $0) } ?? language.text("Reading files")
+        case "Grep", "Glob", "ToolSearch": return language.text("Searching code")
+        case "WebFetch", "WebSearch": return language.text("Searching the web")
+        case "TodoWrite": return language.text("Updating the plan")
+        case "Agent", "Task", "Workflow": return language.text("Starting an agent")
+        default:
+            let parts = step.tool.components(separatedBy: "__")
+            guard parts.count >= 3, parts[0] == "mcp" else { return step.tool }
+            var server = parts[1]
+            for prefix in ["claude_ai_", "plugin_"] where server.hasPrefix(prefix) { server.removeFirst(prefix.count) }
+            return String(format: language.text("Using %@"), server.replacingOccurrences(of: "_", with: " "))
+        }
+    }
+    func workspaceSummary(running: Int, count: Int) -> String {
+        running == 0 ? String(format: text(count == 1 ? "%d chat" : "%d chats"), count) : String(format: text(count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, count)
     }
     func applyFilters(_ threads: [ThreadActivity]) -> [ThreadActivity] {
         threads.filter { (statusFilter == "all" || $0.status == statusFilter || (statusFilter == "waiting" && $0.needsReply)) && (workspaceFilter.isEmpty || $0.workspace?.id == workspaceFilter) }
@@ -1778,17 +1839,27 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         var batches = ThreadActivity(id: "claude:55555555-5555-4555-8555-555555555555", title: "VR allocation", status: "running", changedAt: now, lastEventAt: now, startedAt: now - 300000, workspace: a)
         batches.agents = (0..<6).map { RunningAgent(kind: "agent", label: "VR allocation check batch \($0)", done: $0 < 2 ? true : nil, model: "claude-haiku-4-5-20251001", tokens: 88000, startedAt: now - 300000, lastAt: now) }
         let plain = ThreadActivity(id: "66666666-6666-4666-8666-666666666666", title: "Build the landing page", status: "running", changedAt: now, lastEventAt: now, workspace: a)
-        var valid = rowSubtitle(trace) == "Claude Code · Fix · verify · 9/10 agents"
-        valid = valid && rowSubtitle(batches) == "Claude Code · 2/6 agents · VR allocation check batch 5"
+        var valid = rowSubtitle(trace) == "Fix · verify · 9/10 agents"
+        valid = valid && rowSubtitle(batches) == "2/6 agents · VR allocation check batch 5"
         valid = valid && trace.agentProgress?.completed == 9 && trace.agentProgress?.total == 10 && batches.agentProgress?.completed == 2 && plain.agentProgress == nil
         valid = valid && threadTooltip(trace).contains("9/10 agents finished") && threadTooltip(batches).contains("Running agents: VR allocation check batch 5, VR allocation check batch 4, VR allocation check batch 3, +1")
         valid = valid && Self.modelName("claude-opus-5-5") == "Opus 5.5" && Self.modelName("claude-haiku-4-5-20251001") == "Haiku 4.5" && Self.modelName("claude-sonnet-5") == "Sonnet 5" && Self.modelName("gpt-x") == "gpt-x"
         valid = valid && Self.tokenText(950) == "950" && Self.tokenText(313728) == "314k" && Self.tokenText(1_260_000) == "1.3M"
-        language = .turkish; valid = valid && rowSubtitle(trace) == "Claude Code · Fix · verify · 9/10 ajan"; language = .english
-        var asking = trace; asking.replyPending = true; valid = valid && rowSubtitle(asking) == "Claude Code · Running · question pending"
+        language = .turkish; valid = valid && rowSubtitle(trace) == "Fix · verify · 9/10 ajan"; language = .english
+        var asking = trace; asking.replyPending = true; valid = valid && rowSubtitle(asking) == "Running · question pending"
         var allDone = trace; allDone.agents?[0].done = true; allDone.agents?[0].completed = 10
-        valid = valid && rowSubtitle(allDone) == "Claude Code · 10/10 agents finished"
-        var finished = trace; finished.status = "ready"; valid = valid && Self.agentDetails(finished, language: language).isEmpty && rowSubtitle(finished) == "Claude Code · Completed"
+        valid = valid && rowSubtitle(allDone) == "10/10 agents finished"
+        // Without agents, the subtitle carries one fact for the chat's state.
+        var stepping = plain; stepping.step = ThreadStep(tool: "Bash", target: "Run unit tests"); valid = valid && rowSubtitle(stepping) == "Run unit tests"
+        stepping.step = ThreadStep(tool: "Edit", target: "Hero.tsx"); valid = valid && rowSubtitle(stepping) == "Editing Hero.tsx"
+        stepping.step = ThreadStep(tool: "thinking"); valid = valid && rowSubtitle(stepping) == "Thinking…"
+        stepping.step = ThreadStep(tool: "mcp__claude_ai_Claude_Docs__batch"); valid = valid && rowSubtitle(stepping) == "Using Claude Docs"
+        language = .turkish; stepping.step = ThreadStep(tool: "Read", target: "a.swift"); valid = valid && rowSubtitle(stepping) == "a.swift okunuyor"; language = .english
+        var asked = plain; asked.status = "waiting"; asked.question = PendingQuestion(header: "Layout"); valid = valid && rowSubtitle(asked) == "Asks: Layout"
+        asked.question = PendingQuestion(plan: true); valid = valid && rowSubtitle(asked) == "Plan ready for review"
+        var done = plain; done.status = "ready"; done.finishedAt = now - 300000; valid = valid && rowSubtitle(done, now: now) == "Done 5 min ago"
+        valid = valid && workspaceSummary(running: 0, count: 1) == "1 chat" && workspaceSummary(running: 2, count: 3) == "2 running · 3 chats"
+        var finished = trace; finished.status = "ready"; valid = valid && Self.agentDetails(finished, language: language).isEmpty && rowSubtitle(finished) == "Completed"
         displayThreads = [trace, batches, plain]; grouped = true; foldedWorkspaces = []; expandedThreads = []; view.scrollOffset = 0; resizeToList()
         valid = valid && view.entries.count == 4
         func press(_ point: NSPoint) {
@@ -1819,7 +1890,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         // The compact list shows the same lines, and hidden agents are counted.
         var many = batches; many.agents = [RunningAgent(kind: "workflow", label: "audit", completed: 1, total: 15, phases: [WorkflowPhase(name: "Read", completed: 1, total: 15, agents: (0..<12).map { run("read:\($0)", $0 == 0, 1000, 1) })])]
         grouped = false; displayThreads = [many, plain]; expandedThreads = [many.id]; resizeToList()
-        valid = valid && view.entries.count == 16 && view.entries.compactMap { $0.detail }.last?.more == 3 && rowSubtitle(many) == "Claude Code · Read · read:11 +10 · 1/15 agents"
+        valid = valid && view.entries.count == 16 && view.entries.compactMap { $0.detail }.last?.more == 3 && rowSubtitle(many) == "Read · read:11 +10 · 1/15 agents"
         capture("dashboard-agents-compact-test.png")
         let encoded = try? JSONEncoder().encode(trace)
         valid = valid && encoded.flatMap { try? JSONDecoder().decode(ThreadActivity.self, from: $0) } == trace
@@ -1828,7 +1899,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         valid = valid && older?.agents?.first?.phases == nil
         // Windows still on 0.19 send only a label: nothing to expand and no lone square.
         if let older {
-            valid = valid && older.agentProgress == nil && !older.hasAgentDetails && rowSubtitle(older) == "Claude Code · Workflow: w"
+            valid = valid && older.agentProgress == nil && !older.hasAgentDetails && rowSubtitle(older) == "Workflow: w"
             displayThreads = [older]; expandedThreads = []; resizeToList()
             valid = valid && view.toggleAt(NSPoint(x: view.toggleRect(0).midX, y: view.toggleRect(0).midY)) == nil
         }
@@ -2059,20 +2130,20 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         var valid = displayThreads == [waiting] && counterText == "1 running · 1 waiting" && overallStatus == "waiting"
         workspaceFilter = a.id; valid = valid && applyFilters(allThreads).isEmpty
         statusFilter = "all"; valid = valid && applyFilters(allThreads) == [running, stopped]
-        valid = valid && rowSubtitle(stopped) == "Codex · Stopped"
-        language = .turkish; valid = valid && rowSubtitle(stopped) == "Codex · Durduruldu"
+        valid = valid && rowSubtitle(stopped) == "Stopped"
+        language = .turkish; valid = valid && rowSubtitle(stopped) == "Durduruldu"
         language = .english; statusLabels = false; valid = valid && rowSubtitle(stopped) == "Codex"
         var reviewing = waiting; reviewing.status = "running"; reviewing.agents = [RunningAgent(kind: "agent", label: "Review Task 3")]
-        valid = valid && rowSubtitle(reviewing) == "Claude Code · Agent: Review Task 3"
+        valid = valid && rowSubtitle(reviewing) == "Agent: Review Task 3"
         reviewing.agents = (0..<5).map { RunningAgent(kind: "agent", label: "Batch \($0)") }
-        valid = valid && rowSubtitle(reviewing) == "Claude Code · 0/5 agents · Batch 4"
+        valid = valid && rowSubtitle(reviewing) == "0/5 agents · Batch 4"
         valid = valid && threadTooltip(reviewing).contains("Running agents: Batch 4, Batch 3, Batch 2, +2")
         reviewing.agents = [RunningAgent(kind: "workflow", label: "vh-trace-audit")]; statusLabels = true
-        valid = valid && rowSubtitle(reviewing) == "Claude Code · Workflow: vh-trace-audit"
+        valid = valid && rowSubtitle(reviewing) == "Workflow: vh-trace-audit"
         reviewing.agents = [RunningAgent(kind: "workflow"), RunningAgent(kind: "agent")]
-        language = .turkish; valid = valid && rowSubtitle(reviewing) == "Claude Code · 0/2 ajan"
-        language = .english; reviewing.replyPending = true; valid = valid && rowSubtitle(reviewing) == "Claude Code · Running · question pending"
-        reviewing.replyPending = nil; reviewing.status = "ready"; valid = valid && rowSubtitle(reviewing) == "Claude Code · Completed" && !threadTooltip(reviewing).contains("Running agents")
+        language = .turkish; valid = valid && rowSubtitle(reviewing) == "0/2 ajan"
+        language = .english; reviewing.replyPending = true; valid = valid && rowSubtitle(reviewing) == "Running · question pending"
+        reviewing.replyPending = nil; reviewing.status = "ready"; valid = valid && rowSubtitle(reviewing) == "Completed" && !threadTooltip(reviewing).contains("Running agents")
         statusLabels = false
         statusLabels = true; displayThreads = allThreads
         workspaceOverrides[running.id] = b
@@ -2120,8 +2191,8 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let running = row("running", 200), waiting = row("waiting", 200, changed: 600)
         allThreads = [running]; language = .english; statusLabels = false; statusFilter = "waiting"; workspaceFilter = ""
         var valid = counterText == "1 running · 0 waiting" && overallStatus == "running" && applyFilters(allThreads) == [running]
-        valid = valid && rowSubtitle(running) == "Codex · Running · question pending"
-        language = .turkish; valid = valid && rowSubtitle(running) == "Codex · Çalışıyor · açık soru var"
+        valid = valid && rowSubtitle(running) == "Running · question pending"
+        language = .turkish; valid = valid && rowSubtitle(running) == "Çalışıyor · açık soru var"
         language = .english
         waitingSeen = [:]; waitingObserved = false; waitingNotifications = true; presentationHidden = false; mutedChats = []; testWaitingNotifications = []
         observeWaiting([row("running")]); observeWaiting([running]); observeWaiting([running])
@@ -2240,7 +2311,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         lastWaitingChatID = nil
         valid = valid && nextWaitingThread(live: [snapshot])?.id == thread.id
         workspaceFilter = savedWorkspaceFilter; statusFilter = savedStatusFilter
-        valid = valid && rowSubtitle(thread).hasPrefix("Antigravity") && threadTooltip(thread, now: now).contains("1 min")
+        valid = valid && threadTooltip(thread, now: now).hasPrefix(thread.title + " · Antigravity") && threadTooltip(thread, now: now).contains("1 min")
         snapshot.navigation?.antigravity = nil; valid = valid && threadURL(thread.id, live: [snapshot]) == nil
         snapshot.navigation?.antigravity = "vscode://merttalhayener.agent-pet/claude?windowId=88"; valid = valid && threadURL(thread.id, live: [snapshot]) == nil
         snapshot.navigation?.antigravity = "https://example.com/antigravity?windowId=88"; valid = valid && threadURL(thread.id, live: [snapshot]) == nil

@@ -2,11 +2,15 @@
 
 ## 0.20.0 — Follow workflows and subagents
 
-- Expand a running Claude Code chat with its chevron to see every subagent: workflow phases with finished counts, then each agent's status, model, tokens and time. Click a line to open the chat.
-- Show progress squares under the duration (or `9/10` for larger runs), and name the current phase and running agent in the subtitle: `Fix · verify · 9/10 agents` or `2/6 agents · Batch 5`.
+- Open **Agents** on a running Claude Code chat to see every subagent in a nested block: the workflow's name and count, finished phases folded into one line, then each running agent's status, model, tokens and time. Click a line to open the chat.
+- Show a progress bar under chats with agents, and name the current phase and running agent in the subtitle: `Fix · verify · 9/10 agents` or `2/6 agents · Batch 5`.
+- Say what a running chat is doing instead of just "Running": `Run unit tests`, `Editing Hero.tsx`, `Thinking…`. A waiting chat names its question (`Asks: Layout`) or plan review; a completed chat says when it finished (`Done 5 min ago`).
+- Calmer list: a small color mark replaces the repeated agent name, finished chats recede, and workspace headers drop "0 running".
 - Keep finished agents listed as done until the chat's turn ends.
+- Recover background work launched earlier in a long chat after a window reload, and treat subagent activity as live progress.
 - Fix a background workflow or agent stopped with TaskStop keeping its chat running and counted; Claude sends no completion report for stopped work.
-- Agent Pet reads each workflow's journal and each subagent's transcript tail locally and keeps only labels, phase names, model, token counts and times; prompts, results and scripts are never stored.
+- Fix "stopped" reports written while a window closes restarting a finished chat or leaving a waiting chat running.
+- Agent Pet reads each workflow's journal and each subagent's transcript tail locally and keeps only labels, phase names, model, token counts, times, tool names, Bash descriptions, file base names and question headers; prompts, commands, paths, results and scripts are never stored.
 
 ## 0.19.4 — See what Claude is running
 

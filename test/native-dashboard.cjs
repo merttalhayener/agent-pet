@@ -23,7 +23,7 @@ async function main() {
   assert.equal(result.windowCount, 1);
   assert.equal(result.rows.find(w => w.id === '11111111-1111-4111-8111-111111111111').indicator, 'spinner');
   assert.equal(result.rows.find(w => w.id === b.id).indicator, 'check');
-  if (process.argv.includes('--reply-pending')) assert.equal(result.rows.find(w => w.id === a.id).subtitle, 'Codex · Running · question pending');
+  if (process.argv.includes('--reply-pending')) assert.equal(result.rows.find(w => w.id === a.id).subtitle, 'Running · question pending');
   assert.ok(result.visible && result.builtinPet && result.transparent && result.floating && !result.hidesOnDeactivate);
   assert.ok(result.sleepWorks); assert.ok(result.removeKeepsOther); assert.equal(result.restoredCount, 2 + extra.length); assert.equal(result.visibleRows, Math.min(8, 2 + extra.length)); assert.ok(result.scrollReachesLast);
   assert.equal(result.appActive, false);

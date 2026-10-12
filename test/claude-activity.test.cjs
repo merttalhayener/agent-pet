@@ -640,3 +640,43 @@ test('reports written while a window closes cannot restart a settled chat or kee
   applyClaudeEvent(parked, report('next', at + 9, 'completed'));
   assert.equal(parked.status, 'running', 'Completed work is answered by Claude');
 });
+
+test('a running chat names its current step by tool, Bash description or file name only', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + assistant('tool_use', [{ type: 'tool_use', id: 'b1', name: 'Bash', input: { command: 'PRIVATE_TOKEN=x npm test', description: 'Run unit tests' } }], at + 1));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  const step = () => snapshot.threads[0].step;
+  try {
+    await monitor.tick(); await fs.appendFile(file, record('progress', { parentToolUseID: 'b1' }, at + 2)); await monitor.tick();
+    assert.deepEqual(step(), { tool: 'Bash', target: 'Run unit tests' });
+    await fs.appendFile(file, toolResult('b1', {}, at + 3)); await monitor.tick();
+    assert.deepEqual(step(), { tool: 'thinking' });
+    await fs.appendFile(file, assistant('tool_use', [{ type: 'tool_use', id: 'e1', name: 'Edit', input: { file_path: '/private/secret-dir/Hero.tsx', old_string: 'Private old', new_string: 'Private new' } }], at + 4)); await monitor.tick();
+    assert.deepEqual(step(), { tool: 'Edit', target: 'Hero.tsx' });
+    await fs.appendFile(file, toolResult('e1', {}, at + 5) + assistant(null, [{ type: 'text', text: 'Private reply' }], at + 6)); await monitor.tick();
+    assert.deepEqual(step(), { tool: 'writing' });
+    await fs.appendFile(file, assistant('tool_use', [{ type: 'tool_use', id: 'm1', name: 'mcp__claude_ai_Claude_Docs__batch', input: {} }], at + 7)); await monitor.tick();
+    assert.deepEqual(step(), { tool: 'mcp__claude_ai_Claude_Docs__batch' });
+    const retained = JSON.stringify([...monitor.files.values(), snapshot], (k, v) => v instanceof Map || v instanceof Set ? [...v] : v);
+    for (const secret of ['PRIVATE_TOKEN', 'secret-dir', 'Private old', 'Private new', 'Private reply']) assert.ok(!retained.includes(secret), secret);
+    await fs.appendFile(file, toolResult('m1', {}, at + 8) + assistant('end_turn', undefined, at + 9)); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready'); assert.equal(step(), undefined);
+  } finally { monitor.dispose(); }
+}));
+
+test('a waiting chat names its question by its short header, or as a plan to review', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + assistant('tool_use', [{ type: 'tool_use', id: 'q1', name: 'AskUserQuestion', input: { questions: [{ header: 'Layout', question: 'Private question text', options: [] }] } }], at + 1));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'waiting'); assert.deepEqual(snapshot.threads[0].question, { header: 'Layout' });
+    assert.ok(!JSON.stringify([...monitor.files.values(), snapshot], (k, v) => v instanceof Map || v instanceof Set ? [...v] : v).includes('Private question text'));
+    await fs.appendFile(file, toolResult('q1', {}, at + 2) + assistant('tool_use', [{ type: 'tool_use', id: 'p1', name: 'ExitPlanMode', input: { plan: 'Private plan' } }], at + 3)); await monitor.tick();
+    assert.deepEqual(snapshot.threads[0].question, { plan: true });
+    await fs.appendFile(file, toolResult('p1', {}, at + 4)); await monitor.tick();
+    assert.equal(snapshot.threads[0].question, undefined);
+  } finally { monitor.dispose(); }
+}));

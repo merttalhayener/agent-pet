@@ -8,6 +8,15 @@ const MAX_LINE = 2 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const clean = text => text.replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
 const AGENT_TOOLS = new Set(['Agent', 'Task', 'Workflow']);
+const TOOL = /^[A-Za-z0-9_.-]{1,128}$/;
+// The current step is a tool name plus a Bash description or a file's base
+// name; commands, paths and edits are never retained.
+function stepOf(call) {
+  const input = call.input || {}, file = input.file_path ?? input.notebook_path;
+  const target = call.name === 'Bash' ? agentLabel(input.description) : typeof file === 'string' ? agentLabel(path.basename(file)) : undefined;
+  const tool = validId(call.name, TOOL);
+  return tool ? { tool, ...(target ? { target } : {}) } : undefined;
+}
 const textOf = content => typeof content === 'string' ? content : Array.isArray(content) ? content.filter(c => c?.type === 'text').map(c => c.text || '').join(' ') : '';
 
 // Claude reports each background agent or workflow back to the parent with a
@@ -99,13 +108,13 @@ function applyClaudeEvent(s, r) {
     for (const [id, agent] of s.agents || []) if (!s.backgroundTasks?.has(id) && !(keepDone && agent.done)) s.agents.delete(id);
   };
   const progress = () => { s.lastEventAt = Math.max(s.lastEventAt || 0, at); s.progressVersion = (s.progressVersion || 0) + 1; };
-  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = false; settleForeground(); };
+  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = false; s.step = { tool: 'thinking' }; settleForeground(); };
   const finish = status => {
     if (r.type === 'assistant' && typeof m.id === 'string' && m.id.length <= 128) {
       s.settledMessages ||= new Set(); s.settledMessages.add(m.id);
       while (s.settledMessages.size > 128) s.settledMessages.delete(s.settledMessages.values().next().value);
     }
-    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = false; settleForeground(); progress();
+    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = false; s.step = undefined; settleForeground(); progress();
   };
   if (r.type === 'queue-operation') {
     if (consumedHuman) {
@@ -138,6 +147,7 @@ function applyClaudeEvent(s, r) {
         if (s.pendingStops?.delete(c.tool_use_id) && matched.length === 1 && c.is_error !== true) retireStopped(s, r.toolUseResult?.task_id);
       }
       if (launch) registerLaunch(s, matched[0].tool_use_id, launch, at);
+      if (!s.pendingTools?.size) s.step = { tool: 'thinking' };
       progress(); return;
     }
     if (r.isMeta) return;
@@ -162,7 +172,7 @@ function applyClaudeEvent(s, r) {
     if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) {
       if (!s.backgroundTasks?.size) { finish('ready'); return; }
       // Claude resumes this chat itself when its background work reports back.
-      s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = true; settleForeground(true); progress(); return;
+      s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = true; s.step = undefined; settleForeground(true); progress(); return;
     }
     s.awaitingReports = false;
     // The parent can genuinely resume after an asynchronous subagent report.
@@ -177,8 +187,12 @@ function applyClaudeEvent(s, r) {
       while (s.agents.size > 64) s.agents.delete(s.agents.keys().next().value);
     }
     for (const c of calls) if (['AskUserQuestion', 'ExitPlanMode'].includes(c.name) && c.id && !s.pendingInputs[c.id]) {
-      s.pendingInputs[c.id] = { requestedAt: at }; s.lastQuestionAt = at;
+      // Only the question's short header is kept, never its text.
+      const header = c.name === 'AskUserQuestion' ? agentLabel(c.input?.questions?.[0]?.header) : undefined;
+      s.pendingInputs[c.id] = { requestedAt: at, ...(c.name === 'ExitPlanMode' ? { plan: true } : header ? { header } : {}) }; s.lastQuestionAt = at;
     }
+    const last = calls.at(-1), text = content.some(c => c.type === 'text' && c.text?.trim());
+    s.step = last ? stepOf(last) : text ? { tool: 'writing' } : content.some(c => c.type === 'thinking') ? { tool: 'thinking' } : s.step;
     s.status = 'running'; s.finishedAt = undefined; progress();
   } else if (r.type === 'result') {
     if (r.is_error === true) finish('failed');
@@ -281,8 +295,10 @@ class ClaudeActivityMonitor extends ActivityMonitor {
   snapshot(now = Date.now()) {
     const result = super.snapshot(now), states = new Map([...this.files.values()].map(s => [s.id, s]));
     return { ...result, threads: result.threads.map(t => {
-      const agents = t.status === 'running' ? exportAgents(states.get(t.id)?.agents || new Map()) : [];
-      return { ...t, agent: 'claude', ...(agents.length ? { agents } : {}) };
+      const state = states.get(t.id), agents = t.status === 'running' ? exportAgents(state?.agents || new Map()) : [];
+      const asked = Object.values(t.replyPending ? state?.pendingInputs || {} : {}).sort((a, b) => a.requestedAt - b.requestedAt)[0];
+      const question = asked?.plan ? { plan: true } : asked?.header ? { header: asked.header } : undefined;
+      return { ...t, agent: 'claude', ...(agents.length ? { agents } : {}), ...(t.status === 'running' && state?.step ? { step: { ...state.step } } : {}), ...(question ? { question } : {}) };
     }) };
   }
 }
