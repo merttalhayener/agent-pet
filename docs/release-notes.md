@@ -4,7 +4,7 @@
 
 - **See inside the work.** Open **Agents** on a running chat to see its workflow phases and every subagent with its status, model, tokens and time.
 - **Know what each chat is doing.** Instead of "Running", the subtitle says `Run unit tests`, `Editing Hero.tsx` or `Fix · verify · 9/10 agents`. Waiting chats name their question, and each chat shows one time: how long it has worked, waited, or how long ago it finished.
-- **A calmer list.** A small color mark replaces the repeated agent name, finished chats recede while staying easy to read, and empty running counts disappear.
+- **A calmer list.** A short, quiet agent name replaces the repeated “Claude Code”, finished chats recede while staying easy to read, and empty running counts disappear.
 - **More reliable status.** Background work survives a window reload, stopped work no longer lingers, and reports written while a window closes no longer restart finished chats.
 - **Still local and private.** Only short labels, names and counts are kept. Prompts, commands, results and scripts are never stored.
 

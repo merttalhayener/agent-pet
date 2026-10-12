@@ -259,6 +259,7 @@ struct ThreadActivity: Codable, Equatable {
     var sessionID: String { isClaude ? String(id.dropFirst(7)) : isAntigravity ? String(id.dropFirst(12)) : id }
     var isTerminal: Bool { surface == "terminal" }
     var agentName: String { (isClaude ? "Claude Code" : isAntigravity ? "Antigravity" : "Codex") + (isTerminal ? " · Terminal" : "") }
+    var shortAgentName: String { isClaude ? "Claude" : isAntigravity ? "Antigravity" : "Codex" }
     let title: String
     var status: String
     let changedAt: Double
@@ -434,6 +435,13 @@ final class DashboardView: NSView {
         addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect], owner: self))
         super.updateTrackingAreas()
     }
+    func label(_ prefix: String, then text: String?, in rect: NSRect, size: CGFloat, color: NSColor) {
+        let paragraph = NSMutableParagraphStyle(); paragraph.lineBreakMode = .byTruncatingTail
+        let font = NSFont.systemFont(ofSize: size, weight: .medium)
+        let string = NSMutableAttributedString(string: prefix, attributes: [.font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.42), .paragraphStyle: paragraph])
+        if let text { string.append(NSAttributedString(string: " · " + text, attributes: [.font: font, .foregroundColor: color, .paragraphStyle: paragraph])) }
+        string.draw(with: rect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    }
     func label(_ text: String, in rect: NSRect, size: CGFloat, color: NSColor, centered: Bool = false) {
         let paragraph = NSMutableParagraphStyle(); paragraph.alignment = centered ? .center : .left; paragraph.lineBreakMode = .byTruncatingTail
         (text as NSString).draw(in: rect, withAttributes: [.font: NSFont.systemFont(ofSize: size, weight: .medium), .foregroundColor: color, .paragraphStyle: paragraph])
@@ -550,10 +558,9 @@ final class DashboardView: NSView {
                 // Settled chats recede so running and waiting ones stand out.
                 let settled = ["ready", "idle"].contains(thread.status)
                 label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: NSColor.white.withAlphaComponent(settled ? 0.82 : 1))
-                // The agent's color mark stays at full strength; it is the row's only agent cue.
-                let mark = thread.isClaude ? NSColor.systemOrange : thread.isAntigravity ? NSColor.systemBlue : NSColor.white.withAlphaComponent(0.7)
-                mark.setFill(); NSBezierPath(ovalIn: NSRect(x: 36.5, y: rect.midY - 9, width: 6, height: 6)).fill()
-                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.62 : 0.82))
+                // A quiet agent name, then the row's one fact; color is left to status.
+                let detail = owner?.rowSubtitle(thread) ?? thread.agentName
+                label(thread.shortAgentName, then: detail == thread.agentName ? nil : detail, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 132, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.62 : 0.82))
                 let expandable = thread.hasAgentDetails && !thread.needsReply
                 let time = owner?.rowTime(thread) ?? (text: DesktopPet.durationText(thread, language: language), waiting: false)
                 label(time.text, in: NSRect(x: bounds.width - 94, y: rect.midY - (expandable ? 1 : 7), width: 62, height: 16), size: 10, color: time.waiting ? .systemYellow : NSColor.white.withAlphaComponent(0.5))
@@ -1873,6 +1880,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         var waitingRow = plain; waitingRow.status = "waiting"; waitingRow.startedAt = now - 600000; waitingRow.waitingSince = now - 180000
         valid = valid && rowTime(waitingRow, now: now).text == "Wait 3 min" && rowTime(waitingRow, now: now).waiting
         language = .turkish; valid = valid && rowTime(done, now: now).text == "5 dk önce"; language = .english
+        valid = valid && plain.shortAgentName == "Codex" && trace.shortAgentName == "Claude"
         valid = valid && workspaceSummary(running: 0, count: 1) == "1 chat" && workspaceSummary(running: 2, count: 3) == "2 running · 3 chats"
         var finished = trace; finished.status = "ready"; valid = valid && Self.agentDetails(finished, language: language).isEmpty && rowSubtitle(finished) == "Completed"
         displayThreads = [trace, batches, plain]; grouped = true; foldedWorkspaces = []; expandedThreads = []; view.scrollOffset = 0; resizeToList()

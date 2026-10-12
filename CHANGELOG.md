@@ -3,6 +3,7 @@
 ## 0.20.2 — One time per chat
 
 - Show a single time on the right of each chat: how long a running chat has worked, how long a waiting chat has waited, or how long ago a finished chat ended (`5 min ago`). The subtitle no longer repeats a time, and the full turn time stays in the tooltip.
+- Name the agent quietly at the start of the subtitle (`Claude · Editing Hero.tsx`) instead of a colored dot, so color only ever means status.
 
 ## 0.20.1 — Easier to read finished chats
 
