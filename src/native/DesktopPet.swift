@@ -245,11 +245,17 @@ struct ThreadActivity: Codable, Equatable {
     var agents: [RunningAgent]? = nil
     var runningAgents: [RunningAgent] { status == "running" ? agents ?? [] : [] }
     // Finished and total agents; a single workflow counts its own agents.
+    // A lone agent or a label-only workflow (older windows) has no progress.
     var agentProgress: (completed: Int, total: Int)? {
         let agents = runningAgents
-        guard !agents.isEmpty else { return nil }
         if agents.count == 1, let total = agents[0].total, total > 0 { return (min(agents[0].completed ?? 0, total), total) }
+        guard agents.count > 1 else { return nil }
         return (agents.filter { $0.done == true }.count, agents.count)
+    }
+    // Expanding must add something the subtitle does not already say.
+    var hasAgentDetails: Bool {
+        let agents = runningAgents
+        return agents.count > 1 || agents.contains { $0.phases?.isEmpty == false || $0.model != nil || $0.tokens != nil || $0.startedAt != nil }
     }
     var needsReply: Bool { status == "waiting" || (status == "running" && replyPending == true) }
     var waitingStartedAt: Double? {
@@ -316,7 +322,7 @@ final class DashboardView: NSView {
         }
     }
     func withDetails(_ thread: ThreadActivity) -> [DashboardEntry] {
-        guard owner?.expandedThreads.contains(thread.id) == true else { return [DashboardEntry(thread: thread)] }
+        guard thread.hasAgentDetails, owner?.expandedThreads.contains(thread.id) == true else { return [DashboardEntry(thread: thread)] }
         return [DashboardEntry(thread: thread)] + DesktopPet.agentDetails(thread, language: language).map { DashboardEntry(detail: $0) }
     }
     var chatPanelVisible: Bool { owner?.panelHidden != true }
@@ -348,7 +354,7 @@ final class DashboardView: NSView {
     func toggleRect(_ visibleIndex: Int) -> NSRect { let row = rowRect(visibleIndex); return NSRect(x: bounds.width - 118, y: row.midY - 7, width: 22, height: 20) }
     func toggleAt(_ p: NSPoint) -> String? {
         for i in 0..<visibleCount where toggleRect(i).contains(p) {
-            if let thread = entries[i + scrollOffset].thread, !thread.runningAgents.isEmpty { return thread.id }
+            if let thread = entries[i + scrollOffset].thread, thread.hasAgentDetails { return thread.id }
         }
         return nil
     }
@@ -460,7 +466,7 @@ final class DashboardView: NSView {
                 indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
                 let size = owner?.textSize ?? 11.5
                 let pinned = owner?.pinned.contains(thread.id) ?? false
-                let expandable = !thread.runningAgents.isEmpty, textWidth = bounds.width - (expandable ? 156 : 132)
+                let expandable = thread.hasAgentDetails, textWidth = bounds.width - (expandable ? 156 : 132)
                 label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: textWidth, height: size + 5), size: size, color: .white)
                 label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: textWidth, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : thread.isAntigravity ? NSColor.systemBlue.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
                 if expandable { label(owner?.expandedThreads.contains(thread.id) == true ? "⌄" : "›", in: toggleRect(i), size: 14, color: .systemTeal, centered: true) }
@@ -1755,8 +1761,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         capture("dashboard-agents-compact-test.png")
         let encoded = try? JSONEncoder().encode(trace)
         valid = valid && encoded.flatMap { try? JSONDecoder().decode(ThreadActivity.self, from: $0) } == trace
-        let legacy = #"{"id":"x","title":"t","status":"running","changedAt":1,"lastEventAt":1,"agents":[{"kind":"workflow","label":"w"}]}"#
-        valid = valid && (try? JSONDecoder().decode(ThreadActivity.self, from: Data(legacy.utf8)))?.agents?.first?.phases == nil
+        let legacy = #"{"id":"claude:x","title":"t","status":"running","changedAt":1,"lastEventAt":1,"agents":[{"kind":"workflow","label":"w"}]}"#
+        let older = try? JSONDecoder().decode(ThreadActivity.self, from: Data(legacy.utf8))
+        valid = valid && older?.agents?.first?.phases == nil
+        // Windows still on 0.19 send only a label: nothing to expand and no lone square.
+        if let older {
+            valid = valid && older.agentProgress == nil && !older.hasAgentDetails && rowSubtitle(older) == "Claude Code · Workflow: w"
+            displayThreads = [older]; expandedThreads = []; resizeToList()
+            valid = valid && view.toggleAt(NSPoint(x: view.toggleRect(0).midX, y: view.toggleRect(0).midY)) == nil
+        }
         return valid
     }
     func testWorkspaceView() -> Bool {
