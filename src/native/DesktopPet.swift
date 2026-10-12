@@ -27,7 +27,7 @@ enum PetLanguage: String, CaseIterable {
         "Hide agents": "Ajanları gizle",
         "Agent": "Ajan",
         "Agents": "Ajanlar",
-        "Done %@ ago": "%@ önce bitti",
+        "%@ ago": "%@ önce",
         "Asks: %@": "Soruyor: %@",
         "Plan ready for review": "Plan onayını bekliyor",
         "Thinking…": "Düşünüyor…",
@@ -555,10 +555,9 @@ final class DashboardView: NSView {
                 mark.setFill(); NSBezierPath(ovalIn: NSRect(x: 36.5, y: rect.midY - 9, width: 6, height: 6)).fill()
                 label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.62 : 0.82))
                 let expandable = thread.hasAgentDetails && !thread.needsReply
-                label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply || expandable ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
-                if thread.needsReply {
-                    label(String(format: text("Wait %@"), DesktopPet.waitingDurationText(thread, language: language)), in: NSRect(x: bounds.width - 94, y: rect.midY - 12, width: 62, height: 11), size: 8, color: .systemYellow)
-                } else if expandable { drawAgentsButton(expanded: owner?.expandedThreads.contains(thread.id) == true, in: toggleRect(i)) }
+                let time = owner?.rowTime(thread) ?? (text: DesktopPet.durationText(thread, language: language), waiting: false)
+                label(time.text, in: NSRect(x: bounds.width - 94, y: rect.midY - (expandable ? 1 : 7), width: 62, height: 16), size: 10, color: time.waiting ? .systemYellow : NSColor.white.withAlphaComponent(0.5))
+                if expandable { drawAgentsButton(expanded: owner?.expandedThreads.contains(thread.id) == true, in: toggleRect(i)) }
                 if let progress = thread.agentProgress { drawProgress(progress, in: rect) }
                 if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
             }
@@ -743,7 +742,6 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             if let header = thread.question?.header { return String(format: text("Asks: %@"), header) }
         }
         if thread.status == "running", thread.replyPending != true, let step = thread.step { return Self.stepText(step, language: language) }
-        if thread.status == "ready", let finished = thread.finishedAt, finished > 0 { return String(format: text("Done %@ ago"), Self.elapsedText(since: finished, until: now, language: language)) }
         return thread.status == "idle" && thread.finishedAt != nil ? text("Stopped") : Self.statusText(thread, language: language)
     }
     static func stepText(_ step: ThreadStep, language: PetLanguage = .english) -> String {
@@ -765,6 +763,15 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
             for prefix in ["claude_ai_", "plugin_"] where server.hasPrefix(prefix) { server.removeFirst(prefix.count) }
             return String(format: language.text("Using %@"), server.replacingOccurrences(of: "_", with: " "))
         }
+    }
+    // The row's only time: work so far, the reply wait, or how long ago it ended.
+    // The full turn time stays in the tooltip.
+    func rowTime(_ thread: ThreadActivity, now: Double = Date().timeIntervalSince1970 * 1000) -> (text: String, waiting: Bool) {
+        if thread.needsReply { return (String(format: text("Wait %@"), Self.waitingDurationText(thread, language: language, now: now)), true) }
+        if ["ready", "idle", "failed"].contains(thread.status), let finished = thread.finishedAt, finished > 0 {
+            return (String(format: text("%@ ago"), Self.elapsedText(since: finished, until: now, language: language)), false)
+        }
+        return (Self.durationText(thread, language: language, now: now), false)
     }
     func workspaceSummary(running: Int, count: Int) -> String {
         running == 0 ? String(format: text(count == 1 ? "%d chat" : "%d chats"), count) : String(format: text(count == 1 ? "%d running · %d chat" : "%d running · %d chats"), running, count)
@@ -1858,7 +1865,14 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         language = .turkish; stepping.step = ThreadStep(tool: "Read", target: "a.swift"); valid = valid && rowSubtitle(stepping) == "a.swift okunuyor"; language = .english
         var asked = plain; asked.status = "waiting"; asked.question = PendingQuestion(header: "Layout"); valid = valid && rowSubtitle(asked) == "Asks: Layout"
         asked.question = PendingQuestion(plan: true); valid = valid && rowSubtitle(asked) == "Plan ready for review"
-        var done = plain; done.status = "ready"; done.finishedAt = now - 300000; valid = valid && rowSubtitle(done, now: now) == "Done 5 min ago"
+        // One time per row, on the right: work so far, the wait, or how long ago it ended.
+        var done = plain; done.status = "ready"; done.startedAt = now - 1500000; done.finishedAt = now - 300000
+        valid = valid && rowSubtitle(done, now: now) == "Completed" && rowTime(done, now: now).text == "5 min ago" && rowTime(done, now: now).waiting == false
+        valid = valid && threadTooltip(done, now: now).contains("Turn time: 20 min")
+        var working = plain; working.startedAt = now - 240000; valid = valid && rowTime(working, now: now).text == "4 min"
+        var waitingRow = plain; waitingRow.status = "waiting"; waitingRow.startedAt = now - 600000; waitingRow.waitingSince = now - 180000
+        valid = valid && rowTime(waitingRow, now: now).text == "Wait 3 min" && rowTime(waitingRow, now: now).waiting
+        language = .turkish; valid = valid && rowTime(done, now: now).text == "5 dk önce"; language = .english
         valid = valid && workspaceSummary(running: 0, count: 1) == "1 chat" && workspaceSummary(running: 2, count: 3) == "2 running · 3 chats"
         var finished = trace; finished.status = "ready"; valid = valid && Self.agentDetails(finished, language: language).isEmpty && rowSubtitle(finished) == "Completed"
         displayThreads = [trace, batches, plain]; grouped = true; foldedWorkspaces = []; expandedThreads = []; view.scrollOffset = 0; resizeToList()

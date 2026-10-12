@@ -26,7 +26,7 @@ Kim çalışıyor, kim seni bekliyor, hangi iş bitti? Masaüstündeki küçük 
 
 Birkaç projede birden ajan mı çalıştırıyorsun? Agent Pet, sohbetlerini diğer uygulamaların üzerinde duran tek bir panelde toplar.
 
-- **Her sohbetin ne yaptığını gör.** Çalışan sohbetler ne üzerinde çalıştığını, yanıt bekleyenler sorularını, bitenler ne zaman bittiğini söyler; çalışma ve yanıt bekleme süreleri ayrı tutulur.
+- **Her sohbetin ne yaptığını gör.** Çalışan sohbetler ne üzerinde çalıştığını, yanıt bekleyenler sorularını, her sohbette tek bir süre görünür: ne kadar çalıştığı, ne kadar beklediği ya da ne kadar önce bittiği.
 - **Doğrudan sohbete dön.** Sohbete tıklayıp VS Code penceresini veya terminalini aç. **Ctrl + Option + Cmd + N** ile sıradaki yanıt bekleyen sohbete geç.
 - **Projelerini düzenle.** Sohbetler varsayılan olarak çalışma alanına göre gruplanır. Projeleri daralt ve takip etmek istediğin işleri filtrele.
 - **Doğru zamanda geri dön.** Yanıt bildirimlerini aç veya menü çubuğundan çalışan ve bekleyen sohbet sayılarına bak.
