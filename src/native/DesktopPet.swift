@@ -19,6 +19,13 @@ enum PetLanguage: String, CaseIterable {
         "%d agents · %@": "%d ajan · %@",
         "%d workflows · %@": "%d workflow · %@",
         "Running agents: %@": "Çalışan ajanlar: %@",
+        "%d/%d agents": "%d/%d ajan",
+        "%d/%d agents · %@": "%d/%d ajan · %@",
+        "%d/%d agents finished": "%d/%d ajan bitti",
+        "+%d more agents": "+%d ajan daha",
+        "Show agents": "Ajanları göster",
+        "Hide agents": "Ajanları gizle",
+        "Agent": "Ajan",
         "Question pending": "Yanıtlanmamış soru var",
         "Wait %@": "Yanıt %@",
         "Waiting for your reply: %@": "Yanıtın bekleniyor: %@",
@@ -175,13 +182,45 @@ struct WorkspaceInfo: Codable, Equatable {
 }
 struct DashboardEntry {
     var thread: ThreadActivity? = nil
+    var detail: AgentDetail? = nil
     var workspace: WorkspaceInfo? = nil
     var count = 0
     var running = 0
 }
+struct AgentRun: Codable, Equatable {
+    var label: String? = nil
+    var done: Bool? = nil
+    var model: String? = nil
+    var tokens: Double? = nil
+    var startedAt: Double? = nil
+    var lastAt: Double? = nil
+}
+struct WorkflowPhase: Codable, Equatable {
+    var name: String? = nil
+    var completed: Int? = nil
+    var total: Int? = nil
+    var agents: [AgentRun]? = nil
+}
 struct RunningAgent: Codable, Equatable {
     let kind: String
     var label: String? = nil
+    var done: Bool? = nil
+    var model: String? = nil
+    var tokens: Double? = nil
+    var startedAt: Double? = nil
+    var lastAt: Double? = nil
+    var completed: Int? = nil
+    var total: Int? = nil
+    var phases: [WorkflowPhase]? = nil
+    var run: AgentRun { AgentRun(label: label, done: done, model: model, tokens: tokens, startedAt: startedAt, lastAt: lastAt) }
+}
+// One expanded line under a chat: a workflow header, an agent, or hidden agents.
+struct AgentDetail: Equatable {
+    let threadID: String
+    var header: String? = nil
+    var phase: String? = nil
+    var run: AgentRun? = nil
+    var more = 0
 }
 struct ThreadActivity: Codable, Equatable {
     let id: String
@@ -205,6 +244,13 @@ struct ThreadActivity: Codable, Equatable {
     var statusReason: String? = nil
     var agents: [RunningAgent]? = nil
     var runningAgents: [RunningAgent] { status == "running" ? agents ?? [] : [] }
+    // Finished and total agents; a single workflow counts its own agents.
+    var agentProgress: (completed: Int, total: Int)? {
+        let agents = runningAgents
+        guard !agents.isEmpty else { return nil }
+        if agents.count == 1, let total = agents[0].total, total > 0 { return (min(agents[0].completed ?? 0, total), total) }
+        return (agents.filter { $0.done == true }.count, agents.count)
+    }
     var needsReply: Bool { status == "waiting" || (status == "running" && replyPending == true) }
     var waitingStartedAt: Double? {
         guard needsReply else { return nil }
@@ -247,7 +293,7 @@ final class DashboardView: NSView {
     var hovered = false, hoveredRow: String?
     var scrollOffset = 0
     var dragStart = NSPoint.zero, windowStart = NSPoint.zero
-    var dragged = false, pressedRemoveID: String?, pressedThreadID: String?, pressedWorkspaceID: String?
+    var dragged = false, pressedRemoveID: String?, pressedThreadID: String?, pressedWorkspaceID: String?, pressedToggleID: String?
     var resizing = false
     var moving = false
     var resizeStartFrame = NSRect.zero
@@ -256,7 +302,7 @@ final class DashboardView: NSView {
     func text(_ key: String) -> String { language.text(key) }
     var rows: [ThreadActivity] { owner?.displayThreads ?? [] }
     var entries: [DashboardEntry] {
-        guard owner?.grouped == true else { return rows.map { DashboardEntry(thread: $0) } }
+        guard owner?.grouped == true else { return rows.flatMap(withDetails) }
         let groups = Dictionary(grouping: rows) { $0.workspace?.id ?? "legacy" }
         return groups.keys.sorted { a, b in
             let an = groups[a]?.first?.workspace?.name ?? text("Other chats")
@@ -266,8 +312,12 @@ final class DashboardView: NSView {
             let threads = groups[id] ?? []
             let workspace = threads.first?.workspace ?? WorkspaceInfo(id: id, name: text("Other chats"))
             let header = DashboardEntry(workspace: workspace, count: threads.count, running: threads.filter { $0.status == "running" }.count)
-            return [header] + ((owner?.foldedWorkspaces.contains(id) ?? false) ? [] : threads.map { DashboardEntry(thread: $0) })
+            return [header] + ((owner?.foldedWorkspaces.contains(id) ?? false) ? [] : threads.flatMap(withDetails))
         }
+    }
+    func withDetails(_ thread: ThreadActivity) -> [DashboardEntry] {
+        guard owner?.expandedThreads.contains(thread.id) == true else { return [DashboardEntry(thread: thread)] }
+        return [DashboardEntry(thread: thread)] + DesktopPet.agentDetails(thread, language: language).map { DashboardEntry(detail: $0) }
     }
     var chatPanelVisible: Bool { owner?.panelHidden != true }
     var petVisible: Bool { owner?.panelOnly != true }
@@ -295,6 +345,17 @@ final class DashboardView: NSView {
     func rowRect(_ visibleIndex: Int) -> NSRect {
         NSRect(x: 6, y: cardHeight - 32 - CGFloat(visibleIndex + 1) * rowHeight, width: bounds.width - 12, height: rowHeight)
     }
+    func toggleRect(_ visibleIndex: Int) -> NSRect { let row = rowRect(visibleIndex); return NSRect(x: bounds.width - 118, y: row.midY - 7, width: 22, height: 20) }
+    func toggleAt(_ p: NSPoint) -> String? {
+        for i in 0..<visibleCount where toggleRect(i).contains(p) {
+            if let thread = entries[i + scrollOffset].thread, !thread.runningAgents.isEmpty { return thread.id }
+        }
+        return nil
+    }
+    func detailAt(_ p: NSPoint) -> AgentDetail? {
+        for i in 0..<visibleCount where rowRect(i).contains(p) { return entries[i + scrollOffset].detail }
+        return nil
+    }
     func rowAt(_ p: NSPoint) -> ThreadActivity? {
         for i in 0..<visibleCount where rowRect(i).contains(p) { return entries[i + scrollOffset].thread }
         return nil
@@ -311,6 +372,30 @@ final class DashboardView: NSView {
     func label(_ text: String, in rect: NSRect, size: CGFloat, color: NSColor, centered: Bool = false) {
         let paragraph = NSMutableParagraphStyle(); paragraph.alignment = centered ? .center : .left; paragraph.lineBreakMode = .byTruncatingTail
         (text as NSString).draw(in: rect, withAttributes: [.font: NSFont.systemFont(ofSize: size, weight: .medium), .foregroundColor: color, .paragraphStyle: paragraph])
+    }
+    // One square per agent, filled when done; larger runs show a count.
+    func drawProgress(_ progress: (completed: Int, total: Int), at origin: NSPoint) {
+        guard progress.total <= 10 else {
+            label("\(progress.completed)/\(progress.total)", in: NSRect(x: origin.x, y: origin.y - 3, width: 62, height: 11), size: 8, color: .systemTeal); return
+        }
+        for index in 0..<progress.total {
+            let square = NSBezierPath(roundedRect: NSRect(x: origin.x + CGFloat(index) * 6, y: origin.y, width: 4.5, height: 4.5), xRadius: 1, yRadius: 1)
+            if index < progress.completed { NSColor.systemTeal.setFill(); square.fill() }
+            else { NSColor.systemTeal.withAlphaComponent(0.8).setStroke(); square.lineWidth = 0.8; square.stroke() }
+        }
+    }
+    func drawDetail(_ detail: AgentDetail, in rect: NSRect) {
+        let dim = NSColor.white.withAlphaComponent(0.5), y = rect.midY - 7
+        if let header = detail.header { label(header, in: NSRect(x: 36, y: y, width: bounds.width - 70, height: 14), size: 9, color: .systemTeal); return }
+        if detail.more > 0 { label(String(format: text("+%d more agents"), detail.more), in: NSRect(x: 112, y: y, width: bounds.width - 140, height: 14), size: 9, color: dim); return }
+        if let phase = detail.phase { label(phase, in: NSRect(x: 36, y: y, width: 62, height: 14), size: 9, color: .systemTeal) }
+        guard let run = detail.run else { return }
+        let done = run.done == true, wide = bounds.width >= 380, right = bounds.width - 22
+        label(done ? "✓" : "◌", in: NSRect(x: 100, y: y, width: 12, height: 14), size: 9, color: done ? .systemGreen : .systemTeal)
+        label(run.label ?? text("Agent"), in: NSRect(x: 112, y: y, width: right - (wide ? 150 : 92) - 112, height: 14), size: 9.5, color: NSColor.white.withAlphaComponent(done ? 0.7 : 0.95))
+        if wide, let model = DesktopPet.modelName(run.model) { label(model, in: NSRect(x: right - 146, y: y, width: 58, height: 14), size: 8.5, color: dim) }
+        if let tokens = run.tokens { label(DesktopPet.tokenText(tokens), in: NSRect(x: right - 86, y: y, width: 40, height: 14), size: 8.5, color: dim) }
+        if let start = run.startedAt { label(DesktopPet.elapsedText(since: start, until: done ? run.lastAt ?? start : Date().timeIntervalSince1970 * 1000, language: language), in: NSRect(x: right - 44, y: y, width: 44, height: 14), size: 8.5, color: dim) }
     }
     func indicator(_ status: String, at center: NSPoint) {
         let path = NSBezierPath(); path.lineWidth = 1.8; path.lineCapStyle = .round; path.lineJoinStyle = .round
@@ -369,17 +454,21 @@ final class DashboardView: NSView {
                     label(summary, in: NSRect(x: bounds.width - 130, y: rect.midY - 6, width: 115, height: 15), size: 9, color: NSColor.white.withAlphaComponent(0.6))
                     continue
                 }
+                if let detail = item.detail { drawDetail(detail, in: rect); continue }
                 guard let thread = item.thread else { continue }
                 if thread.id == hoveredRow { NSColor.white.withAlphaComponent(0.06).setFill(); NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7).fill() }
                 indicator(thread.status, at: NSPoint(x: 20, y: rect.midY))
                 let size = owner?.textSize ?? 11.5
                 let pinned = owner?.pinned.contains(thread.id) ?? false
-                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: .white)
-                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: bounds.width - 132, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : thread.isAntigravity ? NSColor.systemBlue.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
-                label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
+                let expandable = !thread.runningAgents.isEmpty, textWidth = bounds.width - (expandable ? 156 : 132)
+                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: textWidth, height: size + 5), size: size, color: .white)
+                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 36, y: rect.midY - 12, width: textWidth, height: 11), size: 8, color: thread.isClaude ? NSColor.systemOrange.withAlphaComponent(0.9) : thread.isAntigravity ? NSColor.systemBlue.withAlphaComponent(0.9) : NSColor.white.withAlphaComponent(0.5))
+                if expandable { label(owner?.expandedThreads.contains(thread.id) == true ? "⌄" : "›", in: toggleRect(i), size: 14, color: .systemTeal, centered: true) }
+                let progress = thread.needsReply ? nil : thread.agentProgress
+                label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply || progress != nil ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
                 if thread.needsReply {
                     label(String(format: text("Wait %@"), DesktopPet.waitingDurationText(thread, language: language)), in: NSRect(x: bounds.width - 94, y: rect.midY - 12, width: 62, height: 11), size: 8, color: .systemYellow)
-                }
+                } else if let progress { drawProgress(progress, at: NSPoint(x: bounds.width - 94, y: rect.midY - 9)) }
                 if thread.id == hoveredRow { label("×", in: NSRect(x: bounds.width - 26, y: rect.midY - 9, width: 18, height: 18), size: 14, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
             }
             if rows.isEmpty && !collapsed { label(text(owner?.statusFilter != "all" || owner?.workspaceFilter != "" ? "No chats match these filters" : "No active chats yet"), in: NSRect(x: 16, y: 14, width: bounds.width - 32, height: 17), size: 11, color: NSColor.white.withAlphaComponent(0.6), centered: true) }
@@ -422,7 +511,9 @@ final class DashboardView: NSView {
         else if groupingRect.contains(p) { toolTip = text(owner?.grouped == true ? "Compact list" : "Group by workspace") }
         else if let workspace = workspaceAt(p) { toolTip = workspace.name + " · " + text("Click to expand or collapse workspace") }
         else if resizeHandleRect.contains(p) { toolTip = text("Drag to resize") }
+        else if let id = toggleAt(p) { toolTip = text(owner?.expandedThreads.contains(id) == true ? "Hide agents" : "Show agents") }
         else if let row = rowAt(p) { toolTip = owner?.threadTooltip(row) }
+        else if let detail = detailAt(p) { toolTip = [detail.header, detail.phase, detail.run?.label, DesktopPet.modelName(detail.run?.model)].compactMap { $0 }.joined(separator: " · ") }
         else { toolTip = text(petVisible ? "Click to pet · Drag to move · Right-click for options" : "Drag header to move · Right-click for options") }
         guard let owner, !owner.sleeping, owner.overallStatus == "idle", spriteRect.contains(p), !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { needsDisplay = true; return }
         lookOffset = min(1, max(-1, (p.x - spriteRect.midX) / (spriteRect.width / 2))); needsDisplay = true
@@ -431,7 +522,8 @@ final class DashboardView: NSView {
         let p = convert(event.locationInWindow, from: nil)
         pressedWorkspaceID = workspaceAt(p)?.id
         pressedRemoveID = p.x > bounds.width - 30 ? rowAt(p)?.id : nil
-        pressedThreadID = pressedRemoveID == nil ? rowAt(p)?.id : nil
+        pressedToggleID = toggleAt(p)
+        pressedThreadID = pressedRemoveID == nil && pressedToggleID == nil ? rowAt(p)?.id ?? detailAt(p)?.threadID : nil
         dragStart = NSEvent.mouseLocation; windowStart = window?.frame.origin ?? .zero; dragged = false
         resizing = resizeHandleRect.contains(p); resizeStartFrame = window?.frame ?? .zero
         moving = !resizing && pressedRemoveID == nil
@@ -451,15 +543,16 @@ final class DashboardView: NSView {
         window?.setFrameOrigin(NSPoint(x: windowStart.x + p.x - dragStart.x, y: windowStart.y + p.y - dragStart.y))
     }
     override func mouseUp(with event: NSEvent) {
-        defer { pressedRemoveID = nil; pressedThreadID = nil; pressedWorkspaceID = nil; moving = false }
+        defer { pressedRemoveID = nil; pressedThreadID = nil; pressedWorkspaceID = nil; pressedToggleID = nil; moving = false }
         if resizing { resizing = false; owner?.savePreferences(); owner?.savePosition(); owner?.resizeToList(); return }
         if dragged { owner?.snapToEdge(); owner?.savePosition(); return }
         let p = convert(event.locationInWindow, from: nil)
         if collapseRect.contains(p) { moving = false; owner?.toggleCollapsed(); return }
         if groupingRect.contains(p) { moving = false; owner?.toggleGrouped(); return }
         if let id = pressedWorkspaceID, workspaceAt(p)?.id == id { moving = false; owner?.toggleWorkspace(id); return }
+        if let id = pressedToggleID, toggleAt(p) == id { owner?.toggleAgents(id); return }
         if let id = pressedRemoveID, rowAt(p)?.id == id, p.x > bounds.width - 30 { owner?.dismiss(id); return }
-        if let id = pressedThreadID, rowAt(p)?.id == id, p.x <= bounds.width - 30 { owner?.openThread(id); return }
+        if let id = pressedThreadID, (rowAt(p)?.id ?? detailAt(p)?.threadID) == id, p.x <= bounds.width - 30 { owner?.openThread(id); return }
         if petVisible && p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX - 71)) < 14 { owner?.toggleSleep(); return }
         if petVisible && p.y > bounds.maxY - 30 && abs(p.x - (bounds.midX + 71)) < 14 { owner?.closeAll(); return }
         if petVisible && spriteRect.contains(p) { owner?.react() }
@@ -573,6 +666,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     var allHidden: Bool { presentationHidden || (panelOnly && panelHidden) }
     var grouped = true
     var foldedWorkspaces: Set<String> = []
+    var expandedThreads: Set<String> = []
     var collapsed = false, snapEnabled = true, completionAnimation = true, soundEnabled = false
     var presentationHidden = false
     var language = PetLanguage.english
@@ -595,15 +689,55 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     // Names the newest subagent; the tooltip lists the rest.
     static func agentSummary(_ thread: ThreadActivity, language: PetLanguage = .english) -> String? {
-        let agents = thread.runningAgents
-        guard let latest = agents.last else { return nil }
-        let workflows = agents.allSatisfy { $0.kind == "workflow" }
-        if agents.count == 1 {
-            if let label = latest.label { return String(format: language.text(workflows ? "Workflow: %@" : "Agent: %@"), label) }
-            return language.text(workflows ? "Workflow running" : "Agent running")
+        let agents = thread.runningAgents, running = agents.filter { $0.done != true }
+        guard let latest = running.last else { return nil }
+        let short = { (text: String, limit: Int) in text.count > limit ? String(text.prefix(limit - 1)) + "…" : text }
+        if agents.count == 1, let total = latest.total, total > 0, let phases = latest.phases, let last = phases.last {
+            // The current phase is the latest one with unfinished agents.
+            let phase = phases.last { ($0.completed ?? 0) < ($0.total ?? 0) } ?? last
+            let active = (phase.agents ?? []).filter { $0.done != true }.compactMap { $0.label }
+            let current = active.last.map { short($0, 20) + (active.count > 1 ? " +\(active.count - 1)" : "") }
+            return ([phase.name.map { short($0, 16) }, current].compactMap { $0 } + [String(format: language.text("%d/%d agents"), latest.completed ?? 0, total)]).joined(separator: " · ")
         }
-        if let label = latest.label { return String(format: language.text(workflows ? "%d workflows · %@" : "%d agents · %@"), agents.count, label) }
-        return String(format: language.text(workflows ? "%d workflows" : "%d agents"), agents.count)
+        if agents.count == 1 {
+            let workflow = latest.kind == "workflow"
+            if let label = latest.label { return String(format: language.text(workflow ? "Workflow: %@" : "Agent: %@"), label) }
+            return language.text(workflow ? "Workflow running" : "Agent running")
+        }
+        if agents.allSatisfy({ $0.kind == "workflow" }) {
+            if let label = latest.label { return String(format: language.text("%d workflows · %@"), running.count, label) }
+            return String(format: language.text("%d workflows"), running.count)
+        }
+        let done = agents.count - running.count
+        if let label = latest.label { return String(format: language.text("%d/%d agents · %@"), done, agents.count, label) }
+        return String(format: language.text("%d/%d agents"), done, agents.count)
+    }
+    // Workflows list their phases; the phase name and count lead its first agent.
+    static func agentDetails(_ thread: ThreadActivity, language: PetLanguage = .english) -> [AgentDetail] {
+        let agents = thread.runningAgents
+        var lines: [AgentDetail] = []
+        for agent in agents {
+            guard agent.kind == "workflow", let phases = agent.phases, !phases.isEmpty else { lines.append(AgentDetail(threadID: thread.id, run: agent.run)); continue }
+            if agents.count > 1 { lines.append(AgentDetail(threadID: thread.id, header: (agent.label ?? language.text("Workflow")) + " · " + String(format: language.text("%d/%d agents"), agent.completed ?? 0, agent.total ?? 0))) }
+            for phase in phases {
+                let runs = phase.agents ?? []
+                for (index, run) in runs.enumerated() {
+                    lines.append(AgentDetail(threadID: thread.id, phase: index == 0 ? [phase.name, "\(phase.completed ?? 0)/\(phase.total ?? runs.count)"].compactMap { $0 }.joined(separator: " ") : nil, run: run))
+                }
+                if (phase.total ?? 0) > runs.count { lines.append(AgentDetail(threadID: thread.id, more: (phase.total ?? 0) - runs.count)) }
+            }
+        }
+        return Array(lines.prefix(40))
+    }
+    static func modelName(_ model: String?) -> String? {
+        guard let model else { return nil }
+        let parts = model.split(separator: "-").map(String.init)
+        guard parts.count >= 2, parts[0] == "claude", let first = parts[1].first else { return model }
+        let version = parts.dropFirst(2).prefix { $0.count <= 2 && Int($0) != nil }
+        return ([String(first).uppercased() + parts[1].dropFirst()] + (version.isEmpty ? [] : [version.joined(separator: ".")])).joined(separator: " ")
+    }
+    static func tokenText(_ tokens: Double) -> String {
+        tokens < 1000 ? "\(Int(tokens))" : tokens < 1_000_000 ? "\(Int((tokens / 1000).rounded()))k" : String(format: "%.1fM", tokens / 1_000_000)
     }
     static func statusExplanation(_ thread: ThreadActivity, language: PetLanguage = .english) -> String {
         let fallback = thread.status == "idle" && thread.finishedAt != nil ? "turn_interrupted" : ["running": thread.replyPending == true ? "question_pending" : "turn_in_progress", "waiting": "awaiting_reply", "ready": "turn_completed", "failed": "turn_failed"][thread.status] ?? "no_turn_evidence"
@@ -626,8 +760,9 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
     }
     func threadTooltip(_ thread: ThreadActivity, now: Double = Date().timeIntervalSince1970 * 1000) -> String {
         var lines = [thread.title + " · " + thread.agentName, Self.statusExplanation(thread, language: language)]
-        let labels = thread.runningAgents.reversed().compactMap { $0.label }
+        let labels = thread.runningAgents.filter { $0.done != true }.reversed().compactMap { $0.label }
         if !labels.isEmpty { lines.append(String(format: text("Running agents: %@"), (labels.prefix(3) + (labels.count > 3 ? ["+\(labels.count - 3)"] : [])).joined(separator: ", "))) }
+        if let progress = thread.agentProgress { lines.append(String(format: text("%d/%d agents finished"), progress.completed, progress.total)) }
         if thread.needsReply { lines.append(String(format: text("Waiting for your reply: %@"), Self.waitingDurationText(thread, language: language, now: now))) }
         if thread.startedAt != nil { lines.append(String(format: text("Turn time: %@"), Self.durationText(thread, language: language, now: now))) }
         if thread.lastEventAt > 0 { lines.append(String(format: text("Last activity %@ ago"), Self.elapsedText(since: thread.lastEventAt, until: now, language: language))) }
@@ -979,6 +1114,10 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         applyVisibility()
     }
     @objc func toggleGrouped() { grouped.toggle(); view.scrollOffset = 0; resizeToList(); savePreferences(); updateStatusMenu() }
+    func toggleAgents(_ id: String) {
+        if expandedThreads.contains(id) { expandedThreads.remove(id) } else { expandedThreads.insert(id) }
+        view.clampScroll(); resizeToList()
+    }
     func toggleWorkspace(_ id: String) {
         if foldedWorkspaces.contains(id) { foldedWorkspaces.remove(id) } else { foldedWorkspaces.insert(id) }
         view.clampScroll(); resizeToList(); savePreferences()
@@ -1557,6 +1696,69 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         }
         return valid && images.count == assets.count
     }
+    func testAgentDetails() -> Bool {
+        let saved = displayThreads, savedGrouped = grouped, savedFolded = foldedWorkspaces, savedExpanded = expandedThreads, savedLanguage = language, savedLabels = statusLabels
+        defer { displayThreads = saved; grouped = savedGrouped; foldedWorkspaces = savedFolded; expandedThreads = savedExpanded; language = savedLanguage; statusLabels = savedLabels; view.scrollOffset = 0; resizeToList() }
+        language = .english; statusLabels = true
+        let now = Date().timeIntervalSince1970 * 1000, a = WorkspaceInfo(id: "test-workspace", name: "Website")
+        func run(_ label: String, _ done: Bool, _ tokens: Double, _ minutes: Double) -> AgentRun {
+            AgentRun(label: label, done: done ? true : nil, model: "claude-opus-5-5", tokens: tokens, startedAt: now - minutes * 60000, lastAt: done ? now - minutes * 30000 : now)
+        }
+        let workflow = RunningAgent(kind: "workflow", label: "trace-review-workspace", completed: 9, total: 10, phases: [
+            WorkflowPhase(name: "Plan", completed: 1, total: 1, agents: [run("plan", true, 152000, 9)]),
+            WorkflowPhase(name: "Build", completed: 4, total: 4, agents: [run("build:engine", true, 201000, 14), run("build:api", true, 120000, 8), run("build:frontend", true, 265000, 21), run("build:e2e", true, 145000, 8)]),
+            WorkflowPhase(name: "Review", completed: 3, total: 3, agents: [run("review:code", true, 215000, 19), run("review:behaviour", true, 222000, 17), run("review:regression", true, 134000, 9)]),
+            WorkflowPhase(name: "Fix", completed: 1, total: 2, agents: [run("fix", true, 313728, 21), run("verify", false, 37574, 1)])
+        ])
+        var trace = ThreadActivity(id: "claude:44444444-4444-4444-8444-444444444444", title: "VH-Trace sistemi", status: "running", changedAt: now, lastEventAt: now, startedAt: now - 480000, workspace: a)
+        trace.agents = [workflow]
+        var batches = ThreadActivity(id: "claude:55555555-5555-4555-8555-555555555555", title: "VR allocation", status: "running", changedAt: now, lastEventAt: now, startedAt: now - 300000, workspace: a)
+        batches.agents = (0..<6).map { RunningAgent(kind: "agent", label: "VR allocation check batch \($0)", done: $0 < 2 ? true : nil, model: "claude-haiku-4-5-20251001", tokens: 88000, startedAt: now - 300000, lastAt: now) }
+        let plain = ThreadActivity(id: "66666666-6666-4666-8666-666666666666", title: "Build the landing page", status: "running", changedAt: now, lastEventAt: now, workspace: a)
+        var valid = rowSubtitle(trace) == "Claude Code · Fix · verify · 9/10 agents"
+        valid = valid && rowSubtitle(batches) == "Claude Code · 2/6 agents · VR allocation check batch 5"
+        valid = valid && trace.agentProgress?.completed == 9 && trace.agentProgress?.total == 10 && batches.agentProgress?.completed == 2 && plain.agentProgress == nil
+        valid = valid && threadTooltip(trace).contains("9/10 agents finished") && threadTooltip(batches).contains("Running agents: VR allocation check batch 5, VR allocation check batch 4, VR allocation check batch 3, +1")
+        valid = valid && Self.modelName("claude-opus-5-5") == "Opus 5.5" && Self.modelName("claude-haiku-4-5-20251001") == "Haiku 4.5" && Self.modelName("claude-sonnet-5") == "Sonnet 5" && Self.modelName("gpt-x") == "gpt-x"
+        valid = valid && Self.tokenText(950) == "950" && Self.tokenText(313728) == "314k" && Self.tokenText(1_260_000) == "1.3M"
+        language = .turkish; valid = valid && rowSubtitle(trace) == "Claude Code · Fix · verify · 9/10 ajan"; language = .english
+        var asking = trace; asking.replyPending = true; valid = valid && rowSubtitle(asking) == "Claude Code · Running · question pending"
+        var finished = trace; finished.status = "ready"; valid = valid && Self.agentDetails(finished, language: language).isEmpty && rowSubtitle(finished) == "Claude Code · Completed"
+        displayThreads = [trace, batches, plain]; grouped = true; foldedWorkspaces = []; expandedThreads = []; view.scrollOffset = 0; resizeToList()
+        valid = valid && view.entries.count == 4
+        func press(_ point: NSPoint) {
+            let p = view.convert(point, to: nil)
+            for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
+                let event = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+                if type == .leftMouseDown { view.mouseDown(with: event) } else { view.mouseUp(with: event) }
+            }
+        }
+        // The chevron expands the agents without opening the chat.
+        let toggle = view.toggleRect(1)
+        testOpenedURL = nil; press(NSPoint(x: toggle.midX, y: toggle.midY))
+        let details = view.entries.compactMap { $0.detail }
+        valid = valid && expandedThreads == [trace.id] && testOpenedURL == nil && details.count == 10
+        valid = valid && details.first?.phase == "Plan 1/1" && details.last?.run?.label == "verify" && details.filter { $0.phase != nil }.map { $0.phase! } == ["Plan 1/1", "Build 4/4", "Review 3/3", "Fix 1/2"]
+        capture("dashboard-agents-test.png")
+        // Plain chats have no chevron; a detail line opens its chat.
+        valid = valid && view.toggleAt(NSPoint(x: view.toggleRect(13).midX, y: view.toggleRect(13).midY)) == nil
+        press(NSPoint(x: 160, y: view.rowRect(2).midY))
+        valid = valid && testOpenedURL == "vscode://local.codex-pet-panel/claude?windowId=42&session=44444444-4444-4444-8444-444444444444"
+        view.scrollOffset = 100; view.clampScroll()
+        valid = valid && view.entries.count == 14 && view.rowAt(NSPoint(x: 60, y: view.rowRect(view.visibleCount - 1).midY))?.id == plain.id
+        view.scrollOffset = 0; press(NSPoint(x: view.toggleRect(1).midX, y: view.toggleRect(1).midY))
+        valid = valid && expandedThreads.isEmpty && view.entries.count == 4
+        // The compact list shows the same lines, and hidden agents are counted.
+        var many = batches; many.agents = [RunningAgent(kind: "workflow", label: "audit", completed: 1, total: 15, phases: [WorkflowPhase(name: "Read", completed: 1, total: 15, agents: (0..<12).map { run("read:\($0)", $0 == 0, 1000, 1) })])]
+        grouped = false; displayThreads = [many, plain]; expandedThreads = [many.id]; resizeToList()
+        valid = valid && view.entries.count == 15 && view.entries.compactMap { $0.detail }.last?.more == 3 && rowSubtitle(many) == "Claude Code · Read · read:11 +10 · 1/15 agents"
+        capture("dashboard-agents-compact-test.png")
+        let encoded = try? JSONEncoder().encode(trace)
+        valid = valid && encoded.flatMap { try? JSONDecoder().decode(ThreadActivity.self, from: $0) } == trace
+        let legacy = #"{"id":"x","title":"t","status":"running","changedAt":1,"lastEventAt":1,"agents":[{"kind":"workflow","label":"w"}]}"#
+        valid = valid && (try? JSONDecoder().decode(ThreadActivity.self, from: Data(legacy.utf8)))?.agents?.first?.phases == nil
+        return valid
+    }
     func testWorkspaceView() -> Bool {
         let saved = displayThreads, savedGrouped = grouped, savedFolded = foldedWorkspaces
         defer { displayThreads = saved; grouped = savedGrouped; foldedWorkspaces = savedFolded; view.scrollOffset = 0; resizeToList() }
@@ -1788,12 +1990,12 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         var reviewing = waiting; reviewing.status = "running"; reviewing.agents = [RunningAgent(kind: "agent", label: "Review Task 3")]
         valid = valid && rowSubtitle(reviewing) == "Claude Code · Agent: Review Task 3"
         reviewing.agents = (0..<5).map { RunningAgent(kind: "agent", label: "Batch \($0)") }
-        valid = valid && rowSubtitle(reviewing) == "Claude Code · 5 agents · Batch 4"
+        valid = valid && rowSubtitle(reviewing) == "Claude Code · 0/5 agents · Batch 4"
         valid = valid && threadTooltip(reviewing).contains("Running agents: Batch 4, Batch 3, Batch 2, +2")
         reviewing.agents = [RunningAgent(kind: "workflow", label: "vh-trace-audit")]; statusLabels = true
         valid = valid && rowSubtitle(reviewing) == "Claude Code · Workflow: vh-trace-audit"
         reviewing.agents = [RunningAgent(kind: "workflow"), RunningAgent(kind: "agent")]
-        language = .turkish; valid = valid && rowSubtitle(reviewing) == "Claude Code · 2 ajan"
+        language = .turkish; valid = valid && rowSubtitle(reviewing) == "Claude Code · 0/2 ajan"
         language = .english; reviewing.replyPending = true; valid = valid && rowSubtitle(reviewing) == "Claude Code · Running · question pending"
         reviewing.replyPending = nil; reviewing.status = "ready"; valid = valid && rowSubtitle(reviewing) == "Claude Code · Completed" && !threadTooltip(reviewing).contains("Running agents")
         statusLabels = false
@@ -1992,6 +2194,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         let visibilityMenuWorks = testVisibilityMenu()
         let panelOnlyWorks = testPanelOnly()
         let workspaceViewWorks = testWorkspaceView()
+        let agentDetailsWork = testAgentDetails()
         testOpenedURL = nil
         let claudeID = "claude:22222222-2222-4222-8222-222222222222"
         let routes = WindowNavigation(codex: "vscode://openai.chatgpt/local/?windowId=42", claude: "vscode://local.codex-pet-panel/claude?windowId=42")
@@ -2087,7 +2290,7 @@ final class DesktopPet: NSObject, NSApplicationDelegate, UNUserNotificationCente
         closeAll(); togglePresentation(); refresh()
         let shortcutReopenWorks = panel.isVisible && !presentationHidden
         observedThreads = Dictionary(uniqueKeysWithValues: original.map { ($0.id, $0) })
-        return ["antigravityFeaturesWork": antigravityFeaturesWork, "attentionFeaturesWork": attentionFeaturesWork, "statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil, "nextWaitingHotKeyRegistered": nextWaitingHotKey != nil]
+        return ["antigravityFeaturesWork": antigravityFeaturesWork, "attentionFeaturesWork": attentionFeaturesWork, "statusMenuRefreshWorks": statusMenuRefreshWorks, "visibilityMenuWorks": visibilityMenuWorks, "marketplaceRoutingWorks": marketplaceRoutingWorks, "quietAndTerminalStatesWork": quietAndTerminalStatesWork, "dashboardControlsWork": dashboardControlsWork, "workspaceOwnershipWorks": workspaceOwnershipWorks, "panelOnlyWorks": panelOnlyWorks, "windowRoutingWorks": windowRoutingWorks, "workspaceViewWorks": workspaceViewWorks, "agentDetailsWork": agentDetailsWork, "claudeLinkWorks": claudeLinkWorks, "invalidLinkRejected": invalidLinkRejected, "languageWorks": languageWorks, "reopenWorks": reopenWorks, "shortcutReopenWorks": shortcutReopenWorks, "collapseWorks": collapseWorks, "pinWorks": pinWorks, "appearanceWorks": appearanceWorks, "snapWorks": snapWorks, "snapOffWorks": snapOffWorks, "waitingWorks": waitingWorks, "durationWorks": durationWorks, "completionWorks": completionWorks, "presentationWorks": presentationWorks, "soundAvailable": NSSound(named: "Glass") != nil, "hotKeyRegistered": hotKey != nil, "nextWaitingHotKeyRegistered": nextWaitingHotKey != nil]
     }
     func testBundleRemoval() -> Bool {
         let fm = FileManager.default, base = directory.appendingPathComponent("bundle-removal-" + UUID().uuidString)

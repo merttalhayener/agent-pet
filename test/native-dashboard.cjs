@@ -30,7 +30,7 @@ async function main() {
   assert.deepEqual(result.originalPets, ['agent-pet', 'miso', 'fern']);
   assert.ok(result.originalPetsWork);
   assert.ok(result.customPetsWork, 'Custom pet import, preview, persistence, selection, fallback, editing and removal');
-  for (const key of ['antigravityFeaturesWork','attentionFeaturesWork','statusMenuRefreshWorks','visibilityMenuWorks','marketplaceRoutingWorks','quietAndTerminalStatesWork','dashboardControlsWork','workspaceOwnershipWorks','panelOnlyWorks','windowRoutingWorks','workspaceViewWorks','claudeLinkWorks','invalidLinkRejected','languageWorks','reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
+  for (const key of ['antigravityFeaturesWork','attentionFeaturesWork','statusMenuRefreshWorks','visibilityMenuWorks','marketplaceRoutingWorks','quietAndTerminalStatesWork','dashboardControlsWork','workspaceOwnershipWorks','panelOnlyWorks','windowRoutingWorks','workspaceViewWorks','agentDetailsWork','claudeLinkWorks','invalidLinkRejected','languageWorks','reopenWorks','shortcutReopenWorks','collapseWorks','pinWorks','appearanceWorks','snapWorks','snapOffWorks','waitingWorks','durationWorks','completionWorks','presentationWorks','soundAvailable']) assert.ok(result[key], key);
   if (process.argv.includes('--hotkey')) assert.ok(result.hotKeyRegistered);
   if (process.argv.includes('--attention-hotkey')) assert.ok(result.nextWaitingHotKeyRegistered);
   assert.ok(result.reopenedChatStaysAfterCompletion); assert.ok(result.dismissedSameTurnStaysHidden);
