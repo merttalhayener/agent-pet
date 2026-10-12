@@ -1,23 +1,30 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { ActivityMonitor, inWorkspace } = require('./activity.cjs');
+const { readSubagents, exportAgents, agentLabel, validId, AGENT_ID, RUN_ID, TASK_ID } = require('./subagent-progress.cjs');
 const WINDOW = 256 * 1024;
 const MAX_LINE = 2 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const clean = text => text.replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
-// A subagent is shown by its short description or workflow name only; prompts,
-// scripts and summaries are never retained.
-const agentLabel = text => typeof text === 'string' && clean(text).slice(0, 60) || undefined;
 const AGENT_TOOLS = new Set(['Agent', 'Task', 'Workflow']);
 const textOf = content => typeof content === 'string' ? content : Array.isArray(content) ? content.filter(c => c?.type === 'text').map(c => c.text || '').join(' ') : '';
 
 // Claude reports each background agent or workflow back to the parent with a
-// task notification naming the launching call. Only that report retires it.
+// task notification naming the launching call. Only that report retires it;
+// the agent stays listed as done until the parent turn ends.
 function settleBackground(s, text) {
   if (!s.backgroundTasks?.size) return;
   for (const block of text.split('<task-notification>').slice(1)) {
     const body = block.split('</task-notification>')[0], id = body.match(/<tool-use-id>([^<]{1,128})<\/tool-use-id>/)?.[1];
-    if (id && /<status>[a-z_]+<\/status>/.test(body)) { s.backgroundTasks.delete(id); s.agents?.delete(id); }
+    if (id && /<status>[a-z_]+<\/status>/.test(body) && s.backgroundTasks.delete(id)) { const agent = s.agents?.get(id); if (agent) agent.done = true; }
+  }
+}
+
+// Claude sends no notification for work it stops itself.
+function retireStopped(s, taskId) {
+  if (!validId(taskId, TASK_ID)) return;
+  for (const [id, agent] of s.agents || []) {
+    if (agent.taskId === taskId || agent.agentId === taskId) { s.agents.delete(id); s.backgroundTasks?.delete(id); }
   }
 }
 
@@ -60,16 +67,18 @@ function applyClaudeEvent(s, r) {
   if (at < Math.max(s.changedAt || 0, s.startedAt || 0, s.finishedAt || 0)) return;
   const m = r.message || {}, content = Array.isArray(m.content) ? m.content : [];
   if (r.type === 'assistant' && s.settledMessages?.has(m.id)) return;
-  // Foreground subagents end with their turn; background ones wait for their report.
-  const settleForeground = () => { for (const id of s.agents?.keys() || []) if (!s.backgroundTasks?.has(id)) s.agents.delete(id); };
+  // Finished and foreground subagents end with their turn; background ones wait for their report.
+  const settleForeground = (keepDone = false) => {
+    for (const [id, agent] of s.agents || []) if (!s.backgroundTasks?.has(id) && !(keepDone && agent.done)) s.agents.delete(id);
+  };
   const progress = () => { s.lastEventAt = Math.max(s.lastEventAt || 0, at); s.progressVersion = (s.progressVersion || 0) + 1; };
-  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); settleForeground(); };
+  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); settleForeground(); };
   const finish = status => {
     if (r.type === 'assistant' && typeof m.id === 'string' && m.id.length <= 128) {
       s.settledMessages ||= new Set(); s.settledMessages.add(m.id);
       while (s.settledMessages.size > 128) s.settledMessages.delete(s.settledMessages.values().next().value);
     }
-    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); settleForeground(); progress();
+    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); settleForeground(); progress();
   };
   if (r.type === 'queue-operation') {
     if (consumedHuman) {
@@ -96,7 +105,10 @@ function applyClaudeEvent(s, r) {
       for (const c of matched) {
         delete s.pendingInputs?.[c.tool_use_id];
         s.pendingTools?.delete(c.tool_use_id);
-        if (!launch) s.agents?.delete(c.tool_use_id);
+        if (launch) continue;
+        const agent = s.agents?.get(c.tool_use_id);
+        if (agent) { agent.done = true; if (matched.length === 1) agent.agentId ||= validId(r.toolUseResult?.agentId, AGENT_ID); }
+        if (s.pendingStops?.delete(c.tool_use_id) && matched.length === 1 && c.is_error !== true) retireStopped(s, r.toolUseResult?.task_id);
       }
       // Background shells can outlive the work (servers); agents and workflows report back.
       if (launch) {
@@ -104,7 +116,10 @@ function applyClaudeEvent(s, r) {
         (s.backgroundTasks ||= new Map()).set(id, at);
         while (s.backgroundTasks.size > 64) s.backgroundTasks.delete(s.backgroundTasks.keys().next().value);
         const known = s.agents?.get(id), label = agentLabel(workflow ? launch.workflowName : launch.description) || known?.label;
-        (s.agents ||= new Map()).set(id, { kind: workflow ? 'workflow' : 'agent', ...(label ? { label } : {}) });
+        const taskId = validId(launch.taskId, TASK_ID), agentId = validId(launch.agentId, AGENT_ID), runId = workflow ? validId(launch.runId, RUN_ID) : undefined;
+        // A resumed run reuses its journal and replaces the launch it continues.
+        if (runId) for (const [other, agent] of s.agents || []) if (other !== id && agent.runId === runId) { s.agents.delete(other); s.backgroundTasks.delete(other); }
+        (s.agents ||= new Map()).set(id, { kind: workflow ? 'workflow' : 'agent', ...(label ? { label } : {}), ...(taskId ? { taskId } : {}), ...(agentId ? { agentId } : {}), ...(runId ? { runId } : {}) });
         while (s.agents.size > 64) s.agents.delete(s.agents.keys().next().value);
       }
       progress(); return;
@@ -126,13 +141,14 @@ function applyClaudeEvent(s, r) {
     if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) {
       if (!s.backgroundTasks?.size) { finish('ready'); return; }
       // Claude resumes this chat itself when its background work reports back.
-      s.pendingTools = new Set(); settleForeground(); progress(); return;
+      s.pendingTools = new Set(); s.pendingStops = new Set(); settleForeground(true); progress(); return;
     }
     // The parent can genuinely resume after an asynchronous subagent report.
     // Publish a newer lifecycle so the panel can supersede its retained finish.
     if (s.status !== 'running') start();
     s.pendingTools ||= new Set();
     for (const c of calls) if (c.id) s.pendingTools.add(c.id);
+    for (const c of calls) if (c.id && c.name === 'TaskStop') (s.pendingStops ||= new Set()).add(c.id);
     for (const c of calls) if (c.id && AGENT_TOOLS.has(c.name)) {
       const label = agentLabel(c.name === 'Workflow' ? c.input?.name : c.input?.description);
       (s.agents ||= new Map()).set(c.id, { kind: c.name === 'Workflow' ? 'workflow' : 'agent', ...(label ? { label } : {}) });
@@ -169,6 +185,12 @@ class ClaudeActivityMonitor extends ActivityMonitor {
     for (const line of lines) { try { applyClaudeEvent(s, JSON.parse(line)); } catch {} }
   }
   async read(file) {
+    await this.readTranscript(file);
+    const s = this.files.get(file);
+    // Subagent files grow independently of the parent transcript.
+    if (s?.status === 'running' && s.agents?.size && this.tracks(s)) await readSubagents(file, s).catch(() => {});
+  }
+  async readTranscript(file) {
     const handle = await fs.open(file, 'r');
     try {
       const stat = await handle.stat(); let s = this.files.get(file);
@@ -210,7 +232,7 @@ class ClaudeActivityMonitor extends ActivityMonitor {
   snapshot(now = Date.now()) {
     const result = super.snapshot(now), states = new Map([...this.files.values()].map(s => [s.id, s]));
     return { ...result, threads: result.threads.map(t => {
-      const agents = t.status === 'running' ? [...(states.get(t.id)?.agents?.values() || [])].map(a => ({ ...a })) : [];
+      const agents = t.status === 'running' ? exportAgents(states.get(t.id)?.agents || new Map()) : [];
       return { ...t, agent: 'claude', ...(agents.length ? { agents } : {}) };
     }) };
   }

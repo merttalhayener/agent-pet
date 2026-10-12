@@ -435,7 +435,7 @@ test('background shells, unrelated notifications and quoted notifications do not
 
 const agentCall = (id, input = {}, name = 'Agent') => ({ type: 'tool_use', id, name, input: { prompt: 'Private agent prompt', ...input } });
 
-test('a running foreground subagent is named until its result arrives', async () => fixture(async ({ projects, file }) => {
+test('a foreground subagent is named while it runs and stays listed as done until the turn ends', async () => fixture(async ({ projects, file }) => {
   const at = Date.now() - 10000;
   await fs.writeFile(file, user(at) + assistant('tool_use', [agentCall('review', { description: 'Review Task 3 (spec + quality)', subagent_type: 'general-purpose' })], at + 1));
   let snapshot;
@@ -446,11 +446,14 @@ test('a running foreground subagent is named until its result arrives', async ()
     assert.deepEqual(snapshot.threads[0].agents, [{ kind: 'agent', label: 'Review Task 3 (spec + quality)' }]);
     assert.ok(!JSON.stringify([...monitor.files.values()], (k, v) => v instanceof Map ? [...v] : v).includes('Private agent prompt'));
     await fs.appendFile(file, toolResult('review', { toolUseResult: { status: 'completed', agentType: 'general-purpose' } }, at + 3)); await monitor.tick();
-    assert.equal(snapshot.threads[0].status, 'running'); assert.equal(snapshot.threads[0].agents, undefined);
+    assert.equal(snapshot.threads[0].status, 'running');
+    assert.deepEqual(snapshot.threads[0].agents, [{ kind: 'agent', label: 'Review Task 3 (spec + quality)', done: true }]);
+    await fs.appendFile(file, assistant('end_turn', undefined, at + 4)); await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready'); assert.equal(snapshot.threads[0].agents, undefined);
   } finally { monitor.dispose(); }
 }));
 
-test('background agents and workflows stay named until each reports back', async () => fixture(async ({ projects, file }) => {
+test('background agents and workflows are named and counted as each reports back', async () => fixture(async ({ projects, file }) => {
   const at = Date.now() - 10000;
   const batches = [0, 1, 2].map(i => agentCall(`batch-${i}`, { description: `VR allocation check batch ${i}`, run_in_background: true }));
   await fs.writeFile(file, user(at) + assistant('tool_use', [...batches, agentCall('audit', { script: 'Private workflow script' }, 'Workflow')], at + 1));
@@ -470,7 +473,9 @@ test('background agents and workflows stay named until each reports back', async
     for (const secret of ['Private agent prompt', 'Private workflow script', 'Private summary']) assert.ok(!retained.includes(secret), secret);
     await fs.appendFile(file, record('user', { origin: { kind: 'task-notification' }, message: { content: notification('batch-0') + notification('audit') } }, at + 5));
     await monitor.tick();
-    assert.deepEqual(snapshot.threads[0].agents.map(a => a.label), ['VR allocation check batch 1', 'VR allocation check batch 2']);
+    assert.deepEqual(snapshot.threads[0].agents.map(a => [a.label, Boolean(a.done)]), [
+      ['VR allocation check batch 0', true], ['VR allocation check batch 1', false], ['VR allocation check batch 2', false], ['vh-trace-audit', true]
+    ]);
     await fs.appendFile(file, record('user', { origin: { kind: 'task-notification' }, message: { content: notification('batch-1') + notification('batch-2') } }, at + 6) + assistant('end_turn', undefined, at + 7));
     await monitor.tick();
     assert.equal(snapshot.threads[0].status, 'ready'); assert.equal(snapshot.threads[0].agents, undefined);
@@ -489,3 +494,101 @@ test('subagent labels are short plain text; other tools and settled turns list n
   apply(user(at + 3)); apply(assistant('tool_use', [agentCall('next', { description: 'Next agent' })], at + 4)); apply(assistant('end_turn', undefined, at + 5));
   assert.equal(state.status, 'ready'); assert.equal(state.agents.size, 0);
 });
+
+const stop = (id, taskId, at, extra = {}) => [
+  assistant('tool_use', [{ type: 'tool_use', id, name: 'TaskStop', input: { task_id: taskId } }], at),
+  record('user', { message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'Stopped', ...extra }] },
+    toolUseResult: { message: `Successfully stopped task: ${taskId} (Private command)`, task_id: taskId, task_type: 'local_workflow', command: 'Private command' } }, at + 1)
+];
+const RUN = 'wf_0d941f1b-7d6';
+const workflowLaunch = (id, taskId, at, runId = RUN) => [
+  assistant('tool_use', [agentCall(id, { script: 'Private workflow script' }, 'Workflow')], at),
+  launched(id, { status: 'async_launched', taskId, taskType: 'local_workflow', workflowName: 'trace-review-workspace', runId, summary: 'Private summary' }, at + 1)
+];
+
+test('a stopped background workflow is retired by TaskStop and its resumed run replaces it', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  apply(user(at)); workflowLaunch('first', 'w7pjj8f9e', at + 1).forEach(apply); apply(assistant('end_turn', undefined, at + 3));
+  assert.equal(state.status, 'running');
+  apply(user(at + 4));
+  stop('wrong', 'unknown-task', at + 5).forEach(apply);
+  stop('failed', 'w7pjj8f9e', at + 7, { is_error: true }).forEach(apply);
+  apply(record('user', { message: { content: [{ type: 'tool_result', tool_use_id: 'reader', content: 'Output' }] }, toolUseResult: { task_id: 'w7pjj8f9e' } }, at + 9));
+  assert.equal(state.agents.size, 1, 'Only a successful TaskStop for a known task retires it');
+  stop('stop', 'w7pjj8f9e', at + 10).forEach(apply); apply(assistant('end_turn', undefined, at + 12));
+  assert.equal(state.status, 'ready', 'Claude sends no notification for stopped work'); assert.equal(state.agents.size, 0); assert.equal(state.backgroundTasks.size, 0);
+  apply(user(at + 13)); workflowLaunch('resumed', 'w33ckb1cf', at + 14).forEach(apply); apply(assistant('end_turn', undefined, at + 16));
+  assert.equal(state.status, 'running'); assert.deepEqual([...state.agents.keys()], ['resumed']);
+  assert.ok(!JSON.stringify(state, (k, v) => v instanceof Map || v instanceof Set ? [...v] : v).includes('Private'));
+});
+
+const agentId = n => 'a' + String(n).padStart(16, '0');
+const usage = (n, model = 'claude-opus-5-5', text = 'Private agent text') => JSON.stringify({ type: 'assistant', isSidechain: true, timestamp: new Date().toISOString(),
+  message: { id: `m${n}`, model, role: 'assistant', content: [{ type: 'text', text }], usage: { input_tokens: n, cache_read_input_tokens: 1000, cache_creation_input_tokens: 200, output_tokens: 50 } } }) + '\n';
+const journalLine = r => JSON.stringify(r) + '\n';
+
+test('a running workflow shows phases, agents, restarts and agent stats from its journal', async () => fixture(async ({ projects, dir, file }) => {
+  const at = Date.now() - 10000, run = path.join(dir, ID, 'subagents', 'workflows', RUN); await fs.mkdir(run, { recursive: true });
+  await fs.writeFile(path.join(run, `agent-${agentId(3)}.meta.json`), '{}');
+  await fs.writeFile(path.join(run, `agent-${agentId(3)}.jsonl`), usage(1) + 'x'.repeat(100) + '\n' + usage(10));
+  await fs.writeFile(path.join(run, 'journal.jsonl'), [
+    { type: 'launched' }, { type: 'started', key: 'k1', agentId: agentId(1), label: 'plan', phase: 'Plan' },
+    { type: 'result', key: 'k1', agentId: agentId(1), result: 'Private result text' },
+    { type: 'started', key: 'k2', agentId: agentId(2), label: 'build:api', phase: 'Build' },
+    { type: 'started', key: 'k3', agentId: agentId(4), label: 'build:ui', phase: 'Build' },
+    { type: 'started', key: 'k2', agentId: agentId(3), label: 'build:api', phase: 'Build' }
+  ].map(journalLine).join(''));
+  await fs.writeFile(file, user(at) + workflowLaunch('wf', 'w33ckb1cf', at + 1).join('') + assistant('end_turn', undefined, at + 3));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  monitor.setTrackedIds(new Set(['claude:' + ID]));
+  try {
+    await monitor.tick(); await fs.appendFile(file, record('progress', { parentToolUseID: 'none' }, at + 4)); await fs.appendFile(file, assistant(null, undefined, at + 5)); await monitor.tick();
+    const [workflow] = snapshot.threads[0].agents;
+    assert.equal(snapshot.threads[0].status, 'running');
+    assert.deepEqual({ ...workflow, phases: undefined }, { kind: 'workflow', label: 'trace-review-workspace', completed: 1, total: 3, phases: undefined });
+    assert.deepEqual(workflow.phases.map(p => [p.name, p.completed, p.total, p.agents.map(a => [a.label, Boolean(a.done)])]), [
+      ['Plan', 1, 1, [['plan', true]]], ['Build', 0, 2, [['build:ui', false], ['build:api', false]]]
+    ]);
+    const api = workflow.phases[1].agents[1];
+    assert.equal(api.model, 'claude-opus-5-5'); assert.equal(api.tokens, 1260, 'The last assistant context plus output');
+    assert.ok(api.startedAt > 0 && api.lastAt >= api.startedAt);
+    await fs.appendFile(path.join(run, 'journal.jsonl'), journalLine({ type: 'result', key: 'k3', agentId: agentId(4), result: 'Private result text ' + 'x'.repeat(300 * 1024) }) +
+      journalLine({ type: 'result', key: 'k2', agentId: agentId(3), result: 'Private result text' }));
+    await fs.appendFile(path.join(run, `agent-${agentId(3)}.jsonl`), usage(500, 'claude-sonnet-5') + usage(500, 'claude-sonnet-5').replace('"output_tokens":50', '"output_tokens":900'));
+    for (let i = 0; i < 3; i++) await monitor.tick();
+    const done = snapshot.threads[0].agents[0];
+    assert.equal(done.completed, 3); assert.equal(done.phases[1].agents[1].tokens, 1750); assert.equal(done.phases[1].agents[1].model, 'claude-sonnet-5');
+    const retained = JSON.stringify([...monitor.files.values(), snapshot], (k, v) => v instanceof Map || v instanceof Set ? [...v] : v);
+    for (const secret of ['Private result text', 'Private agent text', 'Private workflow script', 'Private summary']) assert.ok(!retained.includes(secret), secret);
+    for (const key of ['runId', 'taskId', 'agentId', 'journal', 'stats']) assert.ok(!JSON.stringify(snapshot).includes(`"${key}"`), key);
+  } finally { monitor.dispose(); }
+}));
+
+test('plain subagents find their transcript by agentId or meta toolUseId; unsafe ids and missing files are ignored', async () => fixture(async ({ projects, dir, file }) => {
+  const at = Date.now() - 10000, agents = path.join(dir, ID, 'subagents'); await fs.mkdir(path.join(agents, 'workflows'), { recursive: true });
+  await fs.writeFile(path.join(agents, `agent-${agentId(7)}.meta.json`), JSON.stringify({ toolUseId: 'fg', description: 'Private meta description' }));
+  await fs.writeFile(path.join(agents, `agent-${agentId(7)}.jsonl`), usage(5));
+  await fs.writeFile(path.join(agents, `agent-${agentId(8)}.jsonl`), usage(6, 'claude-haiku-4-5-20251001'));
+  await fs.writeFile(path.join(dir, ID, 'agent-escape.jsonl'), usage(9));
+  await fs.writeFile(file, user(at) + assistant('tool_use', [agentCall('fg', { description: 'Review' }), agentCall('bg', { description: 'Batch 0', run_in_background: true }),
+    agentCall('bad', { description: 'Batch 1', run_in_background: true }), agentCall('evil', { script: 'x' }, 'Workflow')], at + 1) +
+    launched('bg', { status: 'async_launched', isAsync: true, agentId: agentId(8), description: 'Batch 0' }, at + 2) +
+    launched('bad', { status: 'async_launched', isAsync: true, agentId: '../agent-escape', description: 'Batch 1' }, at + 3) +
+    launched('evil', { status: 'async_launched', taskType: 'local_workflow', workflowName: 'evil', runId: '../../..' }, at + 4));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  monitor.setTrackedIds(new Set(['claude:' + ID]));
+  try {
+    await monitor.tick(); await fs.appendFile(file, record('progress', { parentToolUseID: 'fg' }, at + 5)); await monitor.tick();
+    const byLabel = Object.fromEntries(snapshot.threads[0].agents.map(a => [a.label, a]));
+    assert.equal(byLabel.Review.tokens, 1255); assert.equal(byLabel.Review.model, 'claude-opus-5-5');
+    assert.equal(byLabel['Batch 0'].model, 'claude-haiku-4-5-20251001');
+    assert.equal(byLabel['Batch 1'].tokens, undefined); assert.deepEqual(byLabel.evil, { kind: 'workflow', label: 'evil' });
+    const state = monitor.files.get(file);
+    assert.equal([...state.agents.values()].find(a => a.label === 'Batch 1').agentId, undefined);
+    assert.equal([...state.agents.values()].find(a => a.label === 'evil').runId, undefined);
+    assert.ok(!JSON.stringify(snapshot).includes('Private'));
+  } finally { monitor.dispose(); }
+}));
