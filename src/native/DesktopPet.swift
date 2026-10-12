@@ -549,10 +549,10 @@ final class DashboardView: NSView {
                 let pinned = owner?.pinned.contains(thread.id) ?? false
                 // Settled chats recede so running and waiting ones stand out.
                 let settled = ["ready", "idle"].contains(thread.status)
-                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: NSColor.white.withAlphaComponent(settled ? 0.62 : 1))
+                label((pinned ? "★ " : "") + thread.title, in: NSRect(x: 36, y: rect.midY - 1, width: bounds.width - 132, height: size + 5), size: size, color: NSColor.white.withAlphaComponent(settled ? 0.75 : 1))
                 let mark = thread.isClaude ? NSColor.systemOrange : thread.isAntigravity ? NSColor.systemBlue : NSColor.white.withAlphaComponent(0.55)
-                mark.withAlphaComponent(settled ? 0.55 : 0.95).setFill(); NSBezierPath(ovalIn: NSRect(x: 37, y: rect.midY - 8.5, width: 5, height: 5)).fill()
-                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.4 : 0.62))
+                mark.withAlphaComponent(settled ? 0.8 : 0.95).setFill(); NSBezierPath(ovalIn: NSRect(x: 37, y: rect.midY - 8.5, width: 5, height: 5)).fill()
+                label(owner?.rowSubtitle(thread) ?? thread.agentName, in: NSRect(x: 46, y: rect.midY - 12, width: bounds.width - 142, height: 11), size: 8, color: NSColor.white.withAlphaComponent(settled ? 0.52 : 0.62))
                 let expandable = thread.hasAgentDetails && !thread.needsReply
                 label(DesktopPet.durationText(thread, language: language), in: NSRect(x: bounds.width - 94, y: rect.midY - (thread.needsReply || expandable ? 1 : 7), width: 62, height: 16), size: 10, color: NSColor.white.withAlphaComponent(0.5))
                 if thread.needsReply {

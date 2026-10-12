@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.1 — Easier to read finished chats
+
+- Raise the contrast of finished chats: they still recede behind running and waiting chats, but their title, `Done … ago` subtitle and color mark stay easy to read.
+
 ## 0.20.0 — Follow workflows and subagents
 
 - Open **Agents** on a running Claude Code chat to see every subagent in a nested block: the workflow's name and count, finished phases folded into one line, then each running agent's status, model, tokens and time. Click a line to open the chat.
