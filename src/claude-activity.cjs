@@ -14,11 +14,14 @@ const textOf = content => typeof content === 'string' ? content : Array.isArray(
 // task notification naming the launching call. Only that report retires it;
 // the agent stays listed as done until the parent turn ends.
 function settleBackground(s, text) {
-  if (!s.backgroundTasks?.size) return;
+  const statuses = [];
+  if (!s.backgroundTasks?.size) return statuses;
   for (const block of text.split('<task-notification>').slice(1)) {
     const body = block.split('</task-notification>')[0], id = body.match(/<tool-use-id>([^<]{1,128})<\/tool-use-id>/)?.[1];
-    if (id && /<status>[a-z_]+<\/status>/.test(body) && s.backgroundTasks.delete(id)) { const agent = s.agents?.get(id); if (agent) agent.done = true; }
+    const status = body.match(/<status>([a-z_]+)<\/status>/)?.[1];
+    if (id && status && s.backgroundTasks.delete(id)) { statuses.push(status); const agent = s.agents?.get(id); if (agent) agent.done = true; }
   }
+  return statuses;
 }
 
 // Background shells can outlive the work (servers); agents and workflows report back.
@@ -96,13 +99,13 @@ function applyClaudeEvent(s, r) {
     for (const [id, agent] of s.agents || []) if (!s.backgroundTasks?.has(id) && !(keepDone && agent.done)) s.agents.delete(id);
   };
   const progress = () => { s.lastEventAt = Math.max(s.lastEventAt || 0, at); s.progressVersion = (s.progressVersion || 0) + 1; };
-  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); settleForeground(); };
+  const start = () => { s.status = 'running'; s.changedAt = at; s.startedAt = at; s.finishedAt = undefined; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = false; settleForeground(); };
   const finish = status => {
     if (r.type === 'assistant' && typeof m.id === 'string' && m.id.length <= 128) {
       s.settledMessages ||= new Set(); s.settledMessages.add(m.id);
       while (s.settledMessages.size > 128) s.settledMessages.delete(s.settledMessages.values().next().value);
     }
-    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); settleForeground(); progress();
+    s.status = status; s.changedAt = at; s.finishedAt = at; s.pendingInputs = {}; s.lastQuestionAt = undefined; s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = false; settleForeground(); progress();
   };
   if (r.type === 'queue-operation') {
     if (consumedHuman) {
@@ -142,10 +145,15 @@ function applyClaudeEvent(s, r) {
     if (!message.trim()) return;
     if (/^\[Request interrupted by user/.test(message)) { finish('idle'); return; }
     if (r.origin?.kind === 'task-notification') {
-      settleBackground(s, message);
+      const statuses = settleBackground(s, message);
+      // Claude answers a report with its own reply; the report alone starts nothing.
+      if (s.status !== 'running') return;
+      // A closing window stops its work and reports to a parent that cannot answer.
+      if (s.awaitingReports && !s.backgroundTasks?.size && statuses.length && statuses.every(status => ['stopped', 'killed'].includes(status))) { finish('idle'); return; }
       // A report into work that is still open continues it; the timer keeps running.
-      if (s.status === 'running') { progress(); return; }
-    } else if (!s.titlePriority) { s.title = clean(message); s.titlePriority = 1; }
+      progress(); return;
+    }
+    if (!s.titlePriority) { s.title = clean(message); s.titlePriority = 1; }
     start(); progress();
   } else if (r.type === 'assistant') {
     if (r.isAbortedMidStream) { finish('idle'); return; }
@@ -154,8 +162,9 @@ function applyClaudeEvent(s, r) {
     if (['end_turn', 'stop_sequence'].includes(m.stop_reason) && !calls.length && !Object.keys(s.pendingInputs).length) {
       if (!s.backgroundTasks?.size) { finish('ready'); return; }
       // Claude resumes this chat itself when its background work reports back.
-      s.pendingTools = new Set(); s.pendingStops = new Set(); settleForeground(true); progress(); return;
+      s.pendingTools = new Set(); s.pendingStops = new Set(); s.awaitingReports = true; settleForeground(true); progress(); return;
     }
+    s.awaitingReports = false;
     // The parent can genuinely resume after an asynchronous subagent report.
     // Publish a newer lifecycle so the panel can supersede its retained finish.
     if (s.status !== 'running') start();

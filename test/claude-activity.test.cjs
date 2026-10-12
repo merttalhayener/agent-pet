@@ -620,3 +620,23 @@ test('after reload, background work launched before the tail window is recovered
     assert.deepEqual(snapshot.threads[0].agents.map(a => [a.kind, a.label, a.total]), [['workflow', 'trace-review-workspace', 1]]);
   } finally { monitor.dispose(); }
 }));
+
+test('reports written while a window closes cannot restart a settled chat or keep a waiting one running', () => {
+  const at = Date.now() - 10000;
+  const report = (id, t, status) => JSON.parse(record('user', { origin: { kind: 'task-notification' }, message: { content: notification(id, t, status) } }, t));
+  const settled = { sessionId: ID };
+  for (const text of [user(at), assistant('end_turn', undefined, at + 1)]) applyClaudeEvent(settled, JSON.parse(text));
+  applyClaudeEvent(settled, report('old', at + 2, 'stopped'));
+  assert.equal(settled.status, 'ready', 'A report alone is not a reply'); assert.equal(settled.finishedAt, at + 1);
+  applyClaudeEvent(settled, JSON.parse(assistant(null, [{ type: 'text', text: 'Reply' }], at + 3)));
+  assert.equal(settled.status, 'running', 'Claude answering the report starts a new lifecycle'); assert.equal(settled.startedAt, at + 3);
+
+  const parked = { sessionId: ID };
+  const apply = text => applyClaudeEvent(parked, JSON.parse(text));
+  apply(user(at)); workflowLaunch('wf', 'w1', at + 1).forEach(apply); apply(assistant('end_turn', undefined, at + 3));
+  applyClaudeEvent(parked, report('wf', at + 4, 'stopped'));
+  assert.equal(parked.status, 'idle', 'Stopped background work leaves the waiting chat stopped'); assert.equal(parked.finishedAt, at + 4);
+  apply(user(at + 5)); workflowLaunch('next', 'w2', at + 6).forEach(apply); apply(assistant('end_turn', undefined, at + 8));
+  applyClaudeEvent(parked, report('next', at + 9, 'completed'));
+  assert.equal(parked.status, 'running', 'Completed work is answered by Claude');
+});
