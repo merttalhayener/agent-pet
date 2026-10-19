@@ -680,3 +680,50 @@ test('a waiting chat names its question by its short header, or as a plan to rev
     assert.equal(snapshot.threads[0].question, undefined);
   } finally { monitor.dispose(); }
 }));
+
+// Claude hands a background agent's report back as a peer message it answers,
+// then records the task notification for the transcript only.
+const peerHandback = (from, at) => record('user', {
+  isMeta: true, origin: { kind: 'peer', from, senderTaskId: from, name: 'general-purpose', handback: true, handbackReportText: 'Private report' },
+  promptSource: 'system', queueSkipAttachments: true, message: { content: '[Subagent hand-back] Private report' }
+}, at);
+const transcriptOnly = (id, at, status = 'completed') => record('user', {
+  origin: { kind: 'task-notification', producer: 'session-task' }, promptSource: 'system', queueTranscriptOnly: true, queueSkipAttachments: true,
+  message: { content: notification(id, at, status) }
+}, at);
+
+test('a peer hand-back reports its background agent and the transcript-only notification after it cannot strand the chat', async () => fixture(async ({ projects, file }) => {
+  const at = Date.now() - 10000;
+  await fs.writeFile(file, user(at) + record('custom-title', { customTitle: 'Schema review' }, at) +
+    assistant('tool_use', [agentCall('first', { description: 'First check', run_in_background: true }), agentCall('second', { description: 'Second check', run_in_background: true })], at + 1));
+  let snapshot;
+  const monitor = new ClaudeActivityMonitor(projects, () => ['/work/app'], value => { snapshot = value; });
+  try {
+    await monitor.tick();
+    await fs.appendFile(file, launched('first', { status: 'async_launched', isAsync: true, agentId: agentId(1) }, at + 2) +
+      launched('second', { status: 'async_launched', isAsync: true, agentId: agentId(2) }, at + 3) + assistant('end_turn', undefined, at + 4));
+    await monitor.tick(); assert.equal(snapshot.threads[0].status, 'running');
+    await fs.appendFile(file, peerHandback(agentId(2), at + 5) +
+      record('attachment', { attachment: { type: 'queued_command', commandMode: 'task-notification', prompt: notification('second') } }, at + 5) + assistant('end_turn', undefined, at + 6));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'running'); assert.equal(snapshot.threads[0].startedAt, at, 'A hand-back continues the open turn');
+    await fs.appendFile(file, peerHandback(agentId(1), at + 7));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].startedAt, at); assert.equal(snapshot.threads[0].title, 'Schema review');
+    assert.deepEqual(snapshot.threads[0].agents.map(a => [a.label, Boolean(a.done)]), [['First check', true], ['Second check', true]]);
+    await fs.appendFile(file, assistant('end_turn', undefined, at + 8) + transcriptOnly('first', at + 9));
+    await monitor.tick();
+    assert.equal(snapshot.threads[0].status, 'ready'); assert.equal(snapshot.threads[0].startedAt, at); assert.equal(snapshot.threads[0].finishedAt, at + 8);
+  } finally { monitor.dispose(); }
+}));
+
+test('a transcript-only notification for the last background task finishes a parent that already answered', () => {
+  const at = Date.now() - 10000, state = { sessionId: ID };
+  const apply = text => applyClaudeEvent(state, JSON.parse(text));
+  apply(user(at)); apply(assistant('tool_use', [agentCall('agent', { run_in_background: true })], at + 1));
+  apply(launched('agent', { status: 'async_launched', isAsync: true }, at + 2)); apply(assistant('end_turn', undefined, at + 3));
+  apply(peerHandback('unknown', at + 4)); apply(assistant('end_turn', undefined, at + 5));
+  assert.equal(state.status, 'running', 'An unmatched hand-back does not settle the launch');
+  apply(transcriptOnly('agent', at + 6));
+  assert.equal(state.status, 'ready'); assert.equal(state.startedAt, at); assert.equal(state.finishedAt, at + 6);
+});

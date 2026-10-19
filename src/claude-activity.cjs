@@ -33,6 +33,16 @@ function settleBackground(s, text) {
   return statuses;
 }
 
+// Claude hands a background agent's report back as a peer message from that
+// agent and answers it; the task notification that follows is transcript-only.
+function settleHandback(s, origin) {
+  const from = validId(origin?.senderTaskId, TASK_ID);
+  if (!from || origin.handback !== true) return;
+  for (const [id, agent] of s.agents || []) {
+    if ((agent.agentId === from || agent.taskId === from) && s.backgroundTasks?.delete(id)) agent.done = true;
+  }
+}
+
 // Background shells can outlive the work (servers); agents and workflows report back.
 function registerLaunch(s, id, launch, at) {
   const workflow = launch.taskType === 'local_workflow' || typeof launch.workflowName === 'string';
@@ -53,6 +63,7 @@ function recoverRecord(s, r) {
   if (results.length === 1 && results[0].tool_use_id && r.toolUseResult?.status === 'async_launched') registerLaunch(s, results[0].tool_use_id, r.toolUseResult, Date.parse(r.timestamp) || 0);
   else if (results.length === 1 && results[0].is_error !== true && /^Successfully stopped task/.test(r.toolUseResult?.message || '')) retireStopped(s, r.toolUseResult.task_id);
   else if (r.type === 'user' && r.origin?.kind === 'task-notification') settleBackground(s, textOf(r.message?.content));
+  else if (r.type === 'user' && r.origin?.kind === 'peer') settleHandback(s, r.origin);
   else if (r.type === 'attachment' && r.attachment?.type === 'queued_command' && r.attachment.commandMode === 'task-notification') settleBackground(s, textOf(r.attachment.prompt));
 }
 
@@ -150,6 +161,7 @@ function applyClaudeEvent(s, r) {
       if (!s.pendingTools?.size) s.step = { tool: 'thinking' };
       progress(); return;
     }
+    if (r.origin?.kind === 'peer') settleHandback(s, r.origin);
     if (r.isMeta) return;
     const message = textOf(m.content);
     if (!message.trim()) return;
@@ -160,6 +172,8 @@ function applyClaudeEvent(s, r) {
       if (s.status !== 'running') return;
       // A closing window stops its work and reports to a parent that cannot answer.
       if (s.awaitingReports && !s.backgroundTasks?.size && statuses.length && statuses.every(status => ['stopped', 'killed'].includes(status))) { finish('idle'); return; }
+      // A transcript-only report is never answered, so the parent's last reply ended the turn.
+      if (s.awaitingReports && !s.backgroundTasks?.size && statuses.length && r.queueTranscriptOnly === true) { finish('ready'); return; }
       // A report into work that is still open continues it; the timer keeps running.
       progress(); return;
     }
@@ -242,7 +256,7 @@ class ClaudeActivityMonitor extends ActivityMonitor {
       const lines = (partial + decoder.write(buffer.subarray(0, bytesRead))).split('\n'); partial = lines.pop();
       if (partial.length > MAX_LINE) partial = '';
       for (const line of lines) {
-        if (!line.includes('async_launched') && !line.includes('<task-notification>') && !line.includes('Successfully stopped task')) continue;
+        if (!line.includes('async_launched') && !line.includes('<task-notification>') && !line.includes('Successfully stopped task') && !line.includes('"handback":true')) continue;
         try { recoverRecord(s, JSON.parse(line)); } catch {}
       }
     }

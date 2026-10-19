@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.3 — Chats finish after their background agents
+
+- Fix Claude Code chats with background agents staying "running" after every agent had finished (`2/2 agents finished` with a spinning icon). Newer Claude Code versions hand each agent's report back to the chat first and write the completion notice afterwards without replying to it; Agent Pet now counts the hand-back as the agent's report and ends the chat at Claude's last reply.
+
 ## 0.20.2 — One time per chat
 
 - Show a single time on the right of each chat: how long a running chat has worked, how long a waiting chat has waited, or how long ago a finished chat ended (`5 min ago`). The subtitle no longer repeats a time, and the full turn time stays in the tooltip.
